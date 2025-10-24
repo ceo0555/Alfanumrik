@@ -1,0 +1,163 @@
+import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { LiveServerMessage } from '@google/genai';
+import { MicrophoneIcon, StopIcon, SparklesIcon } from '../constants/icons';
+import { decode, decodeAudioData } from '../utils/audio';
+import { useAuth } from '../contexts/AuthContext';
+import { useLiveAudio } from '../utils/useLiveAudio';
+
+const AIAssistant: React.FC = () => {
+    const { activeProfile } = useAuth();
+    const [transcriptionHistory, setTranscriptionHistory] = useState<{ speaker: 'user' | 'model', text: string }[]>([]);
+    
+    const outputAudioContextRef = useRef<AudioContext | null>(null);
+    const nextStartTimeRef = useRef(0);
+    const sourcesRef = useRef(new Set<AudioBufferSourceNode>());
+    
+    const currentInputTranscriptionRef = useRef('');
+    const currentOutputTranscriptionRef = useRef('');
+    
+    const studentName = activeProfile?.name || 'Student';
+    const currentChapter = activeProfile?.lastChapter || 'your current topic';
+    const currentSubject = activeProfile?.lastSubject || 'your subject';
+    const currentGrade = activeProfile?.grade || 'your grade';
+
+    const systemInstruction = `You are MIGA, a friendly and encouraging AI tutor for a K-12 student named ${studentName}. Your primary goal is to help them understand concepts, not just give answers.
+
+        **Student's Current Context**:
+        - Grade: ${currentGrade}
+        - Subject: ${currentSubject}
+        - Chapter: "${currentChapter}"
+        Use this context to provide highly relevant and targeted help. If they ask a question outside this topic, you can gently guide them back or ask if they want to switch topics.
+
+        **Key instructions**:
+        1.  **Personalization**: Always address the student as ${studentName}.
+        2.  **Multilingual**: Listen to the language ${studentName} is speaking and ALWAYS respond in that same language.
+        3.  **Pedagogical Approach**:
+            - For subjective/theory questions: Explain concepts step-by-step using simple language, analogies, and real-world examples related to their current chapter.
+            - For numerical/problem-solving questions: Do not give the final answer directly. Instead, guide ${studentName} through the steps. Ask what they've tried, explain the relevant formulas, and help them set up the problem. Encourage them to do the final calculation.
+        4.  **Tone**: Be patient, positive, and encouraging. Keep your answers concise and easy to follow.
+        5.  **Educational Focus**: Your purpose is to help with educational topics. If the query is unrelated to academics, school subjects, or learning, you must politely decline to answer and explain that your role is to assist with educational questions.`;
+
+    const handleMessage = useCallback(async (message: LiveServerMessage) => {
+        if (message.serverContent?.outputTranscription) {
+            currentOutputTranscriptionRef.current += message.serverContent.outputTranscription.text;
+        } else if (message.serverContent?.inputTranscription) {
+            currentInputTranscriptionRef.current += message.serverContent.inputTranscription.text;
+        }
+
+        if (message.serverContent?.turnComplete) {
+            const fullInput = currentInputTranscriptionRef.current.trim();
+            const fullOutput = currentOutputTranscriptionRef.current.trim();
+            setTranscriptionHistory(prev => {
+                const newHistory = [...prev];
+                if (fullInput) newHistory.push({ speaker: 'user', text: fullInput });
+                if (fullOutput) newHistory.push({ speaker: 'model', text: fullOutput });
+                return newHistory;
+            });
+            currentInputTranscriptionRef.current = '';
+            currentOutputTranscriptionRef.current = '';
+        }
+        
+        const base64Audio = message.serverContent?.modelTurn?.parts[0]?.inlineData?.data;
+        if (base64Audio && outputAudioContextRef.current) {
+            nextStartTimeRef.current = Math.max(nextStartTimeRef.current, outputAudioContextRef.current.currentTime);
+            const audioBuffer = await decodeAudioData(decode(base64Audio), outputAudioContextRef.current, 24000, 1);
+            const source = outputAudioContextRef.current.createBufferSource();
+            source.buffer = audioBuffer;
+            source.connect(outputAudioContextRef.current.destination);
+            source.addEventListener('ended', () => { sourcesRef.current.delete(source); });
+            source.start(nextStartTimeRef.current);
+            nextStartTimeRef.current += audioBuffer.duration;
+            sourcesRef.current.add(source);
+        }
+        
+        if (message.serverContent?.interrupted) {
+           for (const source of sourcesRef.current.values()) {
+                source.stop();
+                sourcesRef.current.delete(source);
+            }
+            nextStartTimeRef.current = 0;
+        }
+    }, []);
+
+    const { isSessionActive, status, startConversation, stopConversation } = useLiveAudio({
+        model: 'gemini-2.5-flash-native-audio-preview-09-2025',
+        config: {
+            responseModalities: ['AUDIO'],
+            outputAudioTranscription: {},
+            inputAudioTranscription: {},
+            systemInstruction: systemInstruction,
+        },
+    }, { onmessage: handleMessage });
+
+    const handleStart = () => {
+        outputAudioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 });
+        nextStartTimeRef.current = 0;
+        sourcesRef.current.clear();
+        setTranscriptionHistory([]);
+        currentInputTranscriptionRef.current = '';
+        currentOutputTranscriptionRef.current = '';
+        startConversation();
+    };
+
+    const handleStop = () => {
+        stopConversation();
+        if (outputAudioContextRef.current && outputAudioContextRef.current.state !== 'closed') {
+            outputAudioContextRef.current.close().catch(console.error);
+        }
+    };
+
+    const handleToggleConversation = () => {
+        if (isSessionActive) {
+            handleStop();
+        } else {
+            handleStart();
+        }
+    };
+    
+    // Cleanup on unmount
+    useEffect(() => {
+        return () => {
+            handleStop();
+        };
+    }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+    return (
+        <div className="max-w-4xl mx-auto flex flex-col h-full animate-slide-in-up">
+            <div className="flex-grow bg-white border border-[var(--border-color)] rounded-xl shadow-sm p-4 overflow-y-auto mb-6">
+                {transcriptionHistory.length === 0 && (
+                    <div className="flex flex-col items-center justify-center h-full text-slate-400 text-center">
+                        <SparklesIcon className="w-16 h-16 mb-4"/>
+                        <p className="font-semibold text-slate-600">MIGA is ready to help.</p>
+                        <p className="text-sm">The conversation transcript will appear here.</p>
+                    </div>
+                )}
+                <div className="space-y-4">
+                    {transcriptionHistory.map((entry, index) => (
+                        <div key={index} className={`flex items-start gap-3 ${entry.speaker === 'user' ? 'justify-end' : ''}`}>
+                            {entry.speaker === 'model' && <div className="w-8 h-8 rounded-full bg-[var(--brand-primary)] flex items-center justify-center text-white font-bold flex-shrink-0">M</div>}
+                            <div className={`max-w-lg p-3 rounded-lg ${entry.speaker === 'user' ? 'bg-slate-100 text-slate-800' : 'bg-indigo-50 text-slate-700'}`}>
+                                <p>{entry.text}</p>
+                            </div>
+                            {entry.speaker === 'user' && <div className="w-8 h-8 rounded-full bg-slate-400 flex items-center justify-center text-white font-bold flex-shrink-0">{studentName.charAt(0)}</div>}
+                        </div>
+                    ))}
+                </div>
+            </div>
+
+            <div className="flex-shrink-0 text-center">
+                <p className="text-slate-600 font-semibold mb-3">Hi, {studentName}! I'm ready to help you with {currentSubject}.</p>
+                <button
+                    onClick={handleToggleConversation}
+                    className={`p-4 rounded-full transition-all duration-300 text-white shadow-lg transform hover:scale-110 ${isSessionActive ? 'bg-red-500 hover:bg-red-600' : 'bg-[var(--brand-primary)] hover:bg-[var(--brand-primary-hover)]'} disabled:bg-slate-300 disabled:cursor-not-allowed`}
+                    aria-label={isSessionActive ? 'Stop conversation' : 'Start conversation'}
+                >
+                    {isSessionActive ? <StopIcon className="w-8 h-8" /> : <MicrophoneIcon className="w-8 h-8" />}
+                </button>
+                <p className="text-slate-500 mt-3 text-sm h-5">{status}</p>
+            </div>
+        </div>
+    );
+};
+
+export default AIAssistant;

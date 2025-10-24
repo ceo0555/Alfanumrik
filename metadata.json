@@ -1,0 +1,8 @@
+{
+  "name": "Alfanumrik",
+  "description": "An adaptive mobile learning app for K-12 CBSE students. It uses visually rich content and targeted practice from past exam papers to help students master their curriculum, build confidence, and prepare for competitive exams.",
+  "requestFramePermissions": [
+    "microphone",
+    "camera"
+  ]
+}

@@ -1,0 +1,42 @@
+import React from 'react';
+import { GuidedPracticeStep, IndependentPracticeStep } from '../types';
+import { cleanText } from '../utils/textHelpers';
+
+interface PracticeStepProps {
+  content: GuidedPracticeStep['content'] | IndependentPracticeStep['content'];
+  type: 'guided_practice' | 'independent_practice';
+  onCompleted: () => void;
+}
+
+const PracticeStep: React.FC<PracticeStepProps> = ({ content, type, onCompleted }) => {
+  const isGuided = type === 'guided_practice';
+  const themeClasses = isGuided
+    ? { border: 'border-yellow-400', bg: 'bg-yellow-50', text: 'text-yellow-800', hover: 'hover:text-yellow-900', hintBorder: 'border-yellow-200' }
+    : { border: 'border-sky-400', bg: 'bg-sky-50', text: 'text-sky-800', hover: 'hover:text-sky-900', hintBorder: 'border-sky-200' };
+
+  return (
+    <div className={`p-4 border-l-4 ${themeClasses.border} ${themeClasses.bg} rounded-r-lg`}>
+      <p className="font-bold">Question: {cleanText(content.question)}</p>
+      
+      {isGuided && 'hint' in content && (
+        <details className="mt-2" onToggle={(e) => { if ((e.target as HTMLDetailsElement).open) onCompleted(); }}>
+          <summary className={`cursor-pointer font-semibold ${themeClasses.text} ${themeClasses.hover}`}>
+            Stuck? Click for a hint.
+          </summary>
+          <p className={`mt-1 p-2 bg-white rounded border ${themeClasses.hintBorder}`}>{cleanText(content.hint)}</p>
+        </details>
+      )}
+
+      <details className="mt-2" onToggle={(e) => { if ((e.target as HTMLDetailsElement).open) onCompleted(); }}>
+        <summary className={`cursor-pointer font-semibold ${themeClasses.text} ${themeClasses.hover}`}>
+          Check the solution.
+        </summary>
+        <p className="mt-1 p-2 bg-white rounded border whitespace-pre-wrap">
+          {isGuided && 'stepwise_solution' in content ? content.stepwise_solution : 'answer_key' in content ? content.answer_key : ''}
+        </p>
+      </details>
+    </div>
+  );
+};
+
+export default PracticeStep;
