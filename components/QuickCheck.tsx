@@ -1,17 +1,16 @@
-import React, { useState, useMemo } from 'react';
+import React, { useMemo } from 'react';
 import { QuickCheck } from '../types';
 import { ThumbsUpIcon, ThumbsDownIcon, LightbulbIcon } from '../constants/icons';
 
 interface QuickCheckStepProps {
   content: QuickCheck;
-  onCompleted: () => void;
-  skillId: string;
-  onAnswer: (skillId: string, isCorrect: boolean) => void;
+  stepAnswer?: { answer: string | null; isCorrect: boolean };
+  onStepAnswer: (answer: string | null, isCorrect: boolean) => void;
 }
 
-const QuickCheckStep: React.FC<QuickCheckStepProps> = ({ content, onCompleted, skillId, onAnswer }) => {
-  const [selectedOption, setSelectedOption] = useState<string | null>(null);
-  const [isAnswered, setIsAnswered] = useState(false);
+const QuickCheckStep: React.FC<QuickCheckStepProps> = ({ content, stepAnswer, onStepAnswer }) => {
+  const isAnswered = !!stepAnswer;
+  const selectedOption = stepAnswer?.answer;
 
   const shuffledOptions = useMemo(() => {
     return [...content.options].sort(() => Math.random() - 0.5);
@@ -20,15 +19,8 @@ const QuickCheckStep: React.FC<QuickCheckStepProps> = ({ content, onCompleted, s
   const handleSelectOption = (option: string) => {
     if (isAnswered) return;
     
-    setSelectedOption(option);
-    setIsAnswered(true);
-    
     const isCorrect = option === content.correct_answer;
-    onAnswer(skillId, isCorrect);
-    
-    // Call onCompleted immediately after the user answers, regardless of correctness.
-    // This allows the user to see the feedback, and the 'Next' button will be enabled.
-    onCompleted();
+    onStepAnswer(option, isCorrect);
   };
 
   const getOptionClasses = (option: string) => {

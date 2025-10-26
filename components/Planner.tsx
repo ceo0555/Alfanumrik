@@ -1,114 +1,51 @@
 import React, { useState, useMemo, useEffect, useRef, useCallback, Suspense } from 'react';
-import { ChapterProgress, FlashcardReviewItem, UserFlashcardItem } from '../types';
-import { ArrowLeftIcon, ArrowRightIcon } from '../constants/icons';
+import { ChapterProgress, FlashcardReviewItem, UserFlashcardItem, Assignment } from '../types';
+import { ArrowLeftIcon, ArrowRightIcon, BookIcon, CalendarCheckIcon, LayersIcon, RefreshCwIcon, PlusIcon } from '../constants/icons';
 import { useStudentData } from '../contexts/StudentDataContext';
 import { useAuth } from '../contexts/AuthContext';
+import { View } from '../App';
+import AddTaskModal from './AddTaskModal';
 
 const ReviewQueue = React.lazy(() => import('./ReviewQueue'));
 
-// Simple SVG-based play and pause icons for the timer button
-const PlayTimerIcon = ({ className }: { className?: string }) => (
-    <svg className={className} viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><path d="M8 5V19L19 12L8 5Z"></path></svg>
-);
-const PauseTimerIcon = ({ className }: { className?: string }) => (
-    <svg className={className} viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><path d="M6 19H10V5H6V19ZM14 5V19H18V5H14Z"></path></svg>
-);
+const PlayTimerIcon = ({ className }: { className?: string }) => ( <svg className={className} viewBox="0 0 24 24" fill="currentColor"><path d="M8 5V19L19 12L8 5Z"></path></svg> );
+const PauseTimerIcon = ({ className }: { className?: string }) => ( <svg className={className} viewBox="0 0 24 24" fill="currentColor"><path d="M6 19H10V5H6V19ZM14 5V19H18V5H14Z"></path></svg> );
 
-const Planner: React.FC = () => {
+type AgendaItemType = 'deadline' | 'assignment' | 'review';
+interface AgendaItem {
+  id: string;
+  type: AgendaItemType;
+  title: string;
+  subtitle: string;
+  dueDate: string;
+  data: any;
+}
+interface PlannerProps { setView: (view: View) => void; }
+
+const Planner: React.FC<PlannerProps> = ({ setView }) => {
   const { progressData, userFlashcards } = useStudentData();
-  const { activeProfile } = useAuth();
-  const [currentDate, setCurrentDate] = useState(new Date());
-  const [activeTab, setActiveTab] = useState<'calendar' | 'review'>('calendar');
+  const { activeProfile, allAssignments, updateActiveUserProfile } = useAuth();
+  const [selectedDate, setSelectedDate] = useState(new Date());
+  const [viewMode, setViewMode] = useState<'agenda' | 'review'>('agenda');
+  const [isAddTaskModalOpen, setIsAddTaskModalOpen] = useState(false);
 
-  // --- Pomodoro Timer State ---
-  const [studyMinutes, setStudyMinutes] = useState(25);
-  const [breakMinutes, setBreakMinutes] = useState(5);
+  // Pomodoro Timer State
+  const STUDY_MINUTES = 25;
+  const BREAK_MINUTES = 5;
   const [mode, setMode] = useState<'study' | 'break'>('study');
   const [isActive, setIsActive] = useState(false);
-  const [secondsLeft, setSecondsLeft] = useState(studyMinutes * 60);
-  const [linkedChapterId, setLinkedChapterId] = useState('');
+  const [secondsLeft, setSecondsLeft] = useState(STUDY_MINUTES * 60);
+  const [linkedTaskId, setLinkedTaskId] = useState('');
   const intervalRef = useRef<number | null>(null);
-  const audioContextRef = useRef<AudioContext | null>(null);
-
-  const subjectColors: { [key: string]: string } = {
-      'Science': 'bg-blue-500',
-      'Maths': 'bg-green-500',
-      'Social Studies': 'bg-orange-500',
-      'Physics': 'bg-red-500',
-      'Chemistry': 'bg-yellow-500',
-      'Biology': 'bg-teal-500',
-  };
-
-  const deadlines = useMemo(() => {
-    const allDeadlines: { chapterId: string, chapter: string, subject: string, grade: string, dueDate: string }[] = [];
-    // FIX: Using a for...of loop to iterate over entries, which can be more robust for type inference than .forEach with complex types.
-    for (const [chapterId, chapterProgress] of Object.entries(progressData)) {
-      // FIX: Explicitly cast chapterProgress as its type is not correctly inferred inside the loop.
-      const progress = chapterProgress as ChapterProgress;
-      if (progress.dueDate && progress.status !== 'completed') {
-        const [, grade, subject, ...chapterParts] = chapterId.split('-');
-        const chapter = chapterParts.join('-');
-        allDeadlines.push({ chapterId, chapter, subject, grade, dueDate: progress.dueDate });
-      }
-    }
-    return allDeadlines.sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime());
-  }, [progressData]);
-
-  const reviewItems = useMemo(() => {
-    if (!userFlashcards) return [];
-    const today = new Date().toISOString().split('T')[0];
-    const items: FlashcardReviewItem[] = [];
-    // FIX: Replaced .forEach with a for...of loop and added a type assertion to fix type inference issues.
-    for (const [chapterId, deck] of Object.entries(userFlashcards)) {
-        (deck as UserFlashcardItem[]).forEach((item, cardIndex) => {
-// FIX: Corrected property from `nextReviewDate` to `due` to match the SrsData type.
-            if (item.srsData.due <= today) {
-                items.push({ ...item, chapterId, cardIndex });
-            }
-        });
-    }
-    return items;
-  }, [userFlashcards]);
-
-  const deadlinesByDate = useMemo(() => {
-    const map = new Map<string, typeof deadlines>();
-    deadlines.forEach(item => {
-      const date = item.dueDate;
-      if (!map.has(date)) {
-        map.set(date, []);
-      }
-      map.get(date)!.push(item);
-    });
-    return map;
-  }, [deadlines]);
-
-  const playAlertSound = useCallback(() => {
-      if (!audioContextRef.current) {
-          audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
-      }
-      const audioCtx = audioContextRef.current;
-      const oscillator = audioCtx.createOscillator();
-      const gainNode = audioCtx.createGain();
-      
-      oscillator.connect(gainNode);
-      gainNode.connect(audioCtx.destination);
-      
-      gainNode.gain.setValueAtTime(0, audioCtx.currentTime);
-      gainNode.gain.linearRampToValueAtTime(0.5, audioCtx.currentTime + 0.05);
-
-      oscillator.frequency.setValueAtTime(600, audioCtx.currentTime);
-      oscillator.type = 'sine';
-      oscillator.start(audioCtx.currentTime);
-      oscillator.stop(audioCtx.currentTime + 0.3);
-
-      gainNode.gain.exponentialRampToValueAtTime(0.00001, audioCtx.currentTime + 0.3);
-  }, []);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
-    if (!isActive) {
-      setSecondsLeft(mode === 'study' ? studyMinutes * 60 : breakMinutes * 60);
-    }
-  }, [studyMinutes, breakMinutes, mode, isActive]);
+    audioRef.current = new Audio('https://www.soundjay.com/buttons/sounds/button-16.mp3');
+  }, []);
+
+  const playAlertSound = useCallback(() => {
+    audioRef.current?.play().catch(e => console.error("Error playing sound:", e));
+  }, []);
 
   useEffect(() => {
     if (isActive) {
@@ -116,9 +53,7 @@ const Planner: React.FC = () => {
         setSecondsLeft(prev => prev - 1);
       }, 1000);
     } else {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-      }
+      if (intervalRef.current) clearInterval(intervalRef.current);
     }
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
@@ -126,176 +61,289 @@ const Planner: React.FC = () => {
   }, [isActive]);
 
   useEffect(() => {
-    if (isActive) {
-        document.title = `${Math.floor(secondsLeft / 60).toString().padStart(2, '0')}:${(secondsLeft % 60).toString().padStart(2, '0')} | Alfanumrik`;
-    } else {
-        document.title = 'Alfanumrik';
+    if (secondsLeft <= 0) {
+        playAlertSound();
+        if (mode === 'study') {
+            setMode('break');
+            setSecondsLeft(BREAK_MINUTES * 60);
+        } else {
+            setMode('study');
+            setSecondsLeft(STUDY_MINUTES * 60);
+        }
     }
-
-    if (secondsLeft === 0 && isActive) {
-      playAlertSound();
-      const nextMode = mode === 'study' ? 'break' : 'study';
-      setMode(nextMode);
-      setSecondsLeft(nextMode === 'study' ? studyMinutes * 60 : breakMinutes * 60);
-    }
-    return () => { document.title = 'Alfanumrik'; }
-  }, [secondsLeft, mode, studyMinutes, breakMinutes, playAlertSound, isActive]);
+  }, [secondsLeft, mode, playAlertSound]);
 
   const handleToggleTimer = () => setIsActive(!isActive);
-
   const handleResetTimer = () => {
     setIsActive(false);
+    if (intervalRef.current) clearInterval(intervalRef.current);
     setMode('study');
-    setSecondsLeft(studyMinutes * 60);
+    setSecondsLeft(STUDY_MINUTES * 60);
+  };
+
+  const subjectColors: { [key: string]: { bg: string, text: string, border: string } } = {
+    'Science': { bg: 'bg-blue-50', text: 'text-blue-700', border: 'border-blue-200' },
+    'Maths': { bg: 'bg-green-50', text: 'text-green-700', border: 'border-green-200' },
+    'Social Studies': { bg: 'bg-orange-50', text: 'text-orange-700', border: 'border-orange-200' },
+    'Physics': { bg: 'bg-red-50', text: 'text-red-700', border: 'border-red-200' },
+    'Chemistry': { bg: 'bg-yellow-50', text: 'text-yellow-700', border: 'border-yellow-200' },
+    'Biology': { bg: 'bg-teal-50', text: 'text-teal-700', border: 'border-teal-200' },
+    'Default': { bg: 'bg-slate-50', text: 'text-slate-700', border: 'border-slate-200' }
   };
   
-  const totalSeconds = mode === 'study' ? studyMinutes * 60 : breakMinutes * 60;
-  const progressPercentage = (secondsLeft / totalSeconds) * 100;
-  const circumference = 2 * Math.PI * 90;
-  const strokeDashoffset = circumference - (progressPercentage / 100) * circumference;
-  
-  const minutes = Math.floor(secondsLeft / 60);
-  const seconds = secondsLeft % 60;
+  const handleTaskClick = (item: AgendaItem) => {
+    if (item.type === 'review') {
+        setViewMode('review');
+    } else { // 'deadline' or 'assignment'
+        const chapterId = item.id.startsWith('AS') ? item.data.assignedChapterIds[0] : item.id;
+        if (!chapterId) return;
 
-  const changeMonth = (amount: number) => {
-    setCurrentDate(prev => {
-      const newDate = new Date(prev);
-      newDate.setDate(1);
-      newDate.setMonth(newDate.getMonth() + amount);
-      return newDate;
+        const [, grade, subject, ...chapterParts] = chapterId.split('-');
+        const chapter = chapterParts.join('-');
+        
+        updateActiveUserProfile({ lastChapter: chapter, lastSubject: subject, grade });
+        setView('lesson');
+    }
+  };
+
+  const reviewItems = useMemo((): FlashcardReviewItem[] => {
+    if (!userFlashcards) return [];
+    const todayStr = new Date().toISOString().split('T')[0];
+    const items: FlashcardReviewItem[] = [];
+
+    for (const chapterId in userFlashcards) {
+      userFlashcards[chapterId].forEach((item: UserFlashcardItem, index: number) => {
+        if (item.srsData.due <= todayStr) {
+          items.push({
+            ...item,
+            chapterId,
+            cardIndex: index,
+          });
+        }
+      });
+    }
+    return items;
+  }, [userFlashcards]);
+  
+  const allScheduledItems = useMemo(() => {
+    const items: AgendaItem[] = [];
+    if (activeProfile) {
+      // Personal Deadlines
+      for (const [chapterId, chapterProgress] of Object.entries(progressData) as [string, ChapterProgress][]) {
+        if (chapterProgress.dueDate && chapterProgress.status !== 'completed') {
+          const [, grade, subject, ...chapterParts] = chapterId.split('-');
+          items.push({ id: chapterId, type: 'deadline', title: chapterParts.join('-'), subtitle: `Personal Goal - ${subject}`, dueDate: chapterProgress.dueDate, data: {} });
+        }
+      }
+      // School Assignments
+      allAssignments.forEach(assignment => {
+        const isForAll = !assignment.assignedStudentIds || assignment.assignedStudentIds.length === 0;
+        const isForStudent = assignment.assignedStudentIds?.includes(activeProfile.id);
+        if (assignment.classGrade === activeProfile.grade && (isForAll || isForStudent)) {
+          const subtitle = assignment.assignmentType === 'quiz' ? `Quiz - ${assignment.quizQuestions?.length} Questions` : `Chapter Work`;
+          items.push({ id: `AS-${assignment.id}`, type: 'assignment', title: assignment.title, subtitle, dueDate: assignment.dueDate, data: assignment });
+        }
+      });
+    }
+    return items.sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime());
+  }, [progressData, allAssignments, activeProfile]);
+
+  const itemsByDate = useMemo(() => {
+    const map = new Map<string, AgendaItem[]>();
+    allScheduledItems.forEach(item => {
+      const date = item.dueDate;
+      if (!map.has(date)) map.set(date, []);
+      map.get(date)!.push(item);
     });
-  };
+    return map;
+  }, [allScheduledItems]);
+  
+  const agendaItemsForSelectedDate = useMemo(() => {
+    const dateStr = selectedDate.toISOString().split('T')[0];
+    const items = itemsByDate.get(dateStr) || [];
+    const todayStr = new Date().toISOString().split('T')[0];
+    if (reviewItems.length > 0 && dateStr === todayStr) {
+        items.unshift({ id: 'review-queue', type: 'review', title: 'Review Flashcards', subtitle: `${reviewItems.length} cards due`, dueDate: todayStr, data: {} });
+    }
+    return items;
+  }, [selectedDate, itemsByDate, reviewItems]);
 
-  const renderCalendar = () => {
+  const upcomingItems = useMemo(() => {
+    const today = new Date().toISOString().split('T')[0];
+    return allScheduledItems.filter(item => item.dueDate >= today).slice(0, 5);
+  }, [allScheduledItems]);
+  
+  const linkedTask = useMemo(() => {
+    if (!linkedTaskId) return null;
+    // Search both all items and today's review item
+    const allItems = [...allScheduledItems];
+    if (reviewItems.length > 0) {
+        allItems.push({ id: 'review-queue', type: 'review', title: 'Review Flashcards', subtitle: `${reviewItems.length} cards due`, dueDate: new Date().toISOString().split('T')[0], data: {} });
+    }
+    return allItems.find(item => item.id === linkedTaskId);
+  }, [linkedTaskId, allScheduledItems, reviewItems]);
+
+  // --- Calendar Rendering ---
+  const CalendarNav = () => {
+    const [currentDate, setCurrentDate] = useState(selectedDate);
+
+    useEffect(() => {
+        setCurrentDate(selectedDate);
+    }, [selectedDate]);
+
+    const changeMonth = (offset: number) => {
+      setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + offset, 1));
+    };
+
     const year = currentDate.getFullYear();
     const month = currentDate.getMonth();
-    const firstDay = new Date(year, month, 1).getDay();
+    const monthName = currentDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+
+    const firstDayOfMonth = new Date(year, month, 1).getDay();
     const daysInMonth = new Date(year, month + 1, 0).getDate();
+
     const today = new Date();
+    const isSameDay = (d1: Date, d2: Date) => d1.getFullYear() === d2.getFullYear() && d1.getMonth() === d2.getMonth() && d1.getDate() === d2.getDate();
 
-    const blanks = Array.from({ length: firstDay }, (_, i) => <div key={`blank-${i}`} className="h-24"></div>);
-    const days = Array.from({ length: daysInMonth }, (_, i) => {
-      const day = i + 1;
-      const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-      const isToday = today.getFullYear() === year && today.getMonth() === month && today.getDate() === day;
-      const dailyDeadlines = deadlinesByDate.get(dateStr);
+    const calendarDays = [];
+    for (let i = 0; i < firstDayOfMonth; i++) {
+      calendarDays.push(<div key={`empty-${i}`} className="text-center p-1"></div>);
+    }
+    for (let day = 1; day <= daysInMonth; day++) {
+      const dayDate = new Date(year, month, day);
+      const dayDateStr = dayDate.toISOString().split('T')[0];
+      const isToday = isSameDay(dayDate, today);
+      const isSelected = isSameDay(dayDate, selectedDate);
+      const hasTasks = itemsByDate.has(dayDateStr) || (isToday && reviewItems.length > 0);
 
-      return (
-        <div key={day} className="h-24 flex flex-col items-start p-2 text-sm rounded-lg relative group transition-colors border border-slate-100 bg-white">
-          <span className={`flex items-center justify-center h-6 w-6 rounded-full text-xs ${isToday ? 'bg-[var(--brand-primary)] text-white font-bold' : 'text-slate-700'}`}>
+      calendarDays.push(
+        <div key={day} className="text-center p-1 flex justify-center">
+          <button
+            onClick={() => setSelectedDate(dayDate)}
+            className={`w-8 h-8 rounded-full text-sm font-semibold transition-colors relative flex items-center justify-center
+              ${isSelected ? 'bg-indigo-600 text-white' : ''}
+              ${!isSelected && isToday ? 'bg-indigo-100 text-indigo-700' : ''}
+              ${!isSelected && !isToday ? 'text-slate-700 hover:bg-slate-100' : ''}
+            `}
+          >
             {day}
-          </span>
-          
-          {dailyDeadlines && (
-              <div className="mt-1 w-full space-y-1">
-                  {dailyDeadlines.slice(0, 2).map((d, index) => (
-                    <div key={index} className="w-full text-left p-1 rounded" style={{ backgroundColor: `${subjectColors[d.subject] || '#9ca3af'}20` }}>
-                      <p className="text-xs font-semibold truncate" style={{ color: subjectColors[d.subject] || '#4b5563' }}>{d.chapter}</p>
-                    </div>
-                  ))}
-                   {dailyDeadlines.length > 2 && <p className="text-xs text-slate-500 text-center mt-1">+ {dailyDeadlines.length - 2} more</p>}
-              </div>
-          )}
+            {hasTasks && <div className={`absolute bottom-1 w-1.5 h-1.5 rounded-full ${isSelected ? 'bg-white' : 'bg-indigo-400'}`}></div>}
+          </button>
         </div>
       );
-    });
+    }
 
     return (
-      <div className="bg-white p-4 rounded-xl shadow-sm border border-[var(--border-color)]">
-        <div className="flex justify-between items-center mb-4 px-2">
+      <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200">
+        <div className="flex justify-between items-center mb-4">
           <button onClick={() => changeMonth(-1)} className="p-2 rounded-full hover:bg-slate-100"><ArrowLeftIcon className="w-5 h-5" /></button>
-          <h3 className="font-bold text-lg text-slate-800">{currentDate.toLocaleString('default', { month: 'long', year: 'numeric' })}</h3>
+          <h4 className="font-bold text-slate-800">{monthName}</h4>
           <button onClick={() => changeMonth(1)} className="p-2 rounded-full hover:bg-slate-100"><ArrowRightIcon className="w-5 h-5" /></button>
         </div>
         <div className="grid grid-cols-7 gap-1 text-center text-xs font-semibold text-slate-500 mb-2">
-          <div>Sun</div><div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div>
+          {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map(d => <div key={d}>{d}</div>)}
         </div>
-        <div className="grid grid-cols-7 gap-1">
-          {blanks}
-          {days}
+        <div className="grid grid-cols-7 gap-y-1">
+          {calendarDays}
         </div>
       </div>
     );
   };
   
+  if (viewMode === 'review') {
+      return (
+          <div className="animate-slide-in-up">
+              <button onClick={() => setViewMode('agenda')} className="text-sm font-semibold text-indigo-600 hover:underline mb-4">&larr; Back to Agenda</button>
+              <Suspense fallback={<p>Loading Review...</p>}>
+                  <ReviewQueue reviewItems={reviewItems} />
+              </Suspense>
+          </div>
+      );
+  }
+
   return (
-    <div className="animate-slide-in-up space-y-6">
-      {/* --- Pomodoro Timer UI --- */}
-      <div className={`p-6 rounded-xl shadow-sm border transition-colors duration-500 ${mode === 'study' ? 'bg-indigo-50 border-indigo-200' : 'bg-green-50 border-green-200'}`}>
-        <div className="flex flex-col md:flex-row items-center justify-between gap-6">
-          <div className="flex items-center gap-6">
-            <div className="relative w-40 h-40">
-              <svg className="w-full h-full" viewBox="0 0 200 200">
-                <circle className="text-slate-200" strokeWidth="12" stroke="currentColor" fill="transparent" r="90" cx="100" cy="100" />
-                <circle
-                  className={`transition-all duration-500 ${mode === 'study' ? 'text-[var(--brand-primary)]' : 'text-green-500'}`}
-                  strokeWidth="12" strokeDasharray={circumference} strokeDashoffset={strokeDashoffset}
-                  strokeLinecap="round" stroke="currentColor" fill="transparent" r="90" cx="100" cy="100"
-                  transform="rotate(-90 100 100)"
-                />
-              </svg>
-              <div className="absolute inset-0 flex flex-col items-center justify-center">
-                <p className="text-4xl font-bold text-slate-800 tracking-tighter">
-                  {minutes.toString().padStart(2, '0')}:{seconds.toString().padStart(2, '0')}
-                </p>
-                <p className={`font-semibold uppercase text-xs mt-1 ${mode === 'study' ? 'text-[var(--brand-primary)]' : 'text-green-600'}`}>
-                  {mode === 'study' ? 'Focus' : 'Break'}
-                </p>
-              </div>
-            </div>
+    <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,_1fr)_minmax(0,_1.5fr)_minmax(0,_1fr)] xl:grid-cols-[320px_1fr_380px] gap-6 animate-slide-in-up">
+      {/* Left Column: Calendar */}
+      <div className="lg:col-span-1">
+        <button onClick={() => setIsAddTaskModalOpen(true)} className="btn btn-primary w-full mb-4 flex items-center justify-center gap-2">
+            <PlusIcon className="w-5 h-5" /> Add Task
+        </button>
+        <CalendarNav />
+      </div>
 
-            <div className="flex items-center gap-3">
-              <button onClick={handleToggleTimer} className={`w-14 h-14 rounded-full text-white shadow-lg transform hover:scale-105 transition-transform ${isActive ? 'bg-red-500' : 'bg-[var(--brand-primary)]'}`}>
-                {isActive ? <PauseTimerIcon className="w-7 h-7 mx-auto" /> : <PlayTimerIcon className="w-7 h-7 mx-auto" />}
-              </button>
-              <button onClick={handleResetTimer} className="text-slate-500 hover:text-slate-700 font-semibold text-xs">Reset</button>
-            </div>
-          </div>
-
-          <div className="w-full md:w-64">
-            <label htmlFor="task-link" className="block text-xs font-medium text-slate-600 mb-1">Link to a Task</label>
-            <select id="task-link" value={linkedChapterId} onChange={e => setLinkedChapterId(e.target.value)} className="form-select w-full py-1" disabled={isActive}>
-                <option value="">No specific task</option>
-                {deadlines.map(d => (
-                  <option key={d.chapterId} value={d.chapterId}>{d.chapter}</option>
-                ))}
-            </select>
-            <details className="mt-3 text-sm">
-              <summary className="cursor-pointer font-semibold text-slate-500 hover:text-slate-700 text-xs">Timer Settings</summary>
-              <div className="mt-2 p-3 bg-white/50 rounded-lg grid grid-cols-2 gap-3">
-                <div>
-                  <label htmlFor="focus-duration" className="block text-xs font-medium text-slate-600">Focus (min)</label>
-                  <input type="number" id="focus-duration" value={studyMinutes} onChange={e => setStudyMinutes(Number(e.target.value))} className="form-input w-full mt-1 py-1 text-center" disabled={isActive} />
+      {/* Center Column: Agenda */}
+      <div className="lg:col-span-1 xl:col-span-1">
+        <h2 className="text-xl font-bold text-slate-800 mb-4">Agenda for {selectedDate.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}</h2>
+        <div className="space-y-3">
+          {agendaItemsForSelectedDate.length === 0 ? (
+            <p className="text-slate-500 text-center py-10">No tasks for today. Relax!</p>
+          ) : (
+            agendaItemsForSelectedDate.map(item => {
+              const [,,,subject] = item.id.split('-');
+              const color = subjectColors[subject] || subjectColors['Default'];
+              const Icon = item.type === 'review' ? LayersIcon : item.type === 'assignment' ? CalendarCheckIcon : BookIcon;
+              return (
+                <div key={item.id} className={`w-full text-left p-3 rounded-lg border flex flex-col gap-3 transition-all ${color.bg} ${color.border}`}>
+                    <div className="flex items-start gap-3">
+                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${color.bg} ${color.text} border ${color.border}`}><Icon className="w-5 h-5"/></div>
+                        <div>
+                            <p className={`font-semibold text-sm ${color.text}`}>{item.title}</p>
+                            <p className="text-xs text-slate-500">{item.subtitle}</p>
+                        </div>
+                    </div>
+                    <div className="flex items-center gap-2 pl-11">
+                        <button onClick={() => handleTaskClick(item)} className="text-xs font-semibold text-indigo-600 hover:underline">View Task</button>
+                        <span className="text-slate-300">&middot;</span>
+                        <button onClick={() => setLinkedTaskId(item.id)} className="text-xs font-semibold text-indigo-600 hover:underline">Start Focus Session</button>
+                    </div>
                 </div>
-                <div>
-                  <label htmlFor="break-duration" className="block text-xs font-medium text-slate-600">Break (min)</label>
-                  <input type="number" id="break-duration" value={breakMinutes} onChange={e => setBreakMinutes(Number(e.target.value))} className="form-input w-full mt-1 py-1 text-center" disabled={isActive} />
-                </div>
-              </div>
-            </details>
-          </div>
+              )
+            })
+          )}
         </div>
       </div>
 
-      <div className="mb-4 border-b border-slate-200">
-          <div className="flex items-center -mb-px">
-              <button onClick={() => setActiveTab('calendar')} className={`px-4 py-2 font-semibold text-sm border-b-2 ${activeTab === 'calendar' ? 'border-[var(--brand-primary)] text-[var(--brand-primary)]' : 'border-transparent text-slate-500 hover:text-slate-700'}`}>
-                  Calendar
-              </button>
-              <button onClick={() => setActiveTab('review')} className={`relative px-4 py-2 font-semibold text-sm border-b-2 ${activeTab === 'review' ? 'border-[var(--brand-primary)] text-[var(--brand-primary)]' : 'border-transparent text-slate-500 hover:text-slate-700'}`}>
-                  Review
-                  {reviewItems.length > 0 && <span className="absolute top-1 right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-white text-[10px]">{reviewItems.length}</span>}
-              </button>
+      {/* Right Column: Tools */}
+      <div className="lg:col-span-1 space-y-6">
+        {/* Upcoming Deadlines */}
+        <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200">
+          <h3 className="font-bold text-slate-800 mb-3">Upcoming</h3>
+          <div className="space-y-2">
+            {upcomingItems.length > 0 ? upcomingItems.map(item => (
+              <div key={item.id} className="text-sm p-2 bg-slate-50 rounded-md">
+                <p className="font-semibold text-slate-700 truncate">{item.title}</p>
+                <p className="text-xs text-slate-500">{new Date(item.dueDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - {item.subtitle}</p>
+              </div>
+            )) : <p className="text-sm text-slate-500">No upcoming deadlines.</p>}
           </div>
+        </div>
+        {/* Pomodoro Timer */}
+        <div className={`p-4 rounded-xl shadow-sm border transition-colors duration-500 ${mode === 'study' ? 'bg-indigo-50 border-indigo-200' : 'bg-green-50 border-green-200'}`}>
+          <div className="flex justify-between items-center mb-2">
+            <h4 className="font-bold">{mode === 'study' ? 'Study Session' : 'Break Time'}</h4>
+            <button onClick={handleResetTimer} className="p-1 rounded-full hover:bg-slate-200 text-slate-500"><RefreshCwIcon className="w-4 h-4" /></button>
+          </div>
+          <div className="flex items-center justify-center gap-4">
+            <div className="font-bold text-5xl font-mono tracking-tighter text-slate-800">{`${Math.floor(secondsLeft/60).toString().padStart(2,'0')}:${(secondsLeft%60).toString().padStart(2,'0')}`}</div>
+            <button onClick={handleToggleTimer} className={`w-14 h-14 rounded-full text-white shadow-md flex items-center justify-center transition-colors ${isActive ? 'bg-red-500 hover:bg-red-600' : 'bg-indigo-600 hover:bg-indigo-700'}`}>
+                {isActive ? <PauseTimerIcon className="w-7 h-7" /> : <PlayTimerIcon className="w-7 h-7" />}
+            </button>
+          </div>
+          {linkedTask && (
+              <div className="mt-3 pt-2 border-t border-slate-200">
+                  <p className="text-xs text-slate-500">Focused on:</p>
+                  <p className="text-sm font-semibold text-slate-700 truncate">{linkedTask.title}</p>
+              </div>
+          )}
+        </div>
       </div>
-      
-      {activeTab === 'calendar' && renderCalendar()}
-      {activeTab === 'review' && (
-          <Suspense fallback={<p>Loading Review...</p>}>
-              <ReviewQueue reviewItems={reviewItems} />
-          </Suspense>
+      {isAddTaskModalOpen && (
+        <AddTaskModal
+            isOpen={isAddTaskModalOpen}
+            onClose={() => setIsAddTaskModalOpen(false)}
+            initialDate={selectedDate}
+        />
       )}
-
     </div>
   );
 };

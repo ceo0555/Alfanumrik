@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ImageIcon, MicrophoneIcon, WandIcon, ClipboardCheckIcon, LightbulbIcon, LayersIcon, EditIcon, VideoIcon } from '../constants/icons';
+import { ImageIcon, MicrophoneIcon, WandIcon, ClipboardCheckIcon, LightbulbIcon, LayersIcon, EditIcon, VideoIcon, NetworkIcon } from '../constants/icons';
 import ImageGenerator from './ImageGenerator';
 import ImageAnalyzer from './ImageAnalyzer';
 import ImageEditor from './ImageEditor';
@@ -8,8 +8,9 @@ import AdaptiveQuizGenerator from './AdaptiveQuizGenerator';
 import ConceptExplainer from './ConceptExplainer';
 import FlashcardViewer from './FlashcardViewer';
 import VideoScriptGenerator from './VideoScriptGenerator';
+import PrereqGenerator from './PrereqGenerator';
 
-type ActiveTool = 'concept-explainer' | 'image-gen' | 'image-analyze' | 'image-edit' | 'audio-transcribe' | 'adaptive-quiz' | 'flashcards' | 'video-script';
+type ActiveTool = 'concept-explainer' | 'image-gen' | 'image-analyze' | 'image-edit' | 'audio-transcribe' | 'adaptive-quiz' | 'flashcards' | 'video-script' | 'prereq-generator';
 
 const AITools: React.FC = () => {
     const [activeTool, setActiveTool] = useState<ActiveTool>('concept-explainer');
@@ -49,6 +50,8 @@ const AITools: React.FC = () => {
                 return <FlashcardViewer />;
             case 'video-script':
                 return <VideoScriptGenerator />;
+            case 'prereq-generator':
+                return <PrereqGenerator />;
             default:
                 return null;
         }
@@ -66,6 +69,7 @@ const AITools: React.FC = () => {
                     <TabButton toolName="image-edit" label="Image Edit" icon={<EditIcon className="w-5 h-5" />} />
                     <TabButton toolName="audio-transcribe" label="Transcribe" icon={<MicrophoneIcon className="w-5 h-5" />} />
                     <TabButton toolName="adaptive-quiz" label="Adaptive Quiz" icon={<ClipboardCheckIcon className="w-5 h-5" />} />
+                    <TabButton toolName="prereq-generator" label="Prereq Generator" icon={<NetworkIcon className="w-5 h-5" />} />
                 </div>
             </div>
 

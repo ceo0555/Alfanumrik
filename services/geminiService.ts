@@ -1,12 +1,12 @@
 import { GoogleGenAI, Modality, Type } from "@google/genai";
-import { LessonPack, GroundingChunk, AssessmentResult, AdaptiveFollowUp, StudentExplanation, QuestionPoolItem, StructuredContent, Flashcard, InteractiveSimulation, UserProfile, UserProgressData, ParentalReport, InteractiveVideo } from '../types';
+import { LessonPack, GroundingChunk, AssessmentResult, AdaptiveFollowUp, StudentExplanation, QuestionPoolItem, StructuredContent, Flashcard, InteractiveSimulation, UserProfile, UserProgressData, ParentalReport, InteractiveVideo, ClassAnalyticsData, UserBktData, PrerequisiteGraph } from '../types';
 import { fileToBase64 } from "../utils/fileHelpers";
 import { get, set } from '../utils/db';
 
 const generateImageFromPrompt = async (prompt: string): Promise<string | null> => {
     const cacheKey = `image-cache-v1-${prompt}`;
     try {
-        const cachedImage = await get<string>(cacheKey);
+        const cachedImage = await get<string>('cache', cacheKey);
         if (cachedImage) {
             return cachedImage;
         }
@@ -36,7 +36,7 @@ const generateImageFromPrompt = async (prompt: string): Promise<string | null> =
             const imageUrl = `data:image/png;base64,${base64ImageBytes}`;
             
             try {
-                await set(cacheKey, imageUrl);
+                await set('cache', cacheKey, imageUrl);
             } catch (e) {
                 console.warn(`Could not cache image to IndexedDB for prompt "${prompt}".`, e);
             }
@@ -58,7 +58,7 @@ export const fetchChapterContent = async (grade: string, subject: string, chapte
     
     // 1. Try to load text-only lesson pack from cache
     try {
-        const cachedData = await get<string>(cacheKey);
+        const cachedData = await get<string>('cache', cacheKey);
         if (cachedData) {
             console.log(`Loading lesson pack from IndexedDB cache for: ${chapter}`);
             lessonPack = JSON.parse(cachedData);
@@ -371,7 +371,7 @@ export const fetchChapterContent = async (grade: string, subject: string, chapte
             
             // Cache the text-only lesson pack immediately
             try {
-                await set(cacheKey, JSON.stringify(lessonPack));
+                await set('cache', cacheKey, JSON.stringify(lessonPack));
             } catch (e) {
                 console.error("Could not write lesson pack (text only) to IndexedDB cache", e);
             }
@@ -969,6 +969,77 @@ export const generateVideoScriptWithQuestions = async (topic: string): Promise<I
     return JSON.parse(response.text) as InteractiveVideo;
 };
 
+export const generateClassPerformanceSummary = async (analytics: ClassAnalyticsData): Promise<string> => {
+    if (!process.env.API_KEY) throw new Error("API_KEY not found.");
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+
+    const prompt = `
+      ROLE: You are an expert educational data analyst providing insights to a school principal.
+      TASK: Analyze the provided class performance data and generate a concise, actionable summary.
+      
+      **Data for Class ${analytics.grade}**:
+      - Subject Mastery (%): ${analytics.subjectMastery.map(s => `${s.subject}: ${s.mastery}%`).join(', ')}
+      - Top 3 Challenging Concepts (avg mastery): ${analytics.challengingConcepts.slice(0, 3).map(c => `${c.concept}: ${c.mastery}%`).join(', ')}
+      - Students who may need support (avg mastery): ${analytics.studentsToWatch.slice(0, 3).map(s => `${s.name}: ${s.mastery}%`).join(', ')}
+
+      **Instructions**:
+      1.  **Synthesize**: Write a 3-4 sentence summary highlighting the key trends.
+      2.  **Be Actionable**: Start with a clear overview. Mention 1-2 subjects that are performing well and 1-2 that might need attention.
+      3.  **Pinpoint Issues**: Refer to one of the challenging concepts as a specific area for targeted intervention.
+      4.  **Suggest Action**: Conclude with a constructive suggestion for the teachers, such as recommending a review session on a specific topic.
+      5.  **Tone**: Professional, insightful, and supportive. Do not just list the data.
+      
+      **Example Output**: "Overall, Class ${analytics.grade} shows strong performance in [Strong Subject], but there's a noticeable gap in [Weak Subject]. Specifically, many students are struggling with '[Challenging Concept]', which may be impacting their scores. It would be beneficial for teachers to conduct a targeted review session on this topic to reinforce foundational understanding."
+    `;
+
+    const response = await ai.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: prompt,
+    });
+    return response.text;
+};
+
+export const generateStudentReportCardSummary = async (profile: UserProfile, bktData: UserBktData): Promise<string> => {
+    if (!process.env.API_KEY) throw new Error("API_KEY not found.");
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    
+    const masterySummary = Object.entries(bktData)
+        .map(([skillId, { p_L }]) => {
+            const [, , subject, ...chapterParts] = skillId.split('-');
+            const chapter = chapterParts.join('-');
+            return `${subject} - ${chapter}: ${Math.round(p_L * 100)}%`;
+        })
+        .join('\n');
+
+    const prompt = `
+      ROLE: You are an expert educational analyst writing a report card summary for a student's teacher.
+      TASK: Analyze the provided student data and mastery scores to generate a concise, professional, and constructive summary.
+      
+      **Student Data**:
+      - Name: ${profile.name}
+      - Grade: ${profile.grade}
+      
+      **Skill Mastery Data (BKT probability)**:
+      ${masterySummary}
+
+      **Instructions**:
+      1.  **Synthesize Performance**: Write a 2-3 sentence paragraph summarizing the student's overall academic performance.
+      2.  **Identify Strengths**: Mention 1-2 subjects or specific topics where the student demonstrates strong mastery (high percentages).
+      3.  **Identify Areas for Growth**: Gently point out 1-2 subjects or topics where mastery is lower and suggest it as an area for focus.
+      4.  **Suggest Next Steps**: Conclude with a brief, actionable recommendation for the teacher (e.g., "Recommend targeted practice on [topic]" or "Encourage their interest in [strong subject]").
+      5.  **Tone**: Professional, balanced, and student-focused. Avoid overly negative language.
+      
+      **Example Output**: "${profile.name} shows a strong aptitude for Science, with consistently high mastery in topics like Life Processes. While their foundational understanding is solid, there is an opportunity for growth in Mathematics, particularly with algebraic concepts. Targeted practice in this area could significantly boost their confidence and overall performance."
+    `;
+
+    const response = await ai.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: prompt,
+    });
+    return response.text;
+};
+
+
 // --- NEWLY ADDED FUNCTIONS ---
 
 export const analyzeImage = async (imageFile: File, prompt: string): Promise<string> => {
@@ -1107,4 +1178,119 @@ export const generateAdaptiveQuestion = async (
     });
 
     return JSON.parse(response.text) as QuestionPoolItem;
+};
+
+export const generatePrerequisiteGraph = async (grade: string, subject: string, chapters: string[]): Promise<{ [chapterId: string]: string[] }> => {
+    if (!process.env.API_KEY) throw new Error("API_KEY not found.");
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+
+    const prompt = `
+      ROLE: You are an expert CBSE curriculum designer.
+      TASK: Analyze the following list of chapters for a specific grade and subject, and determine their prerequisite relationships.
+
+      CONTEXT:
+      - Grade: ${grade}
+      - Subject: ${subject}
+      - Chapters: ${JSON.stringify(chapters)}
+
+      INSTRUCTIONS:
+      1.  Identify direct prerequisite chapters from the provided list for each chapter. A prerequisite must come before the chapter in a logical learning sequence.
+      2.  If a chapter has no prerequisites within the list, provide an empty array for it.
+      3.  The output MUST be a single, raw JSON object where each key is a chapter name from the list, and its value is an array of chapter names that are its direct prerequisites.
+      
+      EXAMPLE OUTPUT for a fictional subject:
+      {
+        "Introduction to Algebra": [],
+        "Linear Equations": ["Introduction to Algebra"],
+        "Quadratic Equations": ["Linear Equations"]
+      }
+    `;
+
+    const response = await ai.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: prompt,
+        config: {
+            responseMimeType: 'application/json',
+            responseSchema: {
+                type: Type.OBJECT,
+                // No properties defined, so any property is allowed
+                // The value of each property is an array of strings
+                additionalProperties: {
+                    type: Type.ARRAY,
+                    items: { type: Type.STRING }
+                }
+            }
+        }
+    });
+
+    const chapterMap = JSON.parse(response.text);
+    const prerequisiteGraphPart: { [chapterId: string]: string[] } = {};
+
+    for (const chapterName of chapters) {
+        const chapterId = `G${grade}-${subject}-${chapterName}`;
+        const prereqNames = chapterMap[chapterName] as string[] | undefined;
+        if(prereqNames) {
+          const prereqIds = prereqNames.map(name => `G${grade}-${subject}-${name}`);
+          prerequisiteGraphPart[chapterId] = prereqIds;
+        } else {
+          prerequisiteGraphPart[chapterId] = [];
+        }
+    }
+
+    return prerequisiteGraphPart;
+};
+
+export const generateRagAnswer = async (
+  query: string,
+  contentChunks: { id: string; content: string }[],
+  context: { grade: string, subject: string, chapter: string }
+): Promise<{ answer: string; sourceIds: string[] }> => {
+    if (!process.env.API_KEY) throw new Error("API_KEY not found.");
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+
+    const contextString = contentChunks.map(chunk => `[START CHUNK id="${chunk.id}"]\n${chunk.content}\n[END CHUNK id="${chunk.id}"]`).join('\n\n');
+
+    const prompt = `
+      You are an expert AI tutor for a Grade ${context.grade} student studying "${context.chapter}" in ${context.subject}.
+      Your task is to answer the student's question based ONLY on the provided content chunks. Do not use any outside knowledge.
+
+      **STUDENT QUESTION**:
+      "${query}"
+
+      **PROVIDED CONTENT CHUNKS**:
+      ${contextString}
+
+      **INSTRUCTIONS**:
+      1.  **Analyze and Select**: First, carefully read the student's question and all the content chunks. Identify the chunks that are most relevant for answering the question.
+      2.  **Synthesize Answer**: Formulate a clear, concise, and helpful answer to the student's question using ONLY information from the selected relevant chunks.
+      3.  **Cite Sources**: Identify the 'id' of every chunk you used to create your answer.
+      4.  **Format Output**: Your response MUST be a single, raw JSON object with no markdown. The JSON object must have two keys:
+          - "answer": A string containing the synthesized answer.
+          - "source_ids": An array of strings containing the 'id's of the chunks you used.
+
+      **EXAMPLE RESPONSE**:
+      {
+        "answer": "Photosynthesis is the process where plants use sunlight, water, and carbon dioxide to create their own food (glucose) and release oxygen as a byproduct. This process primarily occurs in the chloroplasts found in plant leaves.",
+        "source_ids": ["core_explanation_1", "key_term_0"]
+      }
+    `;
+
+    const response = await ai.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: prompt,
+        config: {
+            responseMimeType: "application/json",
+            responseSchema: {
+                type: Type.OBJECT,
+                properties: {
+                    answer: { type: Type.STRING },
+                    source_ids: { type: Type.ARRAY, items: { type: Type.STRING } }
+                },
+                required: ['answer', 'source_ids']
+            }
+        }
+    });
+
+    const result = JSON.parse(response.text);
+    return { answer: result.answer, sourceIds: result.source_ids };
 };

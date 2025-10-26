@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { CalendarCheckIcon, BarChartIcon, BookIcon, CalendarDaysIcon, FlameIcon, AwardIcon, ScienceIcon, MathIcon, SocialStudiesIcon, PhysicsIcon, ChemistryIcon, BiologyIcon, ArrowRightIcon, TargetIcon, CheckCircleIcon } from '../constants/icons';
+import { CalendarCheckIcon, BarChartIcon, BookIcon, CalendarDaysIcon, FlameIcon, AwardIcon, ScienceIcon, MathIcon, SocialStudiesIcon, PhysicsIcon, ChemistryIcon, BiologyIcon, ArrowRightIcon, TargetIcon, CheckCircleIcon, SpeakerIcon } from '../constants/icons';
 import { ChapterProgress, Badge, DailyChallenge, UserBktData } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 import { useStudentData } from '../contexts/StudentDataContext';
@@ -165,12 +165,16 @@ const DailyChallengeCard: React.FC<{ challenge: DailyChallenge }> = ({ challenge
 
 
 const StudentDashboard: React.FC<{ onContinue: () => void }> = ({ onContinue }) => {
-    const { activeProfile } = useAuth();
+    const { activeProfile, allAnnouncements } = useAuth();
     const { progressData, userBktData } = useStudentData();
     
     if (!activeProfile || !progressData) return null;
 
     const { grade, currentStreak, achievements, level, xp, dailyChallenge } = activeProfile;
+    
+    const latestAnnouncement = allAnnouncements
+        .filter(a => a.grade === grade)
+        .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
 
     const lessonsCompleted = Object.values(progressData).filter((p: ChapterProgress) => p.status === 'completed').length;
     
@@ -245,6 +249,21 @@ const StudentDashboard: React.FC<{ onContinue: () => void }> = ({ onContinue }) 
                 <div className="lg:col-span-2 space-y-6">
                     <RecommendationCard onContinue={onContinue} />
                     
+                    {latestAnnouncement && (
+                         <div className="p-5 rounded-xl shadow-sm border bg-sky-50 border-sky-200">
+                             <h3 className="text-md font-bold text-slate-800 mb-3 flex items-center gap-2">
+                                <SpeakerIcon className="w-5 h-5 text-sky-500" /> Latest Announcement
+                            </h3>
+                            <div className="bg-white p-3 rounded-lg">
+                                <p className="font-semibold text-md text-slate-800">{latestAnnouncement.title}</p>
+                                <p className="text-sm text-slate-600 mt-1 whitespace-pre-wrap">{latestAnnouncement.content}</p>
+                                <p className="text-xs text-slate-400 mt-2 text-right">
+                                    {new Date(latestAnnouncement.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                                </p>
+                            </div>
+                        </div>
+                    )}
+
                     {dailyChallenge && <DailyChallengeCard challenge={dailyChallenge} />}
                     
                     <div className="bg-white p-5 rounded-xl shadow-sm border border-[var(--border-color)]">

@@ -13,7 +13,7 @@ const CurriculumBrowser: React.FC<CurriculumBrowserProps> = ({
   onSelectChapter,
   onOpenFlashcardCreator
 }) => {
-  const { activeProfile, updateActiveUserProfile } = useAuth();
+  const { activeProfile, updateActiveUserProfile, allAssignments } = useAuth();
   const { progressData, userFlashcards, handleSetDueDate } = useStudentData();
   
   const [editingDueDateFor, setEditingDueDateFor] = useState<string | null>(null);
@@ -71,6 +71,19 @@ const CurriculumBrowser: React.FC<CurriculumBrowserProps> = ({
     handleSetDueDate(chapterId, null);
     setEditingDueDateFor(null);
   };
+  
+  const studentAssignments = useMemo(() => {
+    if (!activeProfile) return [];
+    const today = new Date().toISOString().split('T')[0];
+    return allAssignments.filter(assignment => {
+        if (assignment.classGrade !== activeProfile.grade) return false;
+        if (assignment.dueDate < today) return false;
+
+        const isForAll = !assignment.assignedStudentIds || assignment.assignedStudentIds.length === 0;
+        const isForStudent = assignment.assignedStudentIds?.includes(activeProfile.id);
+        return isForAll || isForStudent;
+    });
+  }, [allAssignments, activeProfile]);
 
 
   return (
@@ -110,13 +123,15 @@ const CurriculumBrowser: React.FC<CurriculumBrowserProps> = ({
         <div className="flex-1 overflow-y-auto pr-2">
             <div className="relative pl-4">
                 {/* Timeline bar */}
-                <div className="absolute left-4 top-5 bottom-5 w-0.5 bg-slate-200 rounded-full"></div>
+                <div className="absolute left-4 top-5 bottom-5 w-0.5 bg-slate-200 rounded-full md:ml-0 -ml-2"></div>
 
                 {chaptersForSubject.map((chapter, index) => {
                     const chapterId = `G${selectedGrade}-${selectedSubject}-${chapter}`;
                     const progress = progressData[chapterId];
                     const status = progress?.status;
-                    const dueDate = progress?.dueDate;
+                    const personalDueDate = progress?.dueDate;
+                    
+                    const assignmentForChapter = studentAssignments.find(a => a.assignedChapterIds.includes(chapterId));
 
                     const isLocked = index > lastCompletedIndex + 1;
                     const isCurrent = index === lastCompletedIndex + 1;
@@ -134,21 +149,26 @@ const CurriculumBrowser: React.FC<CurriculumBrowserProps> = ({
                             <div className="absolute left-0 top-3 -translate-x-1/2 z-10 bg-white p-1 rounded-full flex items-center justify-center h-8 w-8">
                                 <NodeIcon />
                             </div>
-                            <div className="ml-10 w-full group">
+                            <div className="ml-8 sm:ml-10 w-full group">
                                 <button
                                     onClick={() => onSelectChapter(chapter, selectedSubject, selectedGrade)}
                                     disabled={isLocked}
-                                    className={`w-full text-left p-3 pr-14 rounded-lg border transition-all duration-200 ${
+                                    className={`relative w-full text-left p-3 pr-14 rounded-lg border transition-all duration-200 ${
                                         isCurrent ? 'bg-white shadow-md border-indigo-200' : 'bg-white shadow-sm border-[var(--border-color)]'
                                     } ${isLocked ? 'bg-slate-50 text-slate-500 cursor-not-allowed' : 'hover:shadow-md hover:border-slate-300'}`}
                                 >
                                     <p className={`font-bold text-sm ${isCurrent ? 'text-[var(--brand-primary)]' : 'text-slate-700'}`}>{chapter}</p>
-                                    <p className="text-xs text-slate-500 mt-0.5">
-                                        {status === 'completed' ? 'Completed' : isCurrent ? 'Next up' : isLocked ? 'Locked' : 'Not started'}
+                                    <p className="text-xs text-slate-500 mt-0.5 flex items-center gap-2">
+                                        <span>{status === 'completed' ? 'Completed' : isCurrent ? 'Next up' : isLocked ? 'Locked' : 'Not started'}</span>
+                                        {assignmentForChapter && !isLocked && (
+                                            <span className="font-bold text-red-600 bg-red-100 px-2 py-0.5 rounded-md">
+                                                Due: {new Date(assignmentForChapter.dueDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                                            </span>
+                                        )}
                                     </p>
                                 </button>
                                 
-                                <div className="absolute top-1 right-2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <div className="absolute top-1 right-2 flex items-center gap-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
                                   {!isLocked && (
                                       <>
                                           <button
@@ -161,23 +181,18 @@ const CurriculumBrowser: React.FC<CurriculumBrowserProps> = ({
                                           
                                           <button 
                                               className={`p-2 rounded-full transition-colors ${editingDueDateFor === chapterId ? 'bg-slate-200 text-slate-600' : 'text-slate-400 hover:bg-slate-100'}`}
-                                              title={dueDate ? "Change due date" : "Schedule this lesson"}
-                                              onClick={() => handleScheduleClick(chapterId, dueDate)}
+                                              title={personalDueDate ? "Change personal due date" : "Set personal due date"}
+                                              onClick={() => handleScheduleClick(chapterId, personalDueDate)}
                                           >
                                               <CalendarPlusIcon className="w-4 h-4"/>
                                           </button>
                                       </>
                                   )}
                                 </div>
-                                {dueDate && !isLocked && (
-                                  <div className="absolute top-1 right-24 text-xs font-semibold text-red-600 bg-red-100 px-2 py-1 rounded-md">
-                                      Due: {new Date(dueDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                                  </div>
-                                )}
 
                                 {editingDueDateFor === chapterId && (
                                       <div className="mt-2 p-3 bg-slate-100 rounded-lg animate-scale-in">
-                                          <label className="block text-sm font-medium text-slate-700 mb-1">Set a due date:</label>
+                                          <label className="block text-sm font-medium text-slate-700 mb-1">Set a personal due date:</label>
                                           <div className="flex flex-col sm:flex-row gap-2">
                                               <input
                                                   type="date"
@@ -187,7 +202,7 @@ const CurriculumBrowser: React.FC<CurriculumBrowserProps> = ({
                                                   min={new Date().toISOString().split("T")[0]}
                                               />
                                               <button onClick={() => handleSaveDate(chapterId)} disabled={!tempDate} className="btn btn-primary px-3 py-1 text-sm">Save</button>
-                                              {dueDate && <button onClick={() => handleClearDate(chapterId)} className="btn bg-slate-200 text-slate-700 hover:bg-slate-300 px-3 py-1 text-sm">Clear</button>}
+                                              {personalDueDate && <button onClick={() => handleClearDate(chapterId)} className="btn bg-slate-200 text-slate-700 hover:bg-slate-300 px-3 py-1 text-sm">Clear</button>}
                                           </div>
                                       </div>
                                   )}

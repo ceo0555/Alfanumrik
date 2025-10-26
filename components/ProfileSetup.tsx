@@ -4,7 +4,7 @@ import { UserIcon, ArrowRightIcon } from '../constants/icons';
 import { UserProfile } from '../types';
 
 interface ProfileSetupProps {
-  onProfileSave: (name: string, grade: string, id?: number) => void;
+  onProfileSave: (user: { name: string, grade: string }, id?: number) => void;
   userToEdit?: UserProfile | null;
   onCancel?: () => void;
 }
@@ -26,7 +26,7 @@ const ProfileSetup: React.FC<ProfileSetupProps> = ({ onProfileSave, userToEdit =
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (name.trim()) {
-      onProfileSave(name.trim(), grade, userToEdit?.id);
+      onProfileSave({ name: name.trim(), grade }, userToEdit?.id);
     }
   };
 

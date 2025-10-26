@@ -1,11 +1,11 @@
-import React, { useState, useEffect, useCallback, ErrorInfo, ReactNode, Suspense } from 'react';
+import React, { useState, useEffect, useCallback, ErrorInfo, ReactNode, Suspense, Component } from 'react';
 import Header from './components/Header';
 import Loader from './components/Loader';
 import BottomNavBar from './components/BottomNavBar';
 import ProfileSetup from './components/ProfileSetup';
 import UserManagementModal from './components/UserManagementModal';
 import { fetchChapterContent } from './services/geminiService';
-import { LessonPack, UserRole } from './types';
+import { LessonPack, UserRole, Assignment } from './types';
 import { useAuth } from './contexts/AuthContext';
 import { StudentDataProvider, useStudentData } from './contexts/StudentDataContext';
 import Sidebar from './components/Sidebar';
@@ -13,15 +13,16 @@ import Sidebar from './components/Sidebar';
 // --- Production-Ready Enhancements ---
 
 // 1. Error Boundary to prevent crashes
-// FIX: Explicitly define `children` in props to fix type inference issue.
 interface ErrorBoundaryProps {
   children: ReactNode;
 }
 interface ErrorBoundaryState {
   hasError: boolean;
 }
-class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
-  // FIX: Explicitly declare state for compatibility with certain TypeScript configurations.
+// FIX: Changed to extend `Component` directly and use a class field for state.
+// This resolves incorrect type errors where `this.state` and `this.props` were not found.
+// This fix also resolves downstream errors where the ErrorBoundary component was not correctly recognized.
+class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
   state: ErrorBoundaryState = { hasError: false };
 
   static getDerivedStateFromError(_: Error): ErrorBoundaryState {
@@ -46,8 +47,8 @@ class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundarySta
 }
 
 // 2. Code Splitting / Lazy Loading for main views
-const ContentDisplay = React.lazy(() => import('./components/ContentDisplay'));
-const ChatAssistant = React.lazy(() => import('./components/ChatAssistant'));
+const AdaptiveLessonPlayer = React.lazy(() => import('./components/AdaptiveLessonPlayer'));
+const TutorCore = React.lazy(() => import('./components/TutorCore'));
 const AIAssistant = React.lazy(() => import('./components/AIAssistant'));
 const AITools = React.lazy(() => import('./components/AITools'));
 const StudentDashboard = React.lazy(() => import('./components/StudentDashboard'));
@@ -58,10 +59,13 @@ const AchievementToast = React.lazy(() => import('./components/AchievementToast'
 const RoleSelectionScreen = React.lazy(() => import('./components/RoleSelectionScreen'));
 const ParentDashboard = React.lazy(() => import('./components/ParentDashboard'));
 const SchoolDashboard = React.lazy(() => import('./components/SchoolDashboard'));
+const StudentAssignments = React.lazy(() => import('./components/StudentAssignments'));
+const QuizTaker = React.lazy(() => import('./components/QuizTaker'));
+
 
 // --- App Component ---
 
-export type View = 'home' | 'learn' | 'lesson' | 'ask' | 'tools' | 'tutor' | 'planner' | 'parentDashboard' | 'schoolDashboard';
+export type View = 'home' | 'learn' | 'lesson' | 'ask' | 'tools' | 'tutor' | 'planner' | 'parentDashboard' | 'schoolDashboard' | 'assignments' | 'quiz';
 
 
 const StudentApp: React.FC = () => {
@@ -74,6 +78,8 @@ const StudentApp: React.FC = () => {
   const [lessonError, setLessonError] = useState<string | null>(null);
   const [isUserModalOpen, setIsUserModalOpen] = useState(false);
   const [flashcardModalChapter, setFlashcardModalChapter] = useState<{ grade: string, subject: string, chapter: string } | null>(null);
+  const [activeQuiz, setActiveQuiz] = useState<Assignment | null>(null);
+
 
   const handleSelectChapter = (chapter: string, subject: string, grade: string) => {
     updateActiveUserProfile({ lastChapter: chapter, lastSubject: subject, grade: grade });
@@ -84,11 +90,14 @@ const StudentApp: React.FC = () => {
     setFlashcardModalChapter({ grade, subject, chapter });
   };
 
+  const handleStartQuiz = (assignment: Assignment) => {
+    setActiveQuiz(assignment);
+    setView('quiz');
+  };
+
   const loadContent = useCallback(async () => {
     if (view !== 'lesson' || !activeProfile) return;
 
-    // If the correct lesson is already loaded, don't fetch it again.
-    // This preserves the ContentDisplay component and its internal state (like step index).
     if (lessonPack && lessonPack.topic_name === activeProfile.lastChapter) {
         return;
     }
@@ -130,11 +139,19 @@ const StudentApp: React.FC = () => {
       case 'lesson':
         if (isLessonLoading) return <Loader />;
         if (lessonError) return <div className="text-center text-red-500 p-4 bg-red-50 rounded-lg">{lessonError}</div>;
-        return <ContentDisplay lessonPack={lessonPack} />;
+        return <AdaptiveLessonPlayer lessonPack={lessonPack} />;
       case 'planner':
-        return <Planner />;
+        return <Planner setView={setView} />;
+      case 'assignments':
+        return <StudentAssignments setView={setView} onStartQuiz={handleStartQuiz} />;
+      case 'quiz':
+        if (!activeQuiz) {
+          setView('assignments');
+          return null;
+        }
+        return <QuizTaker assignment={activeQuiz} onFinishQuiz={() => { setActiveQuiz(null); setView('assignments'); }} />;
       case 'ask':
-        return <ChatAssistant />;
+        return <TutorCore />;
       case 'tutor':
         return <AIAssistant />;
       case 'tools':
@@ -146,7 +163,8 @@ const StudentApp: React.FC = () => {
 
   const getHeaderTitle = () => {
     if (view === 'lesson' && activeProfile) return `${activeProfile.lastSubject} - ${activeProfile.lastChapter}`;
-    const viewTitles = { home: `Welcome, ${activeProfile?.name}`, learn: 'Curriculum', planner: 'Planner', ask: 'Ask MIGA', tutor: 'Live Tutor', tools: 'AI Studio' };
+    if (view === 'quiz' && activeQuiz) return `Quiz: ${activeQuiz.title}`;
+    const viewTitles = { home: `Welcome, ${activeProfile?.name}`, learn: 'Curriculum', planner: 'Planner', assignments: 'My Assignments', ask: 'AI Tutor', tutor: 'Live Tutor', tools: 'AI Studio' };
     return viewTitles[view as keyof typeof viewTitles] || 'Alfanumrik';
   };
 
@@ -155,17 +173,17 @@ const StudentApp: React.FC = () => {
       <Sidebar activeView={view} setView={setView} />
       <div className="flex-1 flex flex-col h-full overflow-hidden">
         <Header 
-          showBackButton={view === 'lesson'}
-          onBack={() => setView('learn')}
+          showBackButton={view === 'lesson' || view === 'quiz'}
+          onBack={() => setView(view === 'lesson' ? 'learn' : 'assignments')}
           title={getHeaderTitle()}
           onOpenUserModal={() => setIsUserModalOpen(true)}
           userRole="student"
           onLogout={() => {}} // Logout handled in parent
         />
-        <main className="flex-1 overflow-y-auto overflow-x-hidden p-4 sm:p-6 lg:p-8">
+        <main className="flex-1 overflow-y-auto overflow-x-hidden p-4 md:p-6 pb-24 md:pb-6">
           <ErrorBoundary>
             <Suspense fallback={<Loader />}>
-              <div className="h-full">
+              <div className="min-h-full">
                 {renderContent()}
               </div>
             </Suspense>
@@ -253,7 +271,7 @@ const App: React.FC = () => {
     return (
       <div className="flex flex-col h-full bg-slate-50 font-sans text-slate-900">
         <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
-          <ProfileSetup onProfileSave={handleSaveUser} />
+          <ProfileSetup onProfileSave={(data, id) => handleSaveUser(data, id)} />
         </main>
       </div>
     );
@@ -303,10 +321,10 @@ const App: React.FC = () => {
           userRole={userRole}
           onLogout={handleLogout}
         />
-        <main className="flex-1 overflow-y-auto overflow-x-hidden p-4 sm:p-6 lg:p-8">
+        <main className="flex-1 overflow-y-auto overflow-x-hidden p-4 md:p-6">
           <ErrorBoundary>
             <Suspense fallback={<Loader />}>
-              <div className="h-full">
+              <div className="min-h-full">
                 {content}
               </div>
             </Suspense>

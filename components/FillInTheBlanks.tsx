@@ -1,18 +1,17 @@
-import React, { useState, useMemo } from 'react';
+import React, { useMemo } from 'react';
 import { FillInTheBlanks as FillInTheBlanksType } from '../types';
 import { cleanText } from '../utils/textHelpers';
 import { ThumbsUpIcon, ThumbsDownIcon } from '../constants/icons';
 
 interface FillInTheBlanksStepProps {
   content: FillInTheBlanksType;
-  onCompleted: () => void;
-  skillId: string;
-  onAnswer: (skillId: string, isCorrect: boolean) => void;
+  stepAnswer?: { answer: string | null; isCorrect: boolean };
+  onStepAnswer: (answer: string | null, isCorrect: boolean) => void;
 }
 
-const FillInTheBlanksStep: React.FC<FillInTheBlanksStepProps> = ({ content, onCompleted, skillId, onAnswer }) => {
-  const [selectedOption, setSelectedOption] = useState<string | null>(null);
-  const [isAnswered, setIsAnswered] = useState(false);
+const FillInTheBlanksStep: React.FC<FillInTheBlanksStepProps> = ({ content, stepAnswer, onStepAnswer }) => {
+  const isAnswered = !!stepAnswer;
+  const selectedOption = stepAnswer?.answer;
 
   const shuffledOptions = useMemo(() => {
     return [...content.options].sort(() => Math.random() - 0.5);
@@ -21,14 +20,8 @@ const FillInTheBlanksStep: React.FC<FillInTheBlanksStepProps> = ({ content, onCo
   const handleSelectOption = (option: string) => {
     if (isAnswered) return;
     
-    setSelectedOption(option);
-    setIsAnswered(true);
-
     const isCorrect = option === content.correct_answer;
-    onAnswer(skillId, isCorrect);
-    
-    // Call onCompleted regardless of correctness to allow the user to proceed.
-    onCompleted();
+    onStepAnswer(option, isCorrect);
   };
 
   const getOptionClasses = (option: string) => {

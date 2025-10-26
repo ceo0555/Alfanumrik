@@ -4,9 +4,14 @@ export const transformLessonPackToSteps = (lessonPack: LessonPack): LessonStep[]
   const steps: LessonStep[] = [];
 
   if (!lessonPack) return steps;
+  
+  const addStep = (stepData: Omit<LessonStep, 'originalIndex'>) => {
+    // FIX: Add a type assertion to resolve a TypeScript issue where spreading a discriminated union type ('stepData') loses its type information, causing an incorrect type inference error.
+    steps.push({ ...stepData, originalIndex: steps.length } as LessonStep);
+  };
 
   // 1. Topic Title
-  steps.push({
+  addStep({
     type: 'topic_title',
     title: 'Introduction',
     content: { topic_name: lessonPack.topic_name },
@@ -14,7 +19,7 @@ export const transformLessonPackToSteps = (lessonPack: LessonPack): LessonStep[]
 
   // 2. Core Explanation
   if (lessonPack.student_explanation?.core_explanation) {
-    steps.push({
+    addStep({
       type: 'core_explanation',
       title: 'Core Concept',
       content: lessonPack.student_explanation.core_explanation,
@@ -23,7 +28,7 @@ export const transformLessonPackToSteps = (lessonPack: LessonPack): LessonStep[]
 
   // 2.5. Quick Check after core explanation
   if (lessonPack.student_explanation?.quick_check) {
-    steps.push({
+    addStep({
       type: 'quick_check',
       title: 'Concept Check',
       content: lessonPack.student_explanation.quick_check,
@@ -32,7 +37,7 @@ export const transformLessonPackToSteps = (lessonPack: LessonPack): LessonStep[]
 
   // 3. Image Briefs
   lessonPack.image_briefs?.forEach(brief => {
-    steps.push({
+    addStep({
       type: 'image_brief',
       title: 'Visual Aid',
       content: brief,
@@ -41,7 +46,7 @@ export const transformLessonPackToSteps = (lessonPack: LessonPack): LessonStep[]
 
   // 4. Worked Examples
   lessonPack.student_explanation?.worked_examples?.forEach(ex => {
-    steps.push({
+    addStep({
       type: 'worked_example',
       title: 'Worked Example',
       content: ex,
@@ -50,7 +55,7 @@ export const transformLessonPackToSteps = (lessonPack: LessonPack): LessonStep[]
 
   // 5. Guided Practice
   lessonPack.student_explanation?.guided_practice?.forEach(gp => {
-    steps.push({
+    addStep({
       type: 'guided_practice',
       title: 'Guided Practice',
       content: gp,
@@ -59,7 +64,7 @@ export const transformLessonPackToSteps = (lessonPack: LessonPack): LessonStep[]
   
   // 6. Fill in the Blanks
   lessonPack.student_explanation?.fill_in_the_blanks?.forEach(fb => {
-    steps.push({
+    addStep({
       type: 'fill_in_the_blanks',
       title: 'Check Your Knowledge',
       content: fb,
@@ -68,7 +73,7 @@ export const transformLessonPackToSteps = (lessonPack: LessonPack): LessonStep[]
   
   // 7. Interactive Simulations
   lessonPack.student_explanation?.interactive_simulations?.forEach(sim => {
-    steps.push({
+    addStep({
       type: 'interactive_simulation',
       title: 'Interactive Simulation',
       content: sim,
@@ -77,7 +82,7 @@ export const transformLessonPackToSteps = (lessonPack: LessonPack): LessonStep[]
 
   // 7.5 Interactive Videos
   lessonPack.student_explanation?.interactive_videos?.forEach(video => {
-    steps.push({
+    addStep({
       type: 'interactive_video',
       title: 'Interactive Video',
       content: video,
@@ -86,7 +91,7 @@ export const transformLessonPackToSteps = (lessonPack: LessonPack): LessonStep[]
 
   // 8. Independent Practice
   lessonPack.student_explanation?.independent_practice?.forEach(ip => {
-    steps.push({
+    addStep({
       type: 'independent_practice',
       title: 'Practice Problem',
       content: ip,
@@ -95,7 +100,7 @@ export const transformLessonPackToSteps = (lessonPack: LessonPack): LessonStep[]
 
   // 9. HOTS
   lessonPack.student_explanation?.HOTS?.forEach(hots => {
-    steps.push({
+    addStep({
       type: 'HOTS',
       title: 'Higher Order Thinking',
       content: hots,
@@ -104,7 +109,7 @@ export const transformLessonPackToSteps = (lessonPack: LessonPack): LessonStep[]
 
   // 10. Common Errors
   lessonPack.student_explanation?.common_errors_and_fixes?.forEach(err => {
-    steps.push({
+    addStep({
       type: 'common_error',
       title: 'Common Mistake',
       content: err,
@@ -113,13 +118,13 @@ export const transformLessonPackToSteps = (lessonPack: LessonPack): LessonStep[]
   
   // 11. Assessment Section
   if (lessonPack.assessment_blueprint?.question_pool?.length > 0) {
-    steps.push({
+    addStep({
         type: 'assessment_intro',
         title: 'Test Your Knowledge',
         content: `Let's check your understanding with a few questions.`
     });
     lessonPack.assessment_blueprint.question_pool.forEach((q, index) => {
-        steps.push({
+        addStep({
             type: 'assessment_question',
             title: `Question ${index + 1}`,
             content: { question: q, qNum: index + 1 },
@@ -129,7 +134,7 @@ export const transformLessonPackToSteps = (lessonPack: LessonPack): LessonStep[]
 
   // 12. Adaptive Follow-up Trigger (if assessment exists)
   if (lessonPack.assessment_blueprint?.question_pool?.length > 0) {
-    steps.push({
+    addStep({
       type: 'adaptive_intro',
       title: 'Personalized Plan',
       content: 'Get a personalized plan based on your results.',
@@ -141,7 +146,7 @@ export const transformLessonPackToSteps = (lessonPack: LessonPack): LessonStep[]
     const plan = (lessonPack as any).adaptivePlan;
     if (plan.length > 0) {
         plan.forEach(item => {
-            steps.push({
+            addStep({
                 type: 'adaptive_follow_up',
                 title: 'Adaptive Follow-up',
                 content: item
@@ -151,7 +156,7 @@ export const transformLessonPackToSteps = (lessonPack: LessonPack): LessonStep[]
   }
 
   // 13. Feedback
-  steps.push({
+  addStep({
       type: 'feedback',
       title: 'Lesson Feedback',
       content: { submitted: false },

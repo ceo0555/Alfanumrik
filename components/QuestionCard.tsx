@@ -4,9 +4,8 @@ import { QuestionPoolItem } from '../types';
 interface QuestionCardProps {
   questionData: QuestionPoolItem;
   questionNumber: number;
-  onAnswerSubmit: (q_id: string, question_text: string, is_correct: boolean) => void;
-  skillId: string;
-  onAnswer: (skillId: string, isCorrect: boolean) => void;
+  stepAnswer?: { answer: string | null; isCorrect: boolean };
+  onStepAnswer: (answer: string | null, isCorrect: boolean) => void;
 }
 
 const DifficultyBadge: React.FC<{ difficulty: 'E' | 'M' | 'H' }> = ({ difficulty }) => {
@@ -24,37 +23,37 @@ const DifficultyBadge: React.FC<{ difficulty: 'E' | 'M' | 'H' }> = ({ difficulty
   return <span className={`${baseClasses} ${colorClasses[difficulty]}`}>{text[difficulty]}</span>;
 };
 
-const QuestionCard: React.FC<QuestionCardProps> = ({ questionData, questionNumber, onAnswerSubmit, skillId, onAnswer }) => {
-  const [selectedOption, setSelectedOption] = useState<string | null>(null);
-  const [isAnswered, setIsAnswered] = useState(false);
-  const [shortAnswer, setShortAnswer] = useState('');
+const QuestionCard: React.FC<QuestionCardProps> = ({ questionData, questionNumber, stepAnswer, onStepAnswer }) => {
+  const [currentMcqSelection, setCurrentMcqSelection] = useState<string | null>(null);
+  const [currentShortAnswer, setCurrentShortAnswer] = useState('');
+
+  const isAnswered = !!stepAnswer;
+  const submittedAnswer = stepAnswer?.answer;
 
   const handleMcqSelect = (option: string) => {
     if (isAnswered) return;
-    setSelectedOption(option);
+    setCurrentMcqSelection(option);
   };
   
   const checkAnswer = () => {
       if (isAnswered) return;
-      setIsAnswered(true);
       
-      let isCorrect = false;
+      let isCorrect: boolean;
+      let userAnswer: string | null;
+
       if (questionData.type === 'MCQ') {
-          isCorrect = selectedOption === questionData.answer;
+          userAnswer = currentMcqSelection;
+          isCorrect = userAnswer === questionData.answer;
       } else {
-          // For non-MCQ types, we'll consider checking the answer as needing help.
-          // This serves as a proxy for an incorrect attempt for adaptive purposes.
+          userAnswer = currentShortAnswer;
           isCorrect = false; 
       }
       
-      // Call the new onAnswer prop for BKT tracking
-      onAnswer(skillId, isCorrect);
-
-      // Call the existing onAnswerSubmit for adaptive follow-up logic
-      onAnswerSubmit(questionData.q_id, questionData.question, isCorrect);
+      onStepAnswer(userAnswer, isCorrect);
   };
 
   const getOptionClasses = (option: string) => {
+    const selectedOption = isAnswered ? submittedAnswer : currentMcqSelection;
     if (!isAnswered) {
       return selectedOption === option
         ? 'ring-2 ring-indigo-500 bg-indigo-50'
@@ -105,8 +104,8 @@ const QuestionCard: React.FC<QuestionCardProps> = ({ questionData, questionNumbe
             className="form-textarea w-full p-3 rounded-lg"
             rows={4}
             placeholder="Type your answer here..."
-            value={shortAnswer}
-            onChange={(e) => setShortAnswer(e.target.value)}
+            value={isAnswered ? (submittedAnswer || '') : currentShortAnswer}
+            onChange={(e) => setCurrentShortAnswer(e.target.value)}
             readOnly={isAnswered}
         />
       )}
@@ -115,7 +114,7 @@ const QuestionCard: React.FC<QuestionCardProps> = ({ questionData, questionNumbe
         <div className="mt-4 text-right">
           <button
             onClick={checkAnswer}
-            disabled={questionData.type === 'MCQ' && !selectedOption}
+            disabled={questionData.type === 'MCQ' ? !currentMcqSelection : !currentShortAnswer.trim()}
             className="btn btn-primary"
           >
             Check Answer

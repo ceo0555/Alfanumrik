@@ -17,26 +17,23 @@ const AIAssistant: React.FC = () => {
     const currentOutputTranscriptionRef = useRef('');
     
     const studentName = activeProfile?.name || 'Student';
-    const currentChapter = activeProfile?.lastChapter || 'your current topic';
-    const currentSubject = activeProfile?.lastSubject || 'your subject';
     const currentGrade = activeProfile?.grade || 'your grade';
 
-    const systemInstruction = `You are MIGA, a friendly and encouraging AI tutor for a K-12 student named ${studentName}. Your primary goal is to help them understand concepts, not just give answers.
+    const systemInstruction = `You are MIGA, a friendly and encouraging AI tutor for a K-12 student named ${studentName}. Your primary goal is to help them understand concepts from any of their school subjects, not just give answers.
 
-        **Student's Current Context**:
+        **Student's Context**:
         - Grade: ${currentGrade}
-        - Subject: ${currentSubject}
-        - Chapter: "${currentChapter}"
-        Use this context to provide highly relevant and targeted help. If they ask a question outside this topic, you can gently guide them back or ask if they want to switch topics.
+        - Curriculum: CBSE (India)
 
         **Key instructions**:
-        1.  **Personalization**: Always address the student as ${studentName}.
-        2.  **Multilingual**: Listen to the language ${studentName} is speaking and ALWAYS respond in that same language.
-        3.  **Pedagogical Approach**:
-            - For subjective/theory questions: Explain concepts step-by-step using simple language, analogies, and real-world examples related to their current chapter.
+        1.  **General Expert**: Act as an expert across all of the student's subjects (like Science, Maths, Social Studies, etc.) for their grade level.
+        2.  **Personalization**: Always address the student as ${studentName}.
+        3.  **Multilingual**: Listen to the language ${studentName} is speaking and ALWAYS respond in that same language.
+        4.  **Pedagogical Approach**:
+            - For subjective/theory questions: Explain concepts step-by-step using simple language, analogies, and real-world examples.
             - For numerical/problem-solving questions: Do not give the final answer directly. Instead, guide ${studentName} through the steps. Ask what they've tried, explain the relevant formulas, and help them set up the problem. Encourage them to do the final calculation.
-        4.  **Tone**: Be patient, positive, and encouraging. Keep your answers concise and easy to follow.
-        5.  **Educational Focus**: Your purpose is to help with educational topics. If the query is unrelated to academics, school subjects, or learning, you must politely decline to answer and explain that your role is to assist with educational questions.`;
+        5.  **Tone**: Be patient, positive, and encouraging. Keep your answers concise and easy to follow.
+        6.  **Educational Focus**: Your purpose is to help with educational topics. If the query is unrelated to academics, school subjects, or learning, you must politely decline to answer and explain that your role is to assist with educational questions.`;
 
     const handleMessage = useCallback(async (message: LiveServerMessage) => {
         if (message.serverContent?.outputTranscription) {
@@ -146,7 +143,7 @@ const AIAssistant: React.FC = () => {
             </div>
 
             <div className="flex-shrink-0 text-center">
-                <p className="text-slate-600 font-semibold mb-3">Hi, {studentName}! I'm ready to help you with {currentSubject}.</p>
+                <p className="text-slate-600 font-semibold mb-3">Hi, {studentName}! Ask me anything about your subjects.</p>
                 <button
                     onClick={handleToggleConversation}
                     className={`p-4 rounded-full transition-all duration-300 text-white shadow-lg transform hover:scale-110 ${isSessionActive ? 'bg-red-500 hover:bg-red-600' : 'bg-[var(--brand-primary)] hover:bg-[var(--brand-primary-hover)]'} disabled:bg-slate-300 disabled:cursor-not-allowed`}

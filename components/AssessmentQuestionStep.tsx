@@ -4,19 +4,17 @@ import QuestionCard from './QuestionCard';
 
 interface AssessmentQuestionStepProps {
   content: AssessmentQuestionStepType['content'];
-  onAnswerSubmit: (q_id: string, question_text: string, is_correct: boolean) => void;
-  skillId: string;
-  onAnswer: (skillId: string, isCorrect: boolean) => void;
+  stepAnswer?: { answer: string | null; isCorrect: boolean };
+  onStepAnswer: (answer: string | null, isCorrect: boolean) => void;
 }
 
-const AssessmentQuestionStep: React.FC<AssessmentQuestionStepProps> = ({ content, onAnswerSubmit, skillId, onAnswer }) => {
+const AssessmentQuestionStep: React.FC<AssessmentQuestionStepProps> = ({ content, stepAnswer, onStepAnswer }) => {
   return (
     <QuestionCard
       questionData={content.question}
       questionNumber={content.qNum}
-      onAnswerSubmit={onAnswerSubmit}
-      skillId={skillId}
-      onAnswer={onAnswer}
+      stepAnswer={stepAnswer}
+      onStepAnswer={onStepAnswer}
     />
   );
 };

@@ -1,4 +1,4 @@
-import { UserProfile, AllProgressData, AllFlashcardsData, UserRole, DailyChallenge, UserFlashcards, UserFlashcardItem, SrsData, AllBktData } from '../types';
+import { UserProfile, AllProgressData, AllFlashcardsData, UserRole, DailyChallenge, UserFlashcards, UserFlashcardItem, SrsData, AllBktData, Assignment, Announcement, StudentSubmission } from '../types';
 import { curriculum } from '../constants/curriculum';
 
 const API_LATENCY = 300; // ms
@@ -57,6 +57,9 @@ export const fetchAllData = async (): Promise<{
   flashcards: AllFlashcardsData;
   userRole: UserRole | null;
   allBktData: AllBktData;
+  allAssignments: Assignment[];
+  allAnnouncements: Announcement[];
+  allSubmissions: StudentSubmission[];
 }> => {
   console.log("API: Fetching all user data...");
   const profilesStr = localStorage.getItem('userProfiles') || '[]';
@@ -65,6 +68,10 @@ export const fetchAllData = async (): Promise<{
   const flashcardsStr = localStorage.getItem('allFlashcards') || '{}';
   const userRoleStr = localStorage.getItem('userRole');
   const bktDataStr = localStorage.getItem('allBktData') || '{}';
+  const assignmentsStr = localStorage.getItem('allAssignments') || '[]';
+  const announcementsStr = localStorage.getItem('allAnnouncements') || '[]';
+  const submissionsStr = localStorage.getItem('allSubmissions') || '[]';
+
 
   let profiles: UserProfile[] = JSON.parse(profilesStr);
   const progress: AllProgressData = JSON.parse(progressStr);
@@ -72,6 +79,9 @@ export const fetchAllData = async (): Promise<{
   let activeId: number | null = activeIdStr ? JSON.parse(activeIdStr) : null;
   const userRole: UserRole | null = userRoleStr ? JSON.parse(userRoleStr) : null;
   const allBktData: AllBktData = JSON.parse(bktDataStr);
+  const allAssignments: Assignment[] = JSON.parse(assignmentsStr);
+  const allAnnouncements: Announcement[] = JSON.parse(announcementsStr);
+  const allSubmissions: StudentSubmission[] = JSON.parse(submissionsStr);
   const todayStr = new Date().toISOString().split('T')[0];
 
   // Data integrity/migration check
@@ -137,25 +147,47 @@ export const fetchAllData = async (): Promise<{
     localStorage.setItem('activeUserId', JSON.stringify(activeId));
   }
 
-  return simulateNetwork({ profiles, activeId, progress, flashcards, userRole, allBktData });
+  return simulateNetwork({ profiles, activeId, progress, flashcards, userRole, allBktData, allAssignments, allAnnouncements, allSubmissions });
 };
 
 /**
- * Saves or updates a user profile.
- * In a real app, this would be a POST or PUT request to /api/users.
+ * Saves or updates user profiles. Handles single add, single edit, and bulk add.
  */
 export const saveUserProfile = async (
   allProfiles: UserProfile[],
-  name: string,
-  grade: string,
+  data: { name: string; grade: string } | { name: string; grade: string }[],
   idToEdit?: number
 ): Promise<UserProfile[]> => {
-  console.log(`API: Saving profile for ${name}...`);
   let updatedProfiles = [...allProfiles];
 
-  if (idToEdit !== undefined) {
+  if (Array.isArray(data)) { // Bulk add
+    console.log(`API: Bulk onboarding ${data.length} users...`);
+    let latestId = Date.now();
+    const newUsers: UserProfile[] = data.map((user, index) => {
+      const newId = latestId + index;
+      const newSubjects = Object.keys(curriculum[user.grade as keyof typeof curriculum]);
+      const newSubject = newSubjects[0];
+      const newChapter = curriculum[user.grade as keyof typeof curriculum][newSubject][0];
+      return {
+        id: newId,
+        name: user.name,
+        grade: user.grade,
+        lastSubject: newSubject,
+        lastChapter: newChapter,
+        currentStreak: 0,
+        lastStreakDate: '',
+        achievements: [],
+        xp: 0,
+        level: 1,
+        dailyChallenge: generateDailyChallenge(user.grade),
+      };
+    });
+    updatedProfiles.push(...newUsers);
+  } else if (idToEdit !== undefined) { // Edit single
+    console.log(`API: Editing profile for ${data.name}...`);
     updatedProfiles = updatedProfiles.map(p => {
       if (p.id === idToEdit) {
+        const { name, grade } = data;
         const newSubjects = Object.keys(curriculum[grade as keyof typeof curriculum]);
         const newSubject = p.grade === grade ? p.lastSubject : newSubjects[0];
         const newChapter = p.grade === grade ? p.lastChapter : curriculum[grade as keyof typeof curriculum][newSubject][0];
@@ -163,7 +195,9 @@ export const saveUserProfile = async (
       }
       return p;
     });
-  } else {
+  } else { // Add single
+    console.log(`API: Saving profile for ${data.name}...`);
+    const { name, grade } = data;
     const newId = Date.now();
     const newSubjects = Object.keys(curriculum[grade as keyof typeof curriculum]);
     const newSubject = newSubjects[0];
@@ -187,6 +221,7 @@ export const saveUserProfile = async (
   localStorage.setItem('userProfiles', JSON.stringify(updatedProfiles));
   return simulateNetwork(updatedProfiles);
 };
+
 
 /**
  * Updates the active user ID.
@@ -224,6 +259,33 @@ export const saveAllFlashcards = async (flashcards: AllFlashcardsData): Promise<
   console.log("API: Saving all flashcards data...");
   localStorage.setItem('allFlashcards', JSON.stringify(flashcards));
   return simulateNetwork(flashcards);
+};
+
+/**
+ * Saves the entire assignments data object.
+ */
+export const saveAllAssignments = async (assignments: Assignment[]): Promise<Assignment[]> => {
+  console.log("API: Saving all assignments data...");
+  localStorage.setItem('allAssignments', JSON.stringify(assignments));
+  return simulateNetwork(assignments);
+};
+
+/**
+ * Saves all announcements.
+ */
+export const saveAllAnnouncements = async (announcements: Announcement[]): Promise<Announcement[]> => {
+  console.log("API: Saving all announcements...");
+  localStorage.setItem('allAnnouncements', JSON.stringify(announcements));
+  return simulateNetwork(announcements);
+};
+
+/**
+ * Saves all student submissions.
+ */
+export const saveAllSubmissions = async (submissions: StudentSubmission[]): Promise<StudentSubmission[]> => {
+    console.log("API: Saving all student submissions...");
+    localStorage.setItem('allSubmissions', JSON.stringify(submissions));
+    return simulateNetwork(submissions);
 };
 
 /**

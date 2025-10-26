@@ -211,6 +211,8 @@ export type LessonStepType =
 interface BaseLessonStep {
   type: LessonStepType;
   title: string;
+  originalIndex?: number; // Index in the original, non-adapted sequence
+  isRemediation?: boolean; // True if this step was dynamically inserted
 }
 
 // Specific step interfaces
@@ -334,6 +336,10 @@ export type LessonStep =
 
 // --- ADAPTIVE LEARNING TYPES ---
 
+export interface PrerequisiteGraph {
+  [chapterId: string]: string[]; // Key is a chapterId, value is an array of prerequisite chapterIds
+}
+
 export interface AssessmentResult {
   q_id: string;
   question_text: string;
@@ -349,6 +355,71 @@ export interface AdaptiveFollowUp {
 
 export type QuizState = 'setup' | 'active' | 'results';
 
+export interface FineTuningDataPoint {
+  id: string;
+  timestamp: string;
+  source: 'teacher_feedback';
+  data: {
+    question: string;
+    studentAnswer: string;
+    teacherFeedback: string;
+  };
+}
+
+
+// --- SCHOOL DASHBOARD TYPES ---
+export interface ClassAnalyticsData {
+  grade: string;
+  subjectMastery: { subject: string; mastery: number }[];
+  challengingConcepts: { concept: string; mastery: number }[];
+  studentsToWatch: { name: string; mastery: number }[];
+}
+
+export interface Assignment {
+  id: string;
+  title: string;
+  instructions?: string;
+  dueDate: string;
+  assignedChapterIds: string[];
+  classGrade: string;
+  assignedStudentIds?: number[];
+  assignmentType: 'chapters' | 'quiz';
+  quizQuestions?: QuestionPoolItem[];
+}
+
+export interface ReportCardData {
+  studentId: number;
+  studentName: string;
+  grade: string;
+  overallMastery: number;
+  subjectBreakdown: { subject: string; mastery: number }[];
+  aiSummary: string;
+}
+
+export interface Announcement {
+    id: string;
+    grade: string;
+    title: string;
+    content: string;
+    date: string; // ISO Date string
+}
+
+export interface StudentSubmissionAnswer {
+    q_id: string;
+    answer: string;
+    isCorrect?: boolean; // Set by teacher during grading
+    feedback?: string;   // Set by teacher during grading
+}
+
+export interface StudentSubmission {
+    id: string;
+    assignmentId: string;
+    studentId: number;
+    answers: StudentSubmissionAnswer[];
+    status: 'submitted' | 'graded';
+    score?: number; // Set by teacher during grading
+}
+
 
 // --- GENERAL APP TYPES ---
 
@@ -363,6 +434,8 @@ export interface Curriculum {
 export interface ChatMessage {
   role: 'user' | 'model';
   content: string;
+  status?: 'retrieving' | 'generating' | 'done';
+  sources?: { title: string; content: string }[];
 }
 
 export interface GroundingSource {

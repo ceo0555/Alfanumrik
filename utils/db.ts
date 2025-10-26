@@ -1,7 +1,7 @@
 // A simple promise-based wrapper for IndexedDB
 const DB_NAME = 'AlfanumrikDB';
-const STORE_NAME = 'cache';
-const DB_VERSION = 1;
+const STORES = ['cache', 'fineTuningData'];
+const DB_VERSION = 2; // Bump version to add new object store
 
 let dbPromise: Promise<IDBDatabase> | null = null;
 
@@ -13,11 +13,20 @@ const initDB = (): Promise<IDBDatabase> => {
   dbPromise = new Promise((resolve, reject) => {
     const request = indexedDB.open(DB_NAME, DB_VERSION);
 
-    request.onupgradeneeded = () => {
+    request.onupgradeneeded = (event) => {
       const db = request.result;
-      if (!db.objectStoreNames.contains(STORE_NAME)) {
-        db.createObjectStore(STORE_NAME);
-      }
+      const oldVersion = event.oldVersion;
+
+      // Create object stores if they don't exist
+      STORES.forEach(storeName => {
+        if (!db.objectStoreNames.contains(storeName)) {
+          if (storeName === 'fineTuningData') {
+            db.createObjectStore(storeName, { keyPath: 'id' });
+          } else {
+            db.createObjectStore(storeName);
+          }
+        }
+      });
     };
 
     request.onsuccess = () => {
@@ -32,11 +41,11 @@ const initDB = (): Promise<IDBDatabase> => {
   return dbPromise;
 };
 
-export const get = async <T>(key: IDBValidKey): Promise<T | undefined> => {
+export const get = async <T>(storeName: string, key: IDBValidKey): Promise<T | undefined> => {
     const db = await initDB();
     return new Promise((resolve, reject) => {
-        const transaction = db.transaction(STORE_NAME, 'readonly');
-        const store = transaction.objectStore(STORE_NAME);
+        const transaction = db.transaction(storeName, 'readonly');
+        const store = transaction.objectStore(storeName);
         const request = store.get(key);
 
         request.onsuccess = () => {
@@ -49,11 +58,11 @@ export const get = async <T>(key: IDBValidKey): Promise<T | undefined> => {
     });
 };
 
-export const set = async (key: IDBValidKey, value: any): Promise<void> => {
+export const set = async (storeName: string, key: IDBValidKey, value: any): Promise<void> => {
     const db = await initDB();
     return new Promise((resolve, reject) => {
-        const transaction = db.transaction(STORE_NAME, 'readwrite');
-        const store = transaction.objectStore(STORE_NAME);
+        const transaction = db.transaction(storeName, 'readwrite');
+        const store = transaction.objectStore(storeName);
         const request = store.put(value, key);
 
         request.onsuccess = () => {
@@ -61,6 +70,23 @@ export const set = async (key: IDBValidKey, value: any): Promise<void> => {
         };
         request.onerror = () => {
             console.error('IndexedDB set error:', request.error);
+            reject(request.error);
+        };
+    });
+};
+
+export const add = async (storeName: string, value: any): Promise<void> => {
+    const db = await initDB();
+    return new Promise((resolve, reject) => {
+        const transaction = db.transaction(storeName, 'readwrite');
+        const store = transaction.objectStore(storeName);
+        const request = store.add(value);
+
+        request.onsuccess = () => {
+            resolve();
+        };
+        request.onerror = () => {
+            console.error('IndexedDB add error:', request.error);
             reject(request.error);
         };
     });
