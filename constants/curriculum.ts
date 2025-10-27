@@ -1,6 +1,25 @@
 import { Curriculum } from '../types';
 
 export const curriculum: Curriculum = {
+  '3': {
+    'English': [
+      'Reading with Comprehension',
+      'Basic Grammar and Vocabulary',
+      'Sentence Formation'
+    ],
+    'Maths': [
+      'Numbers and Operations',
+      'Measurement',
+      'Shapes and Spatial Understanding',
+      'Data Handling'
+    ],
+    'Environmental Studies': [
+      'Family and Friends',
+      'Water',
+      'Travel',
+      'Things We Make and Do'
+    ]
+  },
   '6': {
     'Science': [
       'Food: Where Does It Come From?',

@@ -1,8 +1,9 @@
 import React, { useState, useMemo } from 'react';
 import { XIcon, PlusIcon, ChevronDownIcon } from '../constants/icons';
-// FIX: Moved QuestionPoolItem import from ../constants/icons to ../types
 import { QuestionPoolItem } from '../types';
 import { curriculum } from '../constants/curriculum';
+import { mockItemBank } from '../constants/itemBank';
+
 
 interface AddQuestionModalProps {
   isOpen: boolean;
@@ -10,17 +11,6 @@ interface AddQuestionModalProps {
   grade: string;
   onAddQuestions: (questions: QuestionPoolItem[]) => void;
 }
-
-const mockQuestionBank: { [chapterId: string]: QuestionPoolItem[] } = {
-    'G10-Science-Chemical Reactions and Equations': [
-        { q_id: 'G10-S-CRE-MQ1', type: 'MCQ', marks: 1, difficulty: 'E', bloom: 'Remember', question: 'What is the chemical formula for rust?', options: ['Fe2O3', 'FeO', 'Fe3O4', 'Fe2O3.xH2O'], answer: 'Fe2O3.xH2O', rubric: '1 mark for correct formula.' },
-        { q_id: 'G10-S-CRE-SA1', type: 'SA', marks: 2, difficulty: 'M', bloom: 'Understand', question: 'Why should a magnesium ribbon be cleaned before burning in air?', answer: 'To remove the protective layer of magnesium oxide from its surface.', rubric: '2 marks for correct explanation.' },
-    ],
-    'G10-Maths-Real Numbers': [
-        { q_id: 'G10-M-RN-MQ1', type: 'MCQ', marks: 1, difficulty: 'E', bloom: 'Apply', question: 'The HCF of two numbers is 27 and their LCM is 162. If one of the numbers is 54, what is the other number?', options: ['36', '45', '9', '81'], answer: '81', rubric: '1 mark for correct answer.' },
-    ]
-};
-
 
 const AddQuestionModal: React.FC<AddQuestionModalProps> = ({ isOpen, onClose, grade, onAddQuestions }) => {
   const [activeTab, setActiveTab] = useState<'bank' | 'author'>('bank');
@@ -57,7 +47,7 @@ const AddQuestionModal: React.FC<AddQuestionModalProps> = ({ isOpen, onClose, gr
   const handleAdd = () => {
     let questionsToAdd: QuestionPoolItem[] = [];
     if (activeTab === 'bank') {
-        Object.values(mockQuestionBank).flat().forEach(q => {
+        mockItemBank.forEach(q => {
             if (selectedBankQuestions.has(q.q_id)) {
                 questionsToAdd.push(q);
             }
@@ -96,11 +86,11 @@ const AddQuestionModal: React.FC<AddQuestionModalProps> = ({ isOpen, onClose, gr
                 </summary>
                 <div className="pl-4 pt-2 space-y-2">
                     {chapters.map(chapter => {
-                        const chapterId = `G${grade}-${subject}-${chapter}`;
-                        const questions = mockQuestionBank[chapterId] || [];
+                        const chapterIdPrefix = `G${grade}-${subject.substring(0,1)}-${chapter.substring(0,3)}`;
+                        const questions = mockItemBank.filter(q => q.q_id.startsWith(chapterIdPrefix.toUpperCase().replace(/\s/g, '')));
                         if (questions.length === 0) return null;
                         return (
-                            <div key={chapterId} className="pl-2 border-l-2">
+                            <div key={chapterIdPrefix} className="pl-2 border-l-2">
                                 <p className="font-semibold text-sm mb-1">{chapter}</p>
                                 {questions.map(q => (
                                     <label key={q.q_id} className="flex items-start gap-2 p-2 rounded-md hover:bg-slate-100 cursor-pointer">

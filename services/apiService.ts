@@ -1,5 +1,12 @@
-import { UserProfile, AllProgressData, AllFlashcardsData, UserRole, DailyChallenge, UserFlashcards, UserFlashcardItem, SrsData, AllBktData, Assignment, Announcement, StudentSubmission } from '../types';
+import { UserProfile, AllProgressData, AllFlashcardsData, UserRole, DailyChallenge, UserFlashcards, UserFlashcardItem, SrsData, AllBktData, Assignment, Announcement, StudentSubmission, StudentFlnProgress, TeacherSchedule, AttendanceRecord, QuickFormativeAssessment, Notification, QuestionPoolItem, BusRoute, PrintQuota, FeeStatus, AfterSchoolProgram, FacilityBooking, BoardPlannerEvent, CrossCurricularProject, CodingModule, CommunicationTemplate, TeacherAssignment } from '../types';
 import { curriculum } from '../constants/curriculum';
+import { mockTeacherAssignments as initialTeacherAssignments, mockTeacherSchedule as initialTeacherSchedule } from '../constants/schoolData';
+import { mockItemBank as initialItemBank } from '../constants/itemBank';
+import { mockBusRoutes as initialBusRoutes, mockPrintQuotas as initialPrintQuotas, mockFeeStatus as initialFeeStatus } from '../constants/financeOpsData';
+import { mockAfterSchoolPrograms as initialAfterSchoolPrograms, mockFacilityBookings as initialFacilityBookings } from '../constants/growthData';
+import { mockCalendarEvents as initialBoardPlannerEvents, communicationTemplates as initialCommunicationTemplates } from '../constants/boardPlannerData';
+import { codingModules as initialCodingModules, crossCurricularProjects as initialCrossCurricularProjects } from '../constants/codingModules';
+
 
 const API_LATENCY = 300; // ms
 
@@ -60,6 +67,22 @@ export const fetchAllData = async (): Promise<{
   allAssignments: Assignment[];
   allAnnouncements: Announcement[];
   allSubmissions: StudentSubmission[];
+  allFlnProgress: StudentFlnProgress;
+  teacherSchedules: TeacherSchedule[];
+  teacherAssignments: TeacherAssignment[];
+  attendanceRecords: AttendanceRecord;
+  quickFormativeAssessments: QuickFormativeAssessment[];
+  allNotifications: Notification[];
+  itemBank: QuestionPoolItem[];
+  busRoutes: BusRoute[];
+  printQuotas: PrintQuota[];
+  feeStatus: FeeStatus[];
+  afterSchoolPrograms: AfterSchoolProgram[];
+  facilityBookings: FacilityBooking[];
+  boardPlannerEvents: BoardPlannerEvent[];
+  crossCurricularProjects: CrossCurricularProject[];
+  codingModules: CodingModule[];
+  communicationTemplates: CommunicationTemplate[];
 }> => {
   console.log("API: Fetching all user data...");
   const profilesStr = localStorage.getItem('userProfiles') || '[]';
@@ -71,6 +94,22 @@ export const fetchAllData = async (): Promise<{
   const assignmentsStr = localStorage.getItem('allAssignments') || '[]';
   const announcementsStr = localStorage.getItem('allAnnouncements') || '[]';
   const submissionsStr = localStorage.getItem('allSubmissions') || '[]';
+  const flnProgressStr = localStorage.getItem('allFlnProgress') || '{}';
+  const teacherSchedulesStr = localStorage.getItem('teacherSchedules');
+  const teacherAssignmentsStr = localStorage.getItem('teacherAssignments');
+  const attendanceStr = localStorage.getItem('attendanceRecords') || '{}';
+  const qfasStr = localStorage.getItem('quickFormativeAssessments') || '[]';
+  const notificationsStr = localStorage.getItem('allNotifications') || '[]';
+  const itemBankStr = localStorage.getItem('itemBank');
+  const busRoutesStr = localStorage.getItem('busRoutes');
+  const printQuotasStr = localStorage.getItem('printQuotas');
+  const feeStatusStr = localStorage.getItem('feeStatus');
+  const afterSchoolProgramsStr = localStorage.getItem('afterSchoolPrograms');
+  const facilityBookingsStr = localStorage.getItem('facilityBookings');
+  const boardPlannerEventsStr = localStorage.getItem('boardPlannerEvents');
+  const crossCurricularProjectsStr = localStorage.getItem('crossCurricularProjects');
+  const codingModulesStr = localStorage.getItem('codingModules');
+  const communicationTemplatesStr = localStorage.getItem('communicationTemplates');
 
 
   let profiles: UserProfile[] = JSON.parse(profilesStr);
@@ -82,12 +121,56 @@ export const fetchAllData = async (): Promise<{
   const allAssignments: Assignment[] = JSON.parse(assignmentsStr);
   const allAnnouncements: Announcement[] = JSON.parse(announcementsStr);
   const allSubmissions: StudentSubmission[] = JSON.parse(submissionsStr);
+  const allFlnProgress: StudentFlnProgress = JSON.parse(flnProgressStr);
+  const attendanceRecords: AttendanceRecord = JSON.parse(attendanceStr);
+  const quickFormativeAssessments: QuickFormativeAssessment[] = JSON.parse(qfasStr);
+  const allNotifications: Notification[] = JSON.parse(notificationsStr);
+
+  const teacherSchedules: TeacherSchedule[] = teacherSchedulesStr ? JSON.parse(teacherSchedulesStr) : initialTeacherSchedule;
+  const teacherAssignments: TeacherAssignment[] = teacherAssignmentsStr ? JSON.parse(teacherAssignmentsStr) : initialTeacherAssignments;
+  const itemBank: QuestionPoolItem[] = itemBankStr ? JSON.parse(itemBankStr) : initialItemBank.map(item => ({ ...item, status: 'approved' }));
+  const busRoutes: BusRoute[] = busRoutesStr ? JSON.parse(busRoutesStr) : initialBusRoutes;
+  const printQuotas: PrintQuota[] = printQuotasStr ? JSON.parse(printQuotasStr) : initialPrintQuotas;
+  const feeStatus: FeeStatus[] = feeStatusStr ? JSON.parse(feeStatusStr) : initialFeeStatus;
+  const afterSchoolPrograms: AfterSchoolProgram[] = afterSchoolProgramsStr ? JSON.parse(afterSchoolProgramsStr) : initialAfterSchoolPrograms;
+  const facilityBookings: FacilityBooking[] = facilityBookingsStr ? JSON.parse(facilityBookingsStr) : initialFacilityBookings;
+  const boardPlannerEvents: BoardPlannerEvent[] = boardPlannerEventsStr ? JSON.parse(boardPlannerEventsStr) : initialBoardPlannerEvents;
+  const crossCurricularProjects: CrossCurricularProject[] = crossCurricularProjectsStr ? JSON.parse(crossCurricularProjectsStr) : initialCrossCurricularProjects;
+  const codingModules: CodingModule[] = codingModulesStr ? JSON.parse(codingModulesStr) : initialCodingModules;
+  const communicationTemplates: CommunicationTemplate[] = communicationTemplatesStr ? JSON.parse(communicationTemplatesStr) : initialCommunicationTemplates;
+
+  // If no profiles exist, create default demo users for RBAC
+  if (profiles.length === 0) {
+      console.log("No profiles found. Creating default RBAC demo users.");
+      const demoStudent: UserProfile = {
+        id: 101, name: 'Rohan Sharma', grade: '10', lastSubject: 'Science', lastChapter: 'Chemical Reactions and Equations',
+        currentStreak: 3, lastStreakDate: new Date(Date.now() - 86400000 * 3).toISOString().split('T')[0],
+        achievements: ['first_lesson', 'streak_3'], xp: 350, level: 2,
+      };
+      const demoParent: UserProfile = {
+        id: 201, name: 'Mr. Sharma', grade: '', lastSubject: '', lastChapter: '', childIds: [101],
+        currentStreak: 0, lastStreakDate: '', achievements: [], xp: 0, level: 1,
+      };
+      const demoTeacher: UserProfile = {
+        id: 301, name: 'Ms. Davis', grade: '', lastSubject: '', lastChapter: '', schoolRole: 'teacher',
+        currentStreak: 0, lastStreakDate: '', achievements: [], xp: 0, level: 1,
+      };
+       const demoPrincipal: UserProfile = {
+        id: 401, name: 'Mr. Singh', grade: '', lastSubject: '', lastChapter: '', schoolRole: 'principal',
+        currentStreak: 0, lastStreakDate: '', achievements: [], xp: 0, level: 1,
+      };
+      profiles = [demoStudent, demoParent, demoTeacher, demoPrincipal];
+      localStorage.setItem('userProfiles', JSON.stringify(profiles));
+      localStorage.setItem('teacherAssignments', JSON.stringify(initialTeacherAssignments));
+  }
+
+
   const todayStr = new Date().toISOString().split('T')[0];
 
   // Data integrity/migration check
   profiles = profiles.map(p => {
-    // Check and update daily challenge
-    if (!p.dailyChallenge || p.dailyChallenge.id !== todayStr) {
+    // Check and update daily challenge if it's a student profile
+    if (!p.schoolRole && !p.childIds && (!p.dailyChallenge || p.dailyChallenge.id !== todayStr)) {
         p.dailyChallenge = generateDailyChallenge(p.grade);
     }
     return {
@@ -147,7 +230,7 @@ export const fetchAllData = async (): Promise<{
     localStorage.setItem('activeUserId', JSON.stringify(activeId));
   }
 
-  return simulateNetwork({ profiles, activeId, progress, flashcards, userRole, allBktData, allAssignments, allAnnouncements, allSubmissions });
+  return simulateNetwork({ profiles, activeId, progress, flashcards, userRole, allBktData, allAssignments, allAnnouncements, allSubmissions, allFlnProgress, teacherSchedules, teacherAssignments, attendanceRecords, quickFormativeAssessments, allNotifications, itemBank, busRoutes, printQuotas, feeStatus, afterSchoolPrograms, facilityBookings, boardPlannerEvents, crossCurricularProjects, codingModules, communicationTemplates });
 };
 
 /**
@@ -262,6 +345,15 @@ export const saveAllFlashcards = async (flashcards: AllFlashcardsData): Promise<
 };
 
 /**
+ * Saves all FLN progress data.
+ */
+export const saveAllFlnProgress = async (progress: StudentFlnProgress): Promise<StudentFlnProgress> => {
+  console.log("API: Saving all FLN progress data...");
+  localStorage.setItem('allFlnProgress', JSON.stringify(progress));
+  return simulateNetwork(progress);
+};
+
+/**
  * Saves the entire assignments data object.
  */
 export const saveAllAssignments = async (assignments: Assignment[]): Promise<Assignment[]> => {
@@ -324,4 +416,81 @@ export const saveUserRole = async (role: UserRole | null): Promise<UserRole | nu
         localStorage.removeItem('userRole');
     }
     return simulateNetwork(role);
+};
+
+// --- CLASSROOM CORE ---
+
+export const saveAttendanceRecords = async (records: AttendanceRecord): Promise<AttendanceRecord> => {
+    console.log("API: Saving attendance records...");
+    localStorage.setItem('attendanceRecords', JSON.stringify(records));
+    return simulateNetwork(records);
+};
+
+export const saveQuickFormativeAssessments = async (assessments: QuickFormativeAssessment[]): Promise<QuickFormativeAssessment[]> => {
+    console.log("API: Saving quick formative assessments...");
+    localStorage.setItem('quickFormativeAssessments', JSON.stringify(assessments));
+    return simulateNetwork(assessments);
+};
+
+export const saveTeacherSchedules = async (schedules: TeacherSchedule[]): Promise<TeacherSchedule[]> => {
+    console.log("API: Saving teacher schedules...");
+    localStorage.setItem('teacherSchedules', JSON.stringify(schedules));
+    return simulateNetwork(schedules);
+};
+
+// --- EXAM SUITE ---
+export const saveItemBank = async (itemBank: QuestionPoolItem[]): Promise<QuestionPoolItem[]> => {
+    console.log("API: Saving item bank...");
+    localStorage.setItem('itemBank', JSON.stringify(itemBank));
+    return simulateNetwork(itemBank);
+};
+
+// --- NOTIFICATIONS ---
+export const saveAllNotifications = async (notifications: Notification[]): Promise<Notification[]> => {
+    console.log("API: Saving all notifications...");
+    localStorage.setItem('allNotifications', JSON.stringify(notifications));
+    return simulateNetwork(notifications);
+};
+
+// --- FINANCE & OPS ---
+export const saveAllBusRoutes = async (routes: BusRoute[]): Promise<BusRoute[]> => {
+    console.log("API: Saving bus routes...");
+    localStorage.setItem('busRoutes', JSON.stringify(routes));
+    return simulateNetwork(routes);
+};
+export const saveAllPrintQuotas = async (quotas: PrintQuota[]): Promise<PrintQuota[]> => {
+    console.log("API: Saving print quotas...");
+    localStorage.setItem('printQuotas', JSON.stringify(quotas));
+    return simulateNetwork(quotas);
+};
+export const saveAllFeeStatus = async (statuses: FeeStatus[]): Promise<FeeStatus[]> => {
+    console.log("API: Saving fee statuses...");
+    localStorage.setItem('feeStatus', JSON.stringify(statuses));
+    return simulateNetwork(statuses);
+};
+
+// --- GROWTH ---
+export const saveAllAfterSchoolPrograms = async (programs: AfterSchoolProgram[]): Promise<AfterSchoolProgram[]> => {
+    console.log("API: Saving after school programs...");
+    localStorage.setItem('afterSchoolPrograms', JSON.stringify(programs));
+    return simulateNetwork(programs);
+};
+export const saveAllFacilityBookings = async (bookings: FacilityBooking[]): Promise<FacilityBooking[]> => {
+    console.log("API: Saving facility bookings...");
+    localStorage.setItem('facilityBookings', JSON.stringify(bookings));
+    return simulateNetwork(bookings);
+};
+
+// --- BOARD PLANNER ---
+export const saveAllBoardPlannerEvents = async (events: BoardPlannerEvent[]): Promise<BoardPlannerEvent[]> => {
+    console.log("API: Saving board planner events...");
+    localStorage.setItem('boardPlannerEvents', JSON.stringify(events));
+    return simulateNetwork(events);
+};
+
+// --- AI & CODING ---
+export const saveAllCrossCurricularProjects = async (projects: CrossCurricularProject[]): Promise<CrossCurricularProject[]> => {
+    console.log("API: Saving cross-curricular projects...");
+    localStorage.setItem('crossCurricularProjects', JSON.stringify(projects));
+    return simulateNetwork(projects);
 };

@@ -10,7 +10,8 @@ import {
     TargetIcon,
     LightbulbIcon,
     CalendarDaysIcon,
-    WandIcon
+    WandIcon,
+    BellIcon
 } from '../constants/icons';
 
 const IconComponent: React.FC<{ iconName: ParentalReport['actionableTips'][0]['icon'], className?: string }> = ({ iconName, className }) => {
@@ -25,13 +26,17 @@ const IconComponent: React.FC<{ iconName: ParentalReport['actionableTips'][0]['i
 
 
 const ParentDashboard: React.FC = () => {
-    const { activeProfile, allProgressData } = useAuth();
+    const { activeProfile, allProgressData, allNotifications } = useAuth();
     const [report, setReport] = useState<ParentalReport | null>(null);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
     const progressData = activeProfile ? allProgressData[activeProfile.id] || {} : {};
     const lessonsCompleted = Object.values(progressData).filter((p: ChapterProgress) => p.status === 'completed').length;
+    
+    const notificationsForStudent = activeProfile 
+        ? allNotifications.filter(n => n.userId === activeProfile.id)
+        : [];
 
     useEffect(() => {
         const fetchReport = async () => {
@@ -155,6 +160,25 @@ const ParentDashboard: React.FC = () => {
                 <h1 className="text-3xl font-extrabold text-slate-800">Parent Dashboard</h1>
                 <h2 className="text-xl font-semibold text-[var(--brand-primary)]">Viewing Progress for {studentName}</h2>
             </div>
+            
+            {/* Notifications Section */}
+            {notificationsForStudent.length > 0 && (
+                 <div className="bg-white p-5 rounded-xl shadow-sm border border-[var(--border-color)]">
+                     <h3 className="text-lg font-bold text-slate-800 mb-3 flex items-center gap-2">
+                         <BellIcon className="w-6 h-6 text-amber-500" />
+                         Important Notifications
+                     </h3>
+                     <div className="space-y-3">
+                         {notificationsForStudent.slice(0, 3).map(notif => (
+                             <div key={notif.id} className="p-3 bg-amber-50 border-l-4 border-amber-400 rounded-r-lg">
+                                 <h4 className="font-bold text-amber-800">{notif.title}</h4>
+                                 <p className="text-sm text-slate-600 mt-1">{notif.message}</p>
+                                 <p className="text-xs text-slate-400 mt-2 text-right">{new Date(notif.date).toLocaleString()}</p>
+                             </div>
+                         ))}
+                     </div>
+                 </div>
+            )}
             
             {renderReport()}
 

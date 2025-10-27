@@ -6,9 +6,10 @@ interface QuickCheckStepProps {
   content: QuickCheck;
   stepAnswer?: { answer: string | null; isCorrect: boolean };
   onStepAnswer: (answer: string | null, isCorrect: boolean) => void;
+  isGeneratingRemediation?: boolean;
 }
 
-const QuickCheckStep: React.FC<QuickCheckStepProps> = ({ content, stepAnswer, onStepAnswer }) => {
+const QuickCheckStep: React.FC<QuickCheckStepProps> = ({ content, stepAnswer, onStepAnswer, isGeneratingRemediation }) => {
   const isAnswered = !!stepAnswer;
   const selectedOption = stepAnswer?.answer;
 
@@ -68,6 +69,11 @@ const QuickCheckStep: React.FC<QuickCheckStepProps> = ({ content, stepAnswer, on
               <span>{isCorrect ? "Correct!" : "Not quite."}</span>
             </div>
             <p className="mt-1">{content.explanation}</p>
+        </div>
+      )}
+      {isAnswered && !isCorrect && isGeneratingRemediation && (
+        <div className="mt-2 text-sm text-indigo-600 font-semibold animate-pulse">
+            Generating a quick review to help with this concept...
         </div>
       )}
     </div>

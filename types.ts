@@ -115,6 +115,7 @@ export interface VideoQuestion {
   options: string[];
   correct_answer: string;
   feedback_correct: string;
+
   feedback_incorrect: string;
   branch_on_incorrect?: number; // timestamp to jump to on incorrect answer
 }
@@ -139,6 +140,14 @@ export interface StudentExplanation {
   interactive_videos?: InteractiveVideo[];
 }
 
+export interface SubQuestion {
+    q_id: string;
+    question: string;
+    marks: number;
+    answer: string;
+    rubric: string;
+}
+
 export interface QuestionPoolItem {
   q_id: string;
   type: 'MCQ' | 'SA' | 'LA' | 'Case' | 'Competency';
@@ -150,6 +159,13 @@ export interface QuestionPoolItem {
   answer: string;
   rubric: string;
   tags?: string[];
+  // NEW FIELDS for CBE
+  competency?: string; // e.g., 'Knowledge and Understanding', 'Application'
+  dok?: 1 | 2 | 3 | 4; // Depth of Knowledge Level
+  source_passage?: string; // For Case-based questions
+  sub_questions?: SubQuestion[]; // For Case-based questions
+  distractor_rationale?: string; // For MCQ distractor analysis
+  status?: 'pending' | 'approved'; // For assessment review queue
 }
 
 export interface AssessmentBlueprint {
@@ -368,6 +384,12 @@ export interface FineTuningDataPoint {
 
 
 // --- SCHOOL DASHBOARD TYPES ---
+export interface TeacherAssignment {
+  teacherId: number;
+  grade: string;
+  subject: string;
+}
+
 export interface ClassAnalyticsData {
   grade: string;
   subjectMastery: { subject: string; mastery: number }[];
@@ -385,6 +407,7 @@ export interface Assignment {
   assignedStudentIds?: number[];
   assignmentType: 'chapters' | 'quiz';
   quizQuestions?: QuestionPoolItem[];
+  isCatchUp?: boolean;
 }
 
 export interface ReportCardData {
@@ -418,6 +441,230 @@ export interface StudentSubmission {
     answers: StudentSubmissionAnswer[];
     status: 'submitted' | 'graded';
     score?: number; // Set by teacher during grading
+}
+
+// --- EXAM SUITE TYPES ---
+export interface BlueprintSection {
+    id: string;
+    name: string;
+    questionType: 'MCQ' | 'SA' | 'LA' | 'Case';
+    questions: number;
+    marksPerQuestion: number;
+}
+
+export interface PaperBlueprint {
+    id: string;
+    name: string;
+    grade: string;
+    subject: string;
+    totalMarks: number;
+    competencyWeightage: number; // Percentage (e.g., 50)
+    sections: BlueprintSection[];
+}
+
+export interface GeneratedPaper {
+    blueprint: PaperBlueprint;
+    questions: QuestionPoolItem[];
+    analytics: {
+        competencyCoverage: { [key: string]: number };
+        dokDistribution: { [key: number]: number };
+        actualCompetencyPercentage: number;
+    };
+}
+
+// --- DIAGNOSTICS & FLN TYPES ---
+export interface SafalDiagnosticResult {
+    studentId: number;
+    studentName: string;
+    competencies: { [competency: string]: 'high' | 'medium' | 'low' };
+}
+
+export interface RemediationGroup {
+    competency: string;
+    students: string[]; // array of student names
+    suggestedTask: string;
+}
+
+export interface FlnMilestone {
+    id: string;
+    category: 'Literacy' | 'Numeracy';
+    skill: string;
+}
+
+export interface StudentFlnProgress {
+    [studentId: number]: {
+        [milestoneId: string]: 'not_started' | 'emerging' | 'achieved';
+    };
+}
+
+// --- AI & CODING MODULES ---
+export interface ModuleLesson {
+    type: 'Activity' | 'Theory';
+    title: string;
+    duration: string; // e.g., "90 mins"
+}
+
+export interface CodingModule {
+    id: string;
+    title: string;
+    description: string;
+    targetGrades: string;
+    lessonPlan: ModuleLesson[];
+}
+
+export interface StudentPortfolioProject {
+    studentId: number;
+    studentName: string;
+    projectTitle: string;
+    status: 'Completed' | 'In Progress';
+    submissionUrl: string; // link to a mock project
+}
+
+export interface CrossCurricularProject {
+    id: string;
+    title: string;
+    subject: string;
+    grade: string;
+    description: string;
+    objectives: string[];
+    tasks: string[];
+    evidence: string; // Storing teacher's notes on evidence
+}
+
+// --- BOARD PLANNER TYPES ---
+export type BoardPlannerEventIcon = 'CalendarDaysIcon' | 'ClipboardCheckIcon' | 'RefreshCwIcon' | 'AwardIcon';
+
+export interface BoardPlannerEvent {
+    id: string;
+    title: string;
+    description: string;
+    date: string; // e.g., "April 1, 2025" or "Late Sep"
+    icon: BoardPlannerEventIcon;
+    color: 'blue' | 'yellow' | 'green' | 'red';
+}
+
+export interface CommunicationTemplate {
+    id: string;
+    title: string;
+    audience: 'Parents' | 'Students';
+    content: string;
+}
+
+// --- CLASSROOM CORE TYPES ---
+export interface TeacherSchedule {
+    id: string;
+    period: number;
+    time: string; // e.g., "09:00 - 09:40"
+    grade: string;
+    subject: string;
+    topic: string;
+    chapterId: string;
+    isTaught?: boolean;
+    notes?: string; // For digital logbook
+}
+
+export interface AttendanceRecord {
+    [scheduleId: string]: { // key is the schedule id for the class period
+        [studentId: number]: 'present' | 'absent';
+    }
+}
+
+export interface QuickFormativeAssessment {
+    id: string;
+    title: string;
+    grade: string;
+    scheduleId: string; // which class period it's for
+    questions: { text: string; answer: string }[];
+    status: 'active' | 'completed';
+    createdAt: string; // ISO date string
+}
+
+export interface QfaResult {
+    assessmentId: string;
+    studentId: number;
+    studentName: string;
+    answers: string[]; // array of answers, index corresponds to question index
+    submittedAt: string; // ISO date string
+}
+
+// --- FINANCE & OPS TYPES ---
+export interface BusRoute {
+    id: string;
+    routeName: string;
+    status: 'On Time' | 'Delayed' | 'Idle';
+    occupancy: number; // percentage
+    eta: string; // e.g., "15 mins"
+}
+
+export interface EnergyDataPoint {
+    day: string;
+    consumption: number; // in kWh
+    solarGeneration: number; // in kWh
+}
+
+export interface PrintQuota {
+    id: string;
+    staffName: string;
+    quota: number; // e.g., 500 pages
+    used: number;
+}
+
+export interface FeeStatus {
+    id: string;
+    studentId: number;
+    studentName: string;
+    grade: string;
+    status: 'Paid' | 'Overdue' | 'Partially Paid';
+    amountDue: number;
+}
+
+// --- GROWTH TYPES ---
+export interface AfterSchoolProgram {
+    id: string;
+    title: string;
+    instructor: string;
+    enrollment: number;
+    capacity: number;
+}
+
+export interface FacilityBooking {
+    id: string;
+    facility: 'Auditorium' | 'Sports Ground' | 'Computer Lab';
+    bookedBy: string;
+    date: string; // YYYY-MM-DD
+    startTime: string; // HH:MM
+    endTime: string; // HH:MM
+    purpose: string;
+}
+
+// --- INTEGRATION TYPES ---
+export interface Notification {
+    id: string;
+    userId: number;
+    title: string;
+    message: string;
+    date: string; // ISO String
+    isRead: boolean;
+}
+
+// LTI 1.3 Context
+export interface LtiContext {
+    isLtiLaunch: true;
+    user: {
+        id: string;
+        name: string;
+        roles: string[];
+    };
+    course: {
+        id: string;
+        title: string;
+    };
+    ags: {
+        lineitem: string; // URL for grade passback
+    };
+    linkedResource: {
+        chapterId: string;
+    };
 }
 
 
@@ -498,6 +745,9 @@ export interface UserProfile {
   xp: number;
   level: number;
   dailyChallenge?: DailyChallenge;
+  // RBAC fields
+  schoolRole?: 'principal' | 'teacher';
+  childIds?: number[];
 }
 
 // --- GAMIFICATION TYPES ---

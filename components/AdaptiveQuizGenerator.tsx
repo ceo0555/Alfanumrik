@@ -6,7 +6,7 @@ import { curriculum } from '../constants/curriculum';
 import { generateAdaptiveQuestion } from '../services/geminiService';
 import { ClipboardCheckIcon, ThumbsUpIcon, ThumbsDownIcon } from '../constants/icons';
 
-const QUIZ_LENGTH = 5;
+const MAX_QUESTIONS = 10; // Failsafe to prevent infinitely long quizzes
 
 const DifficultyBadge: React.FC<{ difficulty: 'E' | 'M' | 'H' }> = ({ difficulty }) => {
   const baseClasses = "px-2 py-0.5 text-xs font-semibold rounded-full";
@@ -107,12 +107,35 @@ const AdaptiveQuizGenerator: React.FC = () => {
 
         setHistory(prev => [...prev, { ...currentQuestion, userAnswer, isCorrect }]);
 
-        // Refined adaptive logic to determine next difficulty
+        // Adaptive logic to determine next difficulty.
+        // This logic ensures the quiz gets easier on a wrong answer and harder on a right answer (up to 'Hard').
         let newNextDifficulty: 'E' | 'M' | 'H';
         if (isCorrect) {
-            newNextDifficulty = currentQuestion.difficulty === 'E' ? 'M' : 'H';
+            // Correct answer: Increase difficulty
+            switch (currentQuestion.difficulty) {
+                case 'E':
+                    newNextDifficulty = 'M';
+                    break;
+                case 'M':
+                    newNextDifficulty = 'H';
+                    break;
+                case 'H':
+                    newNextDifficulty = 'H'; // Stay at Hard, as it's the highest level
+                    break;
+            }
         } else {
-            newNextDifficulty = currentQuestion.difficulty === 'H' ? 'M' : 'E';
+            // Incorrect answer: Decrease difficulty
+            switch (currentQuestion.difficulty) {
+                case 'H':
+                    newNextDifficulty = 'M';
+                    break;
+                case 'M':
+                    newNextDifficulty = 'E';
+                    break;
+                case 'E':
+                    newNextDifficulty = 'E'; // Stay at Easy, as it's the lowest level
+                    break;
+            }
         }
         setNextDifficulty(newNextDifficulty);
     };
@@ -124,7 +147,10 @@ const AdaptiveQuizGenerator: React.FC = () => {
         setShortAnswerText('');
         setFeedback(null);
 
-        if (questionNumber >= QUIZ_LENGTH) {
+        const lastAnswered = history[history.length - 1];
+        const masteryAchieved = lastAnswered.isCorrect && lastAnswered.difficulty === 'H';
+
+        if (masteryAchieved || questionNumber >= MAX_QUESTIONS) {
             setQuizState('results');
         } else {
             fetchNextQuestion(nextDifficulty);
@@ -181,14 +207,18 @@ const AdaptiveQuizGenerator: React.FC = () => {
     }
 
     if (quizState === 'active') {
+        const lastAnswered = history.length > 0 ? history[history.length - 1] : null;
+        const isMasteryAchieved = lastAnswered ? lastAnswered.isCorrect && lastAnswered.difficulty === 'H' : false;
+        const shouldEndQuiz = isMasteryAchieved || questionNumber >= MAX_QUESTIONS;
+
         return (
             <div className="max-w-2xl mx-auto">
                 <div className="flex justify-between items-center mb-4">
                     <h3 className="text-xl font-bold text-slate-800">{selectedChapter} Quiz</h3>
                     <div>
-                        <span className="font-semibold">Score: {score} / {questionNumber > 0 ? history.length : 0}</span>
+                        <span className="font-semibold">Score: {score} / {history.length}</span>
                         <span className="mx-2 text-slate-300">|</span>
-                        <span className="font-semibold">Question: {questionNumber} / {QUIZ_LENGTH}</span>
+                        <span className="font-semibold">Question: {questionNumber}</span>
                     </div>
                 </div>
                 {isLoading && <div className="text-center p-8"><div className="w-12 h-12 border-4 border-dashed rounded-full animate-spin border-[var(--brand-primary)] mx-auto"></div><p className="mt-4 text-slate-500">Generating Question...</p></div>}
@@ -242,7 +272,7 @@ const AdaptiveQuizGenerator: React.FC = () => {
                         {isAnswered ? (
                             <div className="mt-6 text-right">
                                 <button onClick={handleNext} className="btn btn-primary">
-                                    {questionNumber < QUIZ_LENGTH ? 'Next Question' : 'Show Results'}
+                                    {shouldEndQuiz ? 'Show Results' : 'Next Question'}
                                 </button>
                             </div>
                         ) : (
@@ -278,7 +308,7 @@ const AdaptiveQuizGenerator: React.FC = () => {
             <div className="max-w-3xl mx-auto text-center">
                 <h3 className="text-3xl font-bold text-slate-800">Quiz Complete!</h3>
                 <p className="text-lg text-slate-500 mt-2">Your Final Score</p>
-                <div className="my-6 text-6xl font-extrabold text-[var(--brand-primary)]">{score} / {QUIZ_LENGTH}</div>
+                <div className="my-6 text-6xl font-extrabold text-[var(--brand-primary)]">{score} / {history.length}</div>
                 <div className="space-y-4 text-left">
                     <h4 className="text-xl font-bold">Review Your Answers</h4>
                     {history.map((item, index) => (

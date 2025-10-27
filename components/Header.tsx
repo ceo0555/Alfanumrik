@@ -17,23 +17,29 @@ const Header: React.FC<HeaderProps> = ({ showBackButton, onBack, title, onOpenUs
 
   return (
     <header className="flex-shrink-0 bg-[var(--bg-app)] md:bg-white border-b border-[var(--border-color)] z-10">
-      <div className="flex items-center justify-between h-16 px-4 md:px-6">
-        <div className="flex items-center space-x-3">
-          {showBackButton && (
-            <button onClick={onBack} className="p-2 -ml-2 rounded-full hover:bg-slate-200 transition-colors md:hidden">
-              <ArrowLeftIcon className="w-6 h-6 text-slate-600" />
-            </button>
-          )}
-          <h1 className="text-lg font-bold text-slate-800 truncate">{title}</h1>
-        </div>
+      <div className="flex items-center h-16 px-4 md:px-6 gap-2">
+        {showBackButton && (
+          <button
+            onClick={onBack}
+            className="p-2 rounded-full hover:bg-slate-200 transition-colors md:hidden"
+            aria-label="Go back"
+          >
+            <ArrowLeftIcon className="w-6 h-6 text-slate-600" />
+          </button>
+        )}
+
+        <h1 className="flex-1 text-xl font-bold text-slate-800 truncate">
+          {title}
+        </h1>
+
         <div className="flex items-center">
             {activeProfile && (
               <>
                 {userRole === 'student' ? (
                   <button 
                       onClick={onOpenUserModal}
-                      className="h-9 w-9 rounded-full bg-[var(--brand-primary)] text-white flex items-center justify-center font-bold text-lg ring-2 ring-offset-1 ring-indigo-200 hover:bg-[var(--brand-primary-hover)] transition-all transform hover:scale-105"
-                      aria-label="Switch user profile"
+                      className="h-10 w-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 text-white flex items-center justify-center font-bold text-lg ring-2 ring-offset-2 ring-indigo-200 shadow-md transition-transform transform hover:scale-110"
+                      aria-label={`Switch from ${activeProfile.name} profile`}
                   >
                       {activeProfile.name.charAt(0).toUpperCase()}
                   </button>

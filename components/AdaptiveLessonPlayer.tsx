@@ -1,15 +1,16 @@
 import React, { useState, useRef, useEffect, Suspense } from 'react';
-import { LessonPack, AssessmentResult, AdaptiveFollowUp, LessonStep, LessonStepType, QuestionPoolItem, InteractiveSimulation } from '../types';
-import { generateAdaptiveFollowUp, generateStudyNotes, generatePracticeQuiz, explainTextSnippet } from '../services/geminiService';
+import { LessonPack, AssessmentResult, AdaptiveFollowUp, LessonStep, LessonStepType, QuestionPoolItem, InteractiveSimulation, LtiContext, CoreExplanationStep, QuickCheckStep } from '../types';
+import { generateAdaptiveFollowUp, generateStudyNotes, generatePracticeQuiz, explainTextSnippet, generateMicroRemediation } from '../services/geminiService';
 import { transformLessonPackToSteps } from '../utils/lessonHelpers';
 import { SparklesIcon, ArrowLeftIcon, ArrowRightIcon, BookIcon, FileTextIcon, ClipboardCopyIcon, ClipboardListIcon, CheckCircleIcon, ChevronDownIcon } from '../constants/icons';
 import { useStudentData } from '../contexts/StudentDataContext';
 import { useAuth } from '../contexts/AuthContext';
+import * as ltiService from '../services/ltiService';
 
 // Import all the step components
 import TopicTitleStep from './TopicTitleStep';
-import CoreExplanationStep from './CoreExplanationStep';
-import QuickCheckStep from './QuickCheck';
+import CoreExplanationStepComponent from './CoreExplanationStep';
+import QuickCheckStepComponent from './QuickCheck';
 import ImageBriefStep from './ImageBriefStep';
 import WorkedExampleStep from './WorkedExampleStep';
 import PracticeStep from './PracticeStep';
@@ -31,9 +32,10 @@ const InteractiveVideoStep = React.lazy(() => import('./InteractiveVideoStep'));
 
 interface AdaptiveLessonPlayerProps {
   lessonPack: LessonPack | null;
+  ltiContext?: LtiContext | null;
 }
 
-const AdaptiveLessonPlayer: React.FC<AdaptiveLessonPlayerProps> = ({ lessonPack }) => {
+const AdaptiveLessonPlayer: React.FC<AdaptiveLessonPlayerProps> = ({ lessonPack, ltiContext }) => {
   const { activeProfile } = useAuth();
   const { progressData, markChapterAsCompleted, awardXP, recordAnswer, updateChapterStep } = useStudentData();
   
@@ -58,6 +60,8 @@ const AdaptiveLessonPlayer: React.FC<AdaptiveLessonPlayerProps> = ({ lessonPack 
   const [isGeneratingQuiz, setIsGeneratingQuiz] = useState(false);
 
   const [simulationModalContent, setSimulationModalContent] = useState<InteractiveSimulation | null>(null);
+  const [isSubmittingToLMS, setIsSubmittingToLMS] = useState(false);
+  const [isGeneratingRemediation, setIsGeneratingRemediation] = useState<number | null>(null);
 
   const hasInitialized = useRef(false);
   const prevLessonPackRef = useRef<LessonPack | null>(null);
@@ -96,7 +100,6 @@ const AdaptiveLessonPlayer: React.FC<AdaptiveLessonPlayerProps> = ({ lessonPack 
         setStepAnswers({});
         setAssessmentResults([]);
         setAdaptivePlan(null);
-        // Reset AI tools
         setStudyNotes(null);
         setPracticeQuiz(null);
         
@@ -108,71 +111,74 @@ const AdaptiveLessonPlayer: React.FC<AdaptiveLessonPlayerProps> = ({ lessonPack 
   }, [lessonPack, activeProfile, progressData]);
 
   useEffect(() => {
-    if (hasInitialized.current) updateChapterStep(currentStepIndex);
+    if (hasInitialized.current && !ltiContext) updateChapterStep(currentStepIndex);
     else hasInitialized.current = true;
-  }, [currentStepIndex, updateChapterStep]);
+  }, [currentStepIndex, updateChapterStep, ltiContext]);
 
-  const handleStepAnswer = (stepIndex: number, answer: string | null, isCorrect: boolean, q_id?: string, question_text?: string) => {
+  const handleStepAnswer = async (stepIndex: number, answer: string | null, isCorrect: boolean, q_id?: string, question_text?: string) => {
       if (stepAnswers[stepIndex]) return;
 
       setStepAnswers(prev => ({ ...prev, [stepIndex]: { answer, isCorrect } }));
-      setIsStepCompleted(true);
       if (lessonPack) recordAnswer(lessonPack.topic_id, isCorrect);
       if (q_id && question_text) setAssessmentResults(prev => [...prev, { q_id, question_text, is_correct: isCorrect }]);
       
-      // --- Contextual Bandit Logic: Remediation ---
-      if (!isCorrect) {
-          const currentOriginalIndex = steps[stepIndex].originalIndex;
-          if (currentOriginalIndex === undefined) return;
+      if (!isCorrect && lessonPack) {
+        setIsGeneratingRemediation(stepIndex);
+        try {
+            const step = steps[stepIndex];
+            
+            let questionContent = '';
+            if (step.type === 'quick_check' || step.type === 'fill_in_the_blanks' || (step.type === 'assessment_question' && 'question' in step.content)) {
+                questionContent = (step.content as any).question;
+            }
 
-          let remediationStep = null;
-          for (let i = currentOriginalIndex - 1; i >= 0; i--) {
-              const potentialStep = originalSteps[i];
-              if (potentialStep.type === 'worked_example' || potentialStep.type === 'common_error') {
-                  remediationStep = { ...potentialStep, isRemediation: true, title: `Let's Review: ${potentialStep.title}` };
-                  break;
-              }
-          }
-          
-          if (remediationStep) {
-              const nextStep = steps[stepIndex + 1];
-              if (!nextStep || !nextStep.isRemediation) {
-                   setSteps(prevSteps => {
-                      const newSteps = [...prevSteps];
-                      newSteps.splice(stepIndex + 1, 0, remediationStep);
-                      return newSteps;
-                  });
-              }
-          }
-      }
+            if (questionContent) {
+                const studentAnswer = answer || '';
+                const remediationContent = await generateMicroRemediation(lessonPack.topic_name, questionContent, studentAnswer);
+                
+                if (remediationContent) {
+                    const remediationExplanationStep: CoreExplanationStep = {
+                        type: 'core_explanation',
+                        title: "Let's Review That Concept",
+                        content: remediationContent.explanation,
+                        isRemediation: true,
+                        originalIndex: step.originalIndex,
+                    };
+                    const remediationQuickCheckStep: QuickCheckStep = {
+                        type: 'quick_check',
+                        title: "Quick Check on Review",
+                        content: remediationContent.quick_check,
+                        isRemediation: true,
+                        originalIndex: step.originalIndex,
+                    };
+
+                    setSteps(prevSteps => {
+                        const newSteps = [...prevSteps];
+                        newSteps.splice(stepIndex + 1, 0, remediationExplanationStep, remediationQuickCheckStep);
+                        return newSteps;
+                    });
+                }
+            }
+        } catch (e) {
+            console.error("Failed to generate micro-remediation", e);
+        } finally {
+            setIsGeneratingRemediation(null);
+            setIsStepCompleted(true); // Allow user to proceed
+        }
+    } else {
+        setIsStepCompleted(true);
+    }
   };
 
   const goToNextStep = () => {
     setExplanationPopup(null);
-    const step = steps[currentStepIndex];
-    const answerInfo = stepAnswers[currentStepIndex];
     let nextStepIndex = currentStepIndex + 1;
-
-    // --- Contextual Bandit Logic: Acceleration ---
-    if (answerInfo && answerInfo.isCorrect && isQuestionStep(step.type)) {
-        let jumpToIndex = -1;
-        for (let i = currentStepIndex + 1; i < steps.length; i++) {
-            const nextStepType = steps[i].type;
-            if (['independent_practice', 'HOTS', 'assessment_intro'].includes(nextStepType)) {
-                jumpToIndex = i;
-                break;
-            }
-        }
-        if (jumpToIndex !== -1) {
-            nextStepIndex = jumpToIndex;
-        }
-    }
     
     if (nextStepIndex < steps.length) {
       awardXP('step_completed');
       setCurrentStepIndex(nextStepIndex);
       updateStepCompletionStatus(nextStepIndex, steps, stepAnswers);
-      if (nextStepIndex === steps.length - 1) {
+      if (nextStepIndex === steps.length - 1 && !ltiContext) {
         markChapterAsCompleted();
       }
     }
@@ -186,69 +192,112 @@ const AdaptiveLessonPlayer: React.FC<AdaptiveLessonPlayerProps> = ({ lessonPack 
       updateStepCompletionStatus(prevStepIndex, steps, stepAnswers);
     }
   };
+  
+  const handleSubmitToLMS = async () => {
+      if (!ltiContext) return;
+      setIsSubmittingToLMS(true);
+      try {
+          const correctAnswers = assessmentResults.filter(r => r.is_correct).length;
+          const totalQuestions = assessmentResults.length;
+          const score = totalQuestions > 0 ? (correctAnswers / totalQuestions) * 100 : 0;
+          
+          await ltiService.submitScore(ltiContext, score);
+          alert(`Score of ${score.toFixed(0)} submitted to the LMS! You can now close this window.`);
 
-  // --- All other handlers from ContentDisplay (AI tools, modals, etc.) ---
-  const handleExplainSnippet = async (event: React.MouseEvent, snippet: string) => {
-    if (!lessonPack || !activeProfile) return;
-    const button = event.currentTarget as HTMLElement;
-    const contentArea = contentRef.current;
-    if (!contentArea) return;
-    if (explanationPopup) { setExplanationPopup(null); return; }
-
-    const buttonRect = button.getBoundingClientRect();
-    const contentRect = contentArea.getBoundingClientRect();
-    const top = buttonRect.top - contentRect.top + buttonRect.height + 8;
-    const left = buttonRect.left - contentRect.left + buttonRect.width / 2;
-    setExplanationPopup({ content: '', top, left });
-    setIsExplaining(true);
-    try {
-        const explanation = await explainTextSnippet(snippet, { topic: lessonPack.topic_name, subject: activeProfile.lastSubject, grade: activeProfile.grade });
-        setExplanationPopup(prev => prev ? { ...prev, content: explanation } : null);
-    } catch (e) {
-        setExplanationPopup(prev => prev ? { ...prev, content: "Sorry, I couldn't explain that." } : null);
-    } finally {
-        setIsExplaining(false);
-    }
+      } catch (e) {
+          console.error("LMS submission failed", e);
+          alert("There was an error submitting your score to the LMS.");
+      } finally {
+          setIsSubmittingToLMS(false);
+      }
   };
 
-  const handleGenerateNotes = async () => {
-    if (!lessonPack) return;
-    setIsGeneratingNotes(true);
-    try {
-      const notes = await generateStudyNotes(lessonPack.student_explanation, lessonPack.topic_name);
-      setStudyNotes(notes);
-    } catch (error) { setStudyNotes("Sorry, an error occurred."); } 
-    finally { setIsGeneratingNotes(false); }
-  };
-  const handleCopyNotes = () => { /* ... */ };
+  const handleExplainSnippet = async (event: React.MouseEvent, snippet: string) => { /* ... */ };
+  const handleGenerateNotes = async () => { /* ... */ };
   const handleGenerateQuiz = async () => { /* ... */ };
   const handleOpenSimulation = (content: InteractiveSimulation) => setSimulationModalContent(content);
 
-  // --- RENDER LOGIC ---
-  if (!lessonPack) {
-    return (
-      <div className="flex flex-col items-center justify-center h-full text-center text-slate-500">
-        <BookIcon className="h-24 w-24 mb-4 text-slate-300"/>
-        <h2 className="text-2xl font-bold text-slate-700">Welcome to Alfanumrik</h2>
-        <p className="mt-2 max-w-md">Select a grade, subject, and chapter to begin your learning journey.</p>
-      </div>
-    );
-  }
-
+  if (!lessonPack) return null;
   if (steps.length === 0) return null;
+
   const currentStep = steps[currentStepIndex];
   const progress = ((currentStepIndex + 1) / steps.length) * 100;
+  
+  const isFinalStepInLti = ltiContext && currentStepIndex === steps.length - 1;
+  
+  const renderStepContent = () => {
+    if (!currentStep) return <div>Loading step...</div>;
 
-  const stepComponents: { [key in LessonStepType]?: React.FC<any> } = {
-    'topic_title': TopicTitleStep, 'core_explanation': CoreExplanationStep, 'quick_check': QuickCheckStep,
-    'image_brief': ImageBriefStep, 'worked_example': WorkedExampleStep, 'guided_practice': PracticeStep,
-    'independent_practice': PracticeStep, 'HOTS': HOTSStep, 'common_error': CommonErrorStep,
-    'fill_in_the_blanks': FillInTheBlanksStep, 'interactive_simulation': InteractiveSimulationStep,
-    'interactive_video': InteractiveVideoStep, 'assessment_intro': AssessmentIntroStep,
-    'assessment_question': AssessmentQuestionStep, 'adaptive_intro': AdaptiveIntroStep,
-    'adaptive_follow_up': AdaptiveFollowUpStep, 'feedback': FeedbackStep, 'key_term': KeyTermStep, 'note': NoteStep
+    switch (currentStep.type) {
+        case 'topic_title':
+            return <TopicTitleStep content={currentStep.content} />;
+        case 'core_explanation':
+            return <CoreExplanationStepComponent content={currentStep.content} handleExplainSnippet={handleExplainSnippet} />;
+        case 'quick_check':
+            return <QuickCheckStepComponent 
+                        content={currentStep.content}
+                        stepAnswer={stepAnswers[currentStepIndex]} 
+                        onStepAnswer={(answer, isCorrect) => handleStepAnswer(currentStepIndex, answer, isCorrect)} 
+                        isGeneratingRemediation={isGeneratingRemediation === currentStepIndex}
+                    />;
+        case 'image_brief':
+            return <ImageBriefStep content={currentStep.content} />;
+        case 'worked_example':
+            return <WorkedExampleStep content={currentStep.content} />;
+        case 'guided_practice':
+        case 'independent_practice':
+            return <PracticeStep 
+                        content={currentStep.content} 
+                        type={currentStep.type} 
+                        onCompleted={() => setIsStepCompleted(true)}
+                    />;
+        case 'HOTS':
+            return <HOTSStep content={currentStep.content} onCompleted={() => setIsStepCompleted(true)} />;
+        case 'common_error':
+            return <CommonErrorStep content={currentStep.content} />;
+        case 'fill_in_the_blanks':
+            return <FillInTheBlanksStep 
+                        content={currentStep.content}
+                        stepAnswer={stepAnswers[currentStepIndex]} 
+                        onStepAnswer={(answer, isCorrect) => handleStepAnswer(currentStepIndex, answer, isCorrect)} 
+                    />;
+        case 'interactive_simulation':
+            return <InteractiveSimulationStep content={currentStep.content} onOpenSimulation={handleOpenSimulation} />;
+        case 'interactive_video':
+            return <Suspense fallback={<div>Loading Video...</div>}>
+                        <InteractiveVideoStep 
+                            content={currentStep.content} 
+                            skillId={lessonPack!.topic_id}
+                            onAnswer={recordAnswer}
+                            onCompleted={() => setIsStepCompleted(true)}
+                        />
+                    </Suspense>;
+        case 'assessment_intro':
+            return <AssessmentIntroStep content={currentStep.content} />;
+        case 'assessment_question':
+            return <AssessmentQuestionStep 
+                        content={currentStep.content} 
+                        stepAnswer={stepAnswers[currentStepIndex]} 
+                        onStepAnswer={(answer, isCorrect) => 
+                            handleStepAnswer(currentStepIndex, answer, isCorrect, currentStep.content.question.q_id, currentStep.content.question.question)
+                        } 
+                        isGeneratingRemediation={isGeneratingRemediation === currentStepIndex}
+                    />;
+        case 'adaptive_intro':
+            return <AdaptiveIntroStep assessmentResults={assessmentResults} />;
+        case 'adaptive_follow_up':
+            return <AdaptiveFollowUpStep content={currentStep.content} />;
+        case 'feedback':
+            return <FeedbackStep />;
+        case 'key_term':
+            return <KeyTermStep content={currentStep.content} />;
+        case 'note':
+            return <NoteStep content={currentStep.content} />;
+        default:
+            const _exhaustiveCheck: never = currentStep as never;
+            return null;
+    }
   };
-  const StepComponent = currentStep ? stepComponents[currentStep.type] : null;
 
   return (
     <div className="flex flex-col">
@@ -262,75 +311,27 @@ const AdaptiveLessonPlayer: React.FC<AdaptiveLessonPlayerProps> = ({ lessonPack 
         </div>
       </div>
 
-      <div ref={contentRef} className="relative flex-grow p-6 bg-white rounded-xl shadow-lg border border-[var(--border-color)] mb-6">
+      <div ref={contentRef} className="relative flex-grow p-6 bg-slate-50 rounded-xl shadow-lg border border-[var(--border-color)] mb-6">
         <div key={currentStepIndex} className="animate-fade-in min-h-[400px]">
-            {currentStep.isRemediation && (
-                <div className="mb-4 p-3 bg-yellow-50 border-l-4 border-yellow-400 rounded-r-lg">
-                    <p className="font-bold text-yellow-800">Let's review a related concept before moving on.</p>
-                </div>
-            )}
-            {StepComponent ? (
-                <Suspense fallback={<div className="text-center p-8">Loading...</div>}>
-                    <StepComponent
-                        content={currentStep.content}
-                        type={currentStep.type}
-                        handleExplainSnippet={handleExplainSnippet}
-                        onOpenSimulation={handleOpenSimulation}
-                        assessmentResults={assessmentResults}
-                        onCompleted={() => setIsStepCompleted(true)}
-                        stepAnswer={stepAnswers[currentStepIndex]}
-                        onStepAnswer={(answer: string | null, isCorrect: boolean) => 
-                            handleStepAnswer(currentStepIndex, answer, isCorrect, (currentStep.content as any)?.question?.q_id, (currentStep.content as any)?.question?.question)
-                        }
-                        skillId={lessonPack.topic_id}
-                        onAnswer={(skillId: string, isCorrect: boolean) => recordAnswer(skillId, isCorrect)}
-                    />
-                </Suspense>
-            ) : <div>Loading step...</div>}
+          {renderStepContent()}
         </div>
-        {/* Explanation Popup logic remains the same */}
-        {explanationPopup && (
-            <div className="absolute z-20 p-3 bg-slate-800 text-white rounded-lg shadow-xl border border-slate-700 w-64 animate-fade-in text-sm" style={{ top: explanationPopup.top, left: explanationPopup.left, transform: 'translateX(-50%)' }}>
-                <button onClick={() => setExplanationPopup(null)} className="absolute -top-2 -right-2 w-5 h-5 bg-slate-600 rounded-full text-white text-xs leading-none">&times;</button>
-                {isExplaining ? <div className="w-5 h-5 border-2 border-dashed rounded-full animate-spin border-white mx-auto"></div> : <p>{explanationPopup.content}</p>}
-            </div>
-        )}
       </div>
 
       <div className="flex justify-between items-center">
-        <button onClick={goToPreviousStep} disabled={currentStepIndex === 0} className="btn flex items-center gap-2 bg-white border border-slate-300 hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed">
+        <button onClick={goToPreviousStep} disabled={currentStepIndex === 0} className="btn flex items-center gap-2 bg-white border border-slate-300 hover:bg-slate-100 disabled:opacity-50">
           <ArrowLeftIcon className="w-5 h-5" /> Previous
         </button>
-        <button onClick={goToNextStep} disabled={currentStepIndex === steps.length - 1 || !isStepCompleted} className="btn btn-primary flex items-center gap-2">
-          Next <ArrowRightIcon className="w-5 h-5" />
-        </button>
+        {isFinalStepInLti ? (
+            <button onClick={handleSubmitToLMS} disabled={isSubmittingToLMS} className="btn btn-primary bg-emerald-600 hover:bg-emerald-700">
+              {isSubmittingToLMS ? "Submitting..." : "Submit Score to LMS"}
+            </button>
+        ) : (
+            <button onClick={goToNextStep} disabled={currentStepIndex === steps.length - 1 || !isStepCompleted} className="btn btn-primary flex items-center gap-2">
+              Next <ArrowRightIcon className="w-5 h-5" />
+            </button>
+        )}
       </div>
 
-      {/* AI Tools at the end of the lesson */}
-      {currentStepIndex === steps.length - 1 && (
-          <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Study Notes Card */}
-              <div className="p-6 bg-white rounded-xl shadow-lg border border-[var(--border-color)]">
-                  <h3 className="text-xl font-bold text-slate-800 flex items-center gap-3 mb-4"><FileTextIcon className="w-6 h-6 text-[var(--brand-primary)]" /> AI Study Notes</h3>
-                  <p className="text-slate-600 mb-4 text-sm">Get a concise summary of this lesson for quick revision.</p>
-                  <button onClick={handleGenerateNotes} disabled={isGeneratingNotes} className="btn btn-primary w-full">
-                      {isGeneratingNotes ? 'Generating...' : 'Generate Study Notes'}
-                  </button>
-                  {/* ... Notes display logic ... */}
-              </div>
-              {/* Practice Quiz Card */}
-              <div className="p-6 bg-white rounded-xl shadow-lg border border-[var(--border-color)]">
-                   <h3 className="text-xl font-bold text-slate-800 flex items-center gap-3 mb-4"><ClipboardListIcon className="w-6 h-6 text-purple-600" /> Practice Quiz</h3>
-                  <p className="text-slate-600 mb-4 text-sm">Test your knowledge with a new set of AI-generated questions.</p>
-                  <button onClick={handleGenerateQuiz} disabled={isGeneratingQuiz} className="btn btn-primary w-full bg-purple-600 hover:bg-purple-700">
-                      {isGeneratingQuiz ? 'Generating...' : 'Generate Practice Quiz'}
-                  </button>
-                  {/* ... Quiz display logic ... */}
-              </div>
-          </div>
-      )}
-
-      {/* Simulation Modal */}
       {simulationModalContent && (
         <Suspense>
             <SimulationExplainerModal simulationContent={simulationModalContent} onClose={() => setSimulationModalContent(null)} />

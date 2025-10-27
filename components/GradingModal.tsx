@@ -1,8 +1,9 @@
 import React, { useState, useMemo } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { Assignment, StudentSubmission, StudentSubmissionAnswer } from '../types';
-import { XIcon, CheckCircleIcon } from '../constants/icons';
+import { XIcon, CheckCircleIcon, SparklesIcon } from '../constants/icons';
 import { logFineTuningData } from '../services/fineTuningDataService';
+import { gradeShortAnswer } from '../services/geminiService';
 
 interface GradingModalProps {
   isOpen: boolean;
@@ -15,6 +16,7 @@ const GradingModal: React.FC<GradingModalProps> = ({ isOpen, onClose, assignment
   const [selectedSubmission, setSelectedSubmission] = useState<StudentSubmission | null>(null);
   const [gradedAnswers, setGradedAnswers] = useState<StudentSubmissionAnswer[]>([]);
   const [isSaving, setIsSaving] = useState(false);
+  const [isAiGrading, setIsAiGrading] = useState<string | null>(null);
 
   const studentsInClass = useMemo(() => {
     return assignment.assignedStudentIds && assignment.assignedStudentIds.length > 0
@@ -24,7 +26,28 @@ const GradingModal: React.FC<GradingModalProps> = ({ isOpen, onClose, assignment
 
   const submissionsForAssignment = useMemo(() => {
     return allSubmissions.filter(s => s.assignmentId === assignment.id);
-  }, [allSubmissions, assignment]);
+  }, [allSubmissions, assignment.id]);
+  
+  // For Distractor Analysis
+  const mcqAnswerDistribution = useMemo(() => {
+    const distribution: { [q_id: string]: { [option: string]: number } } = {};
+    if (submissionsForAssignment.length === 0) return distribution;
+
+    assignment.quizQuestions?.forEach(q => {
+        if (q.type === 'MCQ' && q.options) {
+            distribution[q.q_id] = {};
+            q.options.forEach(opt => distribution[q.q_id][opt] = 0);
+
+            submissionsForAssignment.forEach(sub => {
+                const studentAnswer = sub.answers.find(a => a.q_id === q.q_id)?.answer;
+                if (studentAnswer && distribution[q.q_id][studentAnswer] !== undefined) {
+                    distribution[q.q_id][studentAnswer]++;
+                }
+            });
+        }
+    });
+    return distribution;
+  }, [submissionsForAssignment, assignment.quizQuestions]);
 
   if (!isOpen) return null;
 
@@ -46,6 +69,22 @@ const GradingModal: React.FC<GradingModalProps> = ({ isOpen, onClose, assignment
     setGradedAnswers(prev => prev.map(ans => 
         ans.q_id === q_id ? { ...ans, feedback } : ans
     ));
+  };
+
+  const handleAiGrade = async (q_id: string, question: string, rubric: string, studentAnswer: string) => {
+    setIsAiGrading(q_id);
+    try {
+        const result = await gradeShortAnswer(question, rubric, studentAnswer);
+        if (result) {
+            handleMarkShortAnswer(q_id, result.isCorrect);
+            handleFeedbackChange(q_id, result.feedback);
+        }
+    } catch (e) {
+        console.error("AI grading failed", e);
+        alert("AI grading failed. Please try again.");
+    } finally {
+        setIsAiGrading(null);
+    }
   };
 
   const handleSaveGrade = () => {
@@ -134,15 +173,32 @@ const GradingModal: React.FC<GradingModalProps> = ({ isOpen, onClose, assignment
                         <p className="p-2 bg-white rounded border font-mono text-sm">{answer.answer || '(No answer)'}</p>
 
                         {q.type === 'MCQ' && (
-                             <p className={`mt-2 text-sm font-bold ${isMcqCorrect ? 'text-emerald-600' : 'text-red-600'}`}>
-                                {isMcqCorrect ? 'Correct' : 'Incorrect'}. Correct answer: {q.answer}
-                             </p>
+                             <div className="mt-2 text-sm">
+                                 <p className={`font-bold ${isMcqCorrect ? 'text-emerald-600' : 'text-red-600'}`}>
+                                    {isMcqCorrect ? 'Correct' : 'Incorrect'}. Correct answer: {q.answer}
+                                 </p>
+                                 <div className="text-xs text-slate-500 mt-1 space-y-0.5">
+                                    {q.options?.map(opt => {
+                                        const count = mcqAnswerDistribution[q.q_id]?.[opt] || 0;
+                                        const percentage = submissionsForAssignment.length > 0 ? Math.round((count / submissionsForAssignment.length) * 100) : 0;
+                                        return <div key={opt} className="flex items-center gap-2">
+                                            <div className="w-20 truncate">{opt}</div>
+                                            <div className="w-full bg-slate-200 rounded-full h-2"><div className="bg-slate-400 h-2 rounded-full" style={{width: `${percentage}%`}}></div></div>
+                                            <div className="w-10 text-right">{percentage}%</div>
+                                        </div>
+                                    })}
+                                 </div>
+                             </div>
                         )}
 
                         {q.type === 'SA' && (
                             <div className="mt-2 flex gap-2">
                                 <button onClick={() => handleMarkShortAnswer(q.q_id, true)} className={`btn text-sm px-3 py-1 ${answer.isCorrect === true ? 'bg-emerald-500 text-white' : 'bg-white border'}`}>Correct</button>
                                 <button onClick={() => handleMarkShortAnswer(q.q_id, false)} className={`btn text-sm px-3 py-1 ${answer.isCorrect === false ? 'bg-red-500 text-white' : 'bg-white border'}`}>Incorrect</button>
+                                <button onClick={() => handleAiGrade(q.q_id, q.question, q.rubric, answer.answer)} disabled={isAiGrading === q.q_id} className="btn text-sm px-3 py-1 bg-indigo-100 text-indigo-700 hover:bg-indigo-200 flex items-center gap-1">
+                                    <SparklesIcon className="w-4 h-4" />
+                                    {isAiGrading === q.q_id ? 'Grading...' : 'AI Grade Assist'}
+                                </button>
                             </div>
                         )}
                         

@@ -1,6 +1,6 @@
 import React from 'react';
 import { UserRole } from '../types';
-import { UserIcon, UsersIcon, SchoolIcon } from '../constants/icons';
+import { UserIcon, UsersIcon, SchoolIcon, NetworkIcon } from '../constants/icons';
 
 interface RoleSelectionScreenProps {
   onSelectRole: (role: UserRole) => void;
@@ -28,7 +28,7 @@ const RoleSelectionScreen: React.FC<RoleSelectionScreenProps> = ({ onSelectRole 
       <h1 className="text-3xl sm:text-4xl font-extrabold text-slate-800">Welcome to Alfanumrik</h1>
       <p className="text-slate-500 mt-2 mb-8 md:mb-10 text-base sm:text-lg">Your personalized CBSE learning companion.</p>
 
-      <div className="w-full max-w-4xl grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8">
+      <div className="w-full max-w-4xl grid grid-cols-1 sm:grid-cols-3 gap-6 md:gap-8">
         <RoleCard
           role="student"
           label="Student"

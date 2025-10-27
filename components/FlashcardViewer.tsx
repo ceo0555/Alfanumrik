@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { LayersIcon, ArrowLeftIcon, ArrowRightIcon, ClipboardListIcon, CheckCircleIcon, XIcon, ThumbsUpIcon, ThumbsDownIcon } from '../constants/icons';
 import { useStudentData } from '../contexts/StudentDataContext';
-import { Flashcard } from '../types';
+import { Flashcard, UserFlashcardItem } from '../types';
 import { checkFlashcardAnswer } from '../services/geminiService';
 
 const FlashcardViewer: React.FC = () => {
@@ -18,7 +18,8 @@ const FlashcardViewer: React.FC = () => {
   // Quiz Mode State
   const [quizActive, setQuizActive] = useState(false);
   const [currentQuizIndex, setCurrentQuizIndex] = useState(0);
-  const [shuffledDeck, setShuffledDeck] = useState<Flashcard[]>([]);
+  // FIX: Change state type to UserFlashcardItem[] to match the data being stored.
+  const [shuffledDeck, setShuffledDeck] = useState<UserFlashcardItem[]>([]);
   const [userAnswer, setUserAnswer] = useState('');
   const [answerFeedback, setAnswerFeedback] = useState<{ isCorrect: boolean; feedback: string } | null>(null);
   const [isCheckingAnswer, setIsCheckingAnswer] = useState(false);
@@ -58,14 +59,16 @@ const FlashcardViewer: React.FC = () => {
     setIsCheckingAnswer(true);
     setAnswerFeedback(null);
     try {
-        const result = await checkFlashcardAnswer(userAnswer, currentCard.definition, currentCard.term);
+        // FIX: Access term and definition from the nested `card` object.
+        const result = await checkFlashcardAnswer(userAnswer, currentCard.card.definition, currentCard.card.term);
         setAnswerFeedback(result);
-        setQuizHistory(prev => [...prev, { card: currentCard, userAnswer, isCorrect: result.isCorrect }]);
+        // FIX: Pass the nested `card` object to the history.
+        setQuizHistory(prev => [...prev, { card: currentCard.card, userAnswer, isCorrect: result.isCorrect }]);
     } catch(err) {
         console.error(err);
         const fallbackResult = { isCorrect: false, feedback: "Error checking answer. Please try again." };
         setAnswerFeedback(fallbackResult);
-        setQuizHistory(prev => [...prev, { card: currentCard, userAnswer, isCorrect: false }]);
+        setQuizHistory(prev => [...prev, { card: currentCard.card, userAnswer, isCorrect: false }]);
     } finally {
         setIsCheckingAnswer(false);
     }
@@ -126,13 +129,16 @@ const FlashcardViewer: React.FC = () => {
             className={`w-full h-full absolute transition-transform duration-700 transform-style-3d ${isFlipped ? 'rotate-y-180' : ''}`}
             onClick={() => setIsFlipped(!isFlipped)}
             role="button"
-            aria-label={`Flashcard: ${currentCard.term}. Click to flip.`}
+            // FIX: Access term from the nested `card` object.
+            aria-label={`Flashcard: ${currentCard.card.term}. Click to flip.`}
           >
             <div className="absolute w-full h-full backface-hidden flex items-center justify-center p-6 bg-white rounded-lg border-2 border-[var(--border-color)] shadow-lg cursor-pointer">
-              <p className="text-2xl font-bold text-slate-800">{currentCard.term}</p>
+              {/* FIX: Access term from the nested `card` object. */}
+              <p className="text-2xl font-bold text-slate-800">{currentCard.card.term}</p>
             </div>
             <div className="absolute w-full h-full backface-hidden flex items-center justify-center p-6 bg-[var(--brand-primary)] text-white rounded-lg border-2 border-[var(--brand-primary-hover)] shadow-lg cursor-pointer rotate-y-180">
-              <p className="text-lg font-semibold">{currentCard.definition}</p>
+              {/* FIX: Access definition from the nested `card` object. */}
+              <p className="text-lg font-semibold">{currentCard.card.definition}</p>
             </div>
           </div>
         </div>
@@ -195,7 +201,7 @@ const FlashcardViewer: React.FC = () => {
         <div>
             <p className="text-slate-500 font-semibold mb-2 text-left">Question {currentQuizIndex + 1} of {shuffledDeck.length}</p>
             <div className="p-6 bg-white rounded-lg border-2 border-[var(--border-color)] shadow-lg min-h-[10rem] flex items-center justify-center">
-                <p className="text-2xl font-bold text-slate-800">{currentCard.term}</p>
+                <p className="text-2xl font-bold text-slate-800">{currentCard.card.term}</p>
             </div>
             
             {!answerFeedback ? (
@@ -220,7 +226,7 @@ const FlashcardViewer: React.FC = () => {
                            Feedback
                         </h5>
                         <p className="text-sm mt-1">{answerFeedback.feedback}</p>
-                        {!answerFeedback.isCorrect && <p className="text-sm mt-2"><strong>Correct Answer:</strong> {currentCard.definition}</p>}
+                        {!answerFeedback.isCorrect && <p className="text-sm mt-2"><strong>Correct Answer:</strong> {currentCard.card.definition}</p>}
                     </div>
                     <button onClick={handleNextQuizQuestion} className="btn btn-primary w-full mt-2">
                         Next Question

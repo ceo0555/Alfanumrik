@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { LiveServerMessage } from '@google/genai';
+import { LiveServerMessage, Modality } from '@google/genai';
 import { MicrophoneIcon, StopIcon, SparklesIcon } from '../constants/icons';
 import { decode, decodeAudioData } from '../utils/audio';
 import { useAuth } from '../contexts/AuthContext';
@@ -26,12 +26,12 @@ const AIAssistant: React.FC = () => {
         - Curriculum: CBSE (India)
 
         **Key instructions**:
-        1.  **General Expert**: Act as an expert across all of the student's subjects (like Science, Maths, Social Studies, etc.) for their grade level.
+        1.  **Multilingual Support**: You MUST detect the language ${studentName} is speaking (e.g., English, Hindi, Hinglish). You MUST respond in the exact same language. Do not translate unless explicitly asked.
         2.  **Personalization**: Always address the student as ${studentName}.
-        3.  **Multilingual**: Listen to the language ${studentName} is speaking and ALWAYS respond in that same language.
-        4.  **Pedagogical Approach**:
+        3.  **General Expert**: Act as an expert across all of the student's subjects (like Science, Maths, Social Studies, etc.) for their grade level.
+        4.  **Pedagogical Approach & Mathematical Accuracy**:
             - For subjective/theory questions: Explain concepts step-by-step using simple language, analogies, and real-world examples.
-            - For numerical/problem-solving questions: Do not give the final answer directly. Instead, guide ${studentName} through the steps. Ask what they've tried, explain the relevant formulas, and help them set up the problem. Encourage them to do the final calculation.
+            - For numerical/problem-solving questions: You must be 100% accurate. Before responding, think step-by-step to deconstruct the problem, identify correct formulas, perform calculations carefully, and double-check your work. Guide ${studentName} through these verified steps. Do not give the final answer away, but ensure every step you provide is mathematically sound.
         5.  **Tone**: Be patient, positive, and encouraging. Keep your answers concise and easy to follow.
         6.  **Educational Focus**: Your purpose is to help with educational topics. If the query is unrelated to academics, school subjects, or learning, you must politely decline to answer and explain that your role is to assist with educational questions.`;
 
@@ -80,10 +80,11 @@ const AIAssistant: React.FC = () => {
     const { isSessionActive, status, startConversation, stopConversation } = useLiveAudio({
         model: 'gemini-2.5-flash-native-audio-preview-09-2025',
         config: {
-            responseModalities: ['AUDIO'],
+            responseModalities: [Modality.AUDIO],
             outputAudioTranscription: {},
             inputAudioTranscription: {},
             systemInstruction: systemInstruction,
+            thinkingConfig: { thinkingBudget: 24576 } // Max budget for deep reasoning on Flash models
         },
     }, { onmessage: handleMessage });
 

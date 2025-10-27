@@ -6,6 +6,7 @@ interface QuestionCardProps {
   questionNumber: number;
   stepAnswer?: { answer: string | null; isCorrect: boolean };
   onStepAnswer: (answer: string | null, isCorrect: boolean) => void;
+  isGeneratingRemediation?: boolean;
 }
 
 const DifficultyBadge: React.FC<{ difficulty: 'E' | 'M' | 'H' }> = ({ difficulty }) => {
@@ -23,7 +24,7 @@ const DifficultyBadge: React.FC<{ difficulty: 'E' | 'M' | 'H' }> = ({ difficulty
   return <span className={`${baseClasses} ${colorClasses[difficulty]}`}>{text[difficulty]}</span>;
 };
 
-const QuestionCard: React.FC<QuestionCardProps> = ({ questionData, questionNumber, stepAnswer, onStepAnswer }) => {
+const QuestionCard: React.FC<QuestionCardProps> = ({ questionData, questionNumber, stepAnswer, onStepAnswer, isGeneratingRemediation }) => {
   const [currentMcqSelection, setCurrentMcqSelection] = useState<string | null>(null);
   const [currentShortAnswer, setCurrentShortAnswer] = useState('');
 
@@ -44,9 +45,11 @@ const QuestionCard: React.FC<QuestionCardProps> = ({ questionData, questionNumbe
       if (questionData.type === 'MCQ') {
           userAnswer = currentMcqSelection;
           isCorrect = userAnswer === questionData.answer;
-      } else {
+      } else { // Handles 'SA', 'LA', etc.
           userAnswer = currentShortAnswer;
-          isCorrect = false; 
+          // FIX: Correctly compare the student's short answer with the answer key.
+          // This ensures authentic marking for all question types.
+          isCorrect = userAnswer.trim().toLowerCase() === questionData.answer.trim().toLowerCase();
       }
       
       onStepAnswer(userAnswer, isCorrect);
@@ -127,6 +130,11 @@ const QuestionCard: React.FC<QuestionCardProps> = ({ questionData, questionNumbe
           <h4 className="font-bold text-emerald-800">Correct Answer & Rubric</h4>
           <p className="mt-1 font-semibold text-slate-700">{questionData.answer}</p>
           <p className="mt-2 text-sm text-slate-600">{questionData.rubric}</p>
+        </div>
+      )}
+      {isAnswered && !stepAnswer?.isCorrect && isGeneratingRemediation && (
+        <div className="mt-2 text-sm text-indigo-600 font-semibold animate-pulse">
+            Generating a quick review to help with this concept...
         </div>
       )}
     </div>

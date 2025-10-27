@@ -8,16 +8,20 @@ interface UserManagementModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSwitchUser: (id: number) => void;
+  profilesToList?: UserProfile[]; // For RBAC
 }
 
 const UserManagementModal: React.FC<UserManagementModalProps> = ({
   isOpen,
   onClose,
   onSwitchUser,
+  profilesToList,
 }) => {
   const { userProfiles, activeUserId, handleSaveUser } = useAuth();
   const [view, setView] = useState<'list' | 'form'>('list');
   const [userToEdit, setUserToEdit] = useState<UserProfile | null>(null);
+
+  const profiles = profilesToList || userProfiles;
   
   const handleAddNew = () => {
     setUserToEdit(null);
@@ -29,10 +33,13 @@ const UserManagementModal: React.FC<UserManagementModalProps> = ({
     setView('form');
   };
   
-  const handleSave = (name: string, grade: string, id?: number) => {
-    handleSaveUser(name, grade, id);
+  const handleSave = (user: { name: string; grade: string }, id?: number) => {
+    handleSaveUser(user, id);
     setView('list');
     setUserToEdit(null);
+    // If we're adding a new user, don't close the modal, let them switch.
+    if (!id) return;
+    onClose();
   };
   
   const handleCancel = () => {
@@ -67,7 +74,7 @@ const UserManagementModal: React.FC<UserManagementModalProps> = ({
         <div className="p-6">
             {view === 'list' ? (
                 <div className="space-y-3">
-                    {userProfiles.map(profile => (
+                    {profiles.map(profile => (
                         <div key={profile.id} className="flex items-center gap-3">
                             <div className="flex-grow flex items-center gap-3 p-3 rounded-lg bg-white border border-[var(--border-color)]">
                                 <div className={`w-10 h-10 rounded-full ${profile.id === activeUserId ? 'bg-[var(--brand-primary)] text-white' : 'bg-slate-200 text-slate-600'} flex items-center justify-center font-bold text-lg flex-shrink-0`}>
@@ -75,7 +82,7 @@ const UserManagementModal: React.FC<UserManagementModalProps> = ({
                                 </div>
                                 <div>
                                     <p className="font-semibold text-slate-800">{profile.name}</p>
-                                    <p className="text-sm text-slate-500">Class {profile.grade}</p>
+                                    <p className="text-sm text-slate-500">{profile.grade ? `Class ${profile.grade}` : (profile.schoolRole || 'Parent')}</p>
                                 </div>
                                 {profile.id === activeUserId && <CheckCircleIcon className="w-5 h-5 text-emerald-500 ml-auto" />}
                             </div>

@@ -1,16 +1,11 @@
 import React, { useState } from 'react';
-import { ImageIcon, MicrophoneIcon, WandIcon, ClipboardCheckIcon, LightbulbIcon, LayersIcon, EditIcon, VideoIcon, NetworkIcon } from '../constants/icons';
-import ImageGenerator from './ImageGenerator';
+import { WandIcon, ClipboardCheckIcon, LightbulbIcon, LayersIcon } from '../constants/icons';
 import ImageAnalyzer from './ImageAnalyzer';
-import ImageEditor from './ImageEditor';
-import AudioTranscriber from './AudioTranscriber';
 import AdaptiveQuizGenerator from './AdaptiveQuizGenerator';
 import ConceptExplainer from './ConceptExplainer';
 import FlashcardViewer from './FlashcardViewer';
-import VideoScriptGenerator from './VideoScriptGenerator';
-import PrereqGenerator from './PrereqGenerator';
 
-type ActiveTool = 'concept-explainer' | 'image-gen' | 'image-analyze' | 'image-edit' | 'audio-transcribe' | 'adaptive-quiz' | 'flashcards' | 'video-script' | 'prereq-generator';
+type ActiveTool = 'concept-explainer' | 'image-analyze' | 'adaptive-quiz' | 'flashcards';
 
 const AITools: React.FC = () => {
     const [activeTool, setActiveTool] = useState<ActiveTool>('concept-explainer');
@@ -36,22 +31,12 @@ const AITools: React.FC = () => {
         switch (activeTool) {
             case 'concept-explainer':
                 return <ConceptExplainer />;
-            case 'image-gen':
-                return <ImageGenerator />;
             case 'image-analyze':
                 return <ImageAnalyzer />;
-            case 'image-edit':
-                return <ImageEditor />;
-            case 'audio-transcribe':
-                return <AudioTranscriber />;
             case 'adaptive-quiz':
                 return <AdaptiveQuizGenerator />;
             case 'flashcards':
                 return <FlashcardViewer />;
-            case 'video-script':
-                return <VideoScriptGenerator />;
-            case 'prereq-generator':
-                return <PrereqGenerator />;
             default:
                 return null;
         }
@@ -63,13 +48,8 @@ const AITools: React.FC = () => {
                 <div className="flex items-center -mb-px flex-nowrap md:flex-wrap overflow-x-auto">
                     <TabButton toolName="concept-explainer" label="Explainer" icon={<LightbulbIcon className="w-5 h-5" />} />
                     <TabButton toolName="flashcards" label="Flashcards" icon={<LayersIcon className="w-5 h-5" />} />
-                    <TabButton toolName="video-script" label="Video Script" icon={<VideoIcon className="w-5 h-5" />} />
-                    <TabButton toolName="image-gen" label="Image Gen" icon={<ImageIcon className="w-5 h-5" />} />
                     <TabButton toolName="image-analyze" label="Image Q&A" icon={<WandIcon className="w-5 h-5" />} />
-                    <TabButton toolName="image-edit" label="Image Edit" icon={<EditIcon className="w-5 h-5" />} />
-                    <TabButton toolName="audio-transcribe" label="Transcribe" icon={<MicrophoneIcon className="w-5 h-5" />} />
                     <TabButton toolName="adaptive-quiz" label="Adaptive Quiz" icon={<ClipboardCheckIcon className="w-5 h-5" />} />
-                    <TabButton toolName="prereq-generator" label="Prereq Generator" icon={<NetworkIcon className="w-5 h-5" />} />
                 </div>
             </div>
 

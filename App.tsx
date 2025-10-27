@@ -1,28 +1,27 @@
-import React, { useState, useEffect, useCallback, ErrorInfo, ReactNode, Suspense, Component } from 'react';
+import React, { useState, useEffect, useCallback, ErrorInfo, ReactNode, Suspense, Component, useMemo } from 'react';
 import Header from './components/Header';
 import Loader from './components/Loader';
 import BottomNavBar from './components/BottomNavBar';
 import ProfileSetup from './components/ProfileSetup';
 import UserManagementModal from './components/UserManagementModal';
 import { fetchChapterContent } from './services/geminiService';
-import { LessonPack, UserRole, Assignment } from './types';
+import { LessonPack, UserRole, Assignment, UserProfile, LtiContext } from './types';
 import { useAuth } from './contexts/AuthContext';
 import { StudentDataProvider, useStudentData } from './contexts/StudentDataContext';
 import Sidebar from './components/Sidebar';
+import * as ltiService from './services/ltiService';
 
 // --- Production-Ready Enhancements ---
 
 // 1. Error Boundary to prevent crashes
 interface ErrorBoundaryProps {
-  children: ReactNode;
+  children?: ReactNode;
 }
 interface ErrorBoundaryState {
   hasError: boolean;
 }
-// FIX: Changed to extend `Component` directly and use a class field for state.
-// This resolves incorrect type errors where `this.state` and `this.props` were not found.
-// This fix also resolves downstream errors where the ErrorBoundary component was not correctly recognized.
 class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
+  // FIX: Initialize state using a class property. This is a more modern and concise approach that resolves issues with `this.state` and `this.props` not being recognized on the class instance.
   state: ErrorBoundaryState = { hasError: false };
 
   static getDerivedStateFromError(_: Error): ErrorBoundaryState {
@@ -68,8 +67,13 @@ const QuizTaker = React.lazy(() => import('./components/QuizTaker'));
 export type View = 'home' | 'learn' | 'lesson' | 'ask' | 'tools' | 'tutor' | 'planner' | 'parentDashboard' | 'schoolDashboard' | 'assignments' | 'quiz';
 
 
-const StudentApp: React.FC = () => {
-  const { activeProfile, updateActiveUserProfile } = useAuth();
+interface StudentAppProps {
+    isLtiLaunch?: boolean;
+    ltiContext?: LtiContext | null;
+}
+
+const StudentApp: React.FC<StudentAppProps> = ({ isLtiLaunch = false, ltiContext = null }) => {
+  const { activeProfile, updateActiveUserProfile, handleSwitchUser, userProfiles } = useAuth();
   const { startChapter } = useStudentData();
 
   const [view, setView] = useState<View>('home');
@@ -98,7 +102,7 @@ const StudentApp: React.FC = () => {
   const loadContent = useCallback(async () => {
     if (view !== 'lesson' || !activeProfile) return;
 
-    if (lessonPack && lessonPack.topic_name === activeProfile.lastChapter) {
+    if (lessonPack && lessonPack.topic_name === activeProfile.lastChapter && lessonPack.topic_id.startsWith(`G${activeProfile.grade}-${activeProfile.lastSubject.substring(0,3).toUpperCase()}`)) {
         return;
     }
     
@@ -118,6 +122,13 @@ const StudentApp: React.FC = () => {
       setIsLessonLoading(false);
     }
   }, [activeProfile, view, lessonPack, startChapter]);
+
+
+  useEffect(() => {
+      if (isLtiLaunch && ltiContext) {
+          setView('lesson');
+      }
+  }, [isLtiLaunch, ltiContext]);
 
   useEffect(() => {
     if (view === 'lesson' && activeProfile) {
@@ -139,7 +150,7 @@ const StudentApp: React.FC = () => {
       case 'lesson':
         if (isLessonLoading) return <Loader />;
         if (lessonError) return <div className="text-center text-red-500 p-4 bg-red-50 rounded-lg">{lessonError}</div>;
-        return <AdaptiveLessonPlayer lessonPack={lessonPack} />;
+        return <AdaptiveLessonPlayer lessonPack={lessonPack} ltiContext={ltiContext} />;
       case 'planner':
         return <Planner setView={setView} />;
       case 'assignments':
@@ -170,7 +181,7 @@ const StudentApp: React.FC = () => {
 
   return (
     <>
-      <Sidebar activeView={view} setView={setView} />
+      {!isLtiLaunch && <Sidebar activeView={view} setView={setView} />}
       <div className="flex-1 flex flex-col h-full overflow-hidden">
         <Header 
           showBackButton={view === 'lesson' || view === 'quiz'}
@@ -191,16 +202,19 @@ const StudentApp: React.FC = () => {
         </main>
       </div>
 
-      <BottomNavBar activeView={view} setView={setView} />
+      {!isLtiLaunch && <BottomNavBar activeView={view} setView={setView} />}
       
-      <UserManagementModal
-        isOpen={isUserModalOpen}
-        onClose={() => setIsUserModalOpen(false)}
-        onSwitchUser={(id) => { 
-          /* switch user logic is in AuthContext */ 
-          setIsUserModalOpen(false);
-        }}
-      />
+      {!isLtiLaunch && (
+        <UserManagementModal
+          isOpen={isUserModalOpen}
+          onClose={() => setIsUserModalOpen(false)}
+          onSwitchUser={(id) => { 
+            handleSwitchUser(id); 
+            setIsUserModalOpen(false);
+          }}
+          profilesToList={userProfiles.filter(p => !p.schoolRole && !p.childIds)}
+        />
+      )}
       <Suspense>
         {flashcardModalChapter && (
           <FlashcardCreationModal
@@ -220,21 +234,49 @@ const App: React.FC = () => {
     isLoading: isAppLoading,
     error: appError,
     userProfiles,
-    activeUserId,
     activeProfile,
     userRole,
     handleSetRole,
     handleSaveUser,
     handleSwitchUser,
+    _dangerouslySetAllProfiles: setAllProfiles
   } = useAuth();
 
   const [isUserModalOpen, setIsUserModalOpen] = useState(false);
+  const [ltiContext, setLtiContext] = useState<LtiContext | null>(null);
 
+  // LTI Launch Detection
   useEffect(() => {
-    if ((userRole === 'parent' || userRole === 'school') && userProfiles.length > 0 && !activeUserId) {
-      setIsUserModalOpen(true);
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('lti_launch') === 'true') {
+        const chapterId = params.get('chapterId');
+        if (chapterId) {
+            const context = ltiService.handleLaunch(chapterId);
+            setLtiContext(context);
+            // Synthesize a user profile for the LTI session
+            const ltiUser: UserProfile = {
+                id: Date.now(), // Temporary ID
+                name: context.user.name,
+                grade: context.course.title.includes('10') ? '10' : '9', // Infer grade
+                lastSubject: context.linkedResource.chapterId.split('-')[1],
+                lastChapter: context.linkedResource.chapterId.split('-')[2].replace(/%20/g, ' '),
+                currentStreak: 0, lastStreakDate: '', achievements: [], xp: 0, level: 1,
+            };
+            setAllProfiles([ltiUser]);
+            handleSwitchUser(ltiUser.id);
+            handleSetRole('student');
+        }
     }
-  }, [userRole, userProfiles, activeUserId]);
+  }, [handleSetRole, handleSwitchUser, setAllProfiles]);
+
+
+  // This logic is for auto-opening the student selector for parent/school roles
+  useEffect(() => {
+    if (ltiContext) return; // Don't open modals on LTI launch
+    if (userRole === 'school' && !activeProfile) setIsUserModalOpen(true);
+    if (userRole === 'parent' && !activeProfile) setIsUserModalOpen(true);
+  }, [userRole, activeProfile, ltiContext]);
+
 
   const onSwitchUser = (id: number) => {
     handleSwitchUser(id);
@@ -244,6 +286,24 @@ const App: React.FC = () => {
   const handleLogout = () => {
     handleSetRole(null);
   };
+
+  // RBAC: Filter profiles for parent view
+  const parentUser = useMemo(() => {
+    if (userRole === 'parent') {
+        return userProfiles.find(p => p.childIds && p.childIds.length > 0);
+    }
+    return null;
+  }, [userRole, userProfiles]);
+
+  const profilesForModal = useMemo((): UserProfile[] => {
+    if (userRole === 'parent' && parentUser?.childIds) {
+        return userProfiles.filter(p => parentUser.childIds!.includes(p.id));
+    }
+    if (userRole === 'school') {
+        return userProfiles.filter(p => !!p.schoolRole);
+    }
+    return userProfiles;
+  }, [userRole, parentUser, userProfiles]);
   
   // --- RENDER LOGIC ---
 
@@ -259,7 +319,7 @@ const App: React.FC = () => {
     );
   }
   
-  if (!userRole) {
+  if (!userRole && !ltiContext) {
     return (
       <Suspense fallback={<Loader />}>
         <RoleSelectionScreen onSelectRole={handleSetRole} />
@@ -267,7 +327,8 @@ const App: React.FC = () => {
     );
   }
 
-  if (userRole === 'student' && (userProfiles.length === 0 || !activeUserId)) {
+  // Handle profile creation if no profiles exist for the selected role
+  if (userRole === 'student' && !ltiContext && userProfiles.filter(p => !p.schoolRole && !p.childIds).length === 0) {
     return (
       <div className="flex flex-col h-full bg-slate-50 font-sans text-slate-900">
         <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
@@ -276,18 +337,71 @@ const App: React.FC = () => {
       </div>
     );
   }
+
+  // If role is student but no specific student is active, prompt selection.
+  if (userRole === 'student' && !ltiContext && !activeProfile) {
+    const studentProfiles = userProfiles.filter(p => !p.schoolRole && !p.childIds);
+    if (studentProfiles.length > 0) {
+        return (
+            <Suspense fallback={<Loader />}>
+                <div className="flex items-center justify-center h-full w-full">
+                    <div className="text-center p-8 animate-slide-in-up">
+                        <h2 className="text-2xl font-bold text-slate-700">Select Your Profile</h2>
+                        <p className="mt-2 text-slate-500 max-w-md mx-auto">
+                            Please select your student profile to continue your learning journey.
+                        </p>
+                        <button onClick={() => setIsUserModalOpen(true)} className="btn btn-primary mt-6">
+                            Select Profile
+                        </button>
+                        <UserManagementModal 
+                            isOpen={isUserModalOpen} 
+                            onClose={() => setIsUserModalOpen(false)} 
+                            onSwitchUser={onSwitchUser}
+                            profilesToList={studentProfiles}
+                        />
+                    </div>
+                </div>
+            </Suspense>
+        )
+    }
+  }
+
+  // If a role is selected but no specific user is active, prompt selection
+  if (userRole !== 'student' && !ltiContext && !activeProfile) {
+     return (
+        <Suspense fallback={<Loader />}>
+            <div className="flex items-center justify-center h-full w-full">
+                 <div className="text-center p-8 animate-slide-in-up">
+                    <h2 className="text-2xl font-bold text-slate-700">Select Your Profile</h2>
+                    <p className="mt-2 text-slate-500 max-w-md mx-auto">
+                        Please select your {userRole} profile to continue.
+                    </p>
+                    <button onClick={() => setIsUserModalOpen(true)} className="btn btn-primary mt-6">
+                        Select Profile
+                    </button>
+                    <UserManagementModal 
+                        isOpen={isUserModalOpen} 
+                        onClose={() => setIsUserModalOpen(false)} 
+                        onSwitchUser={onSwitchUser}
+                        profilesToList={profilesForModal}
+                    />
+                </div>
+            </div>
+        </Suspense>
+     )
+  }
   
   const getHeaderTitle = () => {
-    if (userRole === 'parent') return "Parent Dashboard";
-    if (userRole === 'school') return "School Dashboard";
+    if (userRole === 'parent') return `Parent View: ${activeProfile?.name}`;
+    if (userRole === 'school') return `School Dashboard: ${activeProfile?.name}`;
     return 'Alfanumrik'; // Student header title is handled inside StudentApp
   };
   
   const renderRoleSpecificApp = () => {
-    if (userRole === 'student') {
+    if (userRole === 'student' && activeProfile) {
       return (
         <StudentDataProvider>
-          <StudentApp />
+          <StudentApp isLtiLaunch={!!ltiContext} ltiContext={ltiContext} />
         </StudentDataProvider>
       );
     }
@@ -295,22 +409,12 @@ const App: React.FC = () => {
     let content;
     if (userRole === 'parent') {
       content = <ParentDashboard />;
-    } else if (userRole === 'school') {
+    } else if (userRole === 'school' && activeProfile?.schoolRole) {
       content = <SchoolDashboard />;
+    } else {
+        content = <div>Please select a teacher or principal profile.</div>
     }
 
-    if (!activeProfile && (userRole === 'parent' || userRole === 'school')) {
-        content = (
-            <div className="text-center p-8 animate-slide-in-up h-full flex flex-col justify-center items-center">
-                <h2 className="text-2xl font-bold text-slate-700">Select a Student</h2>
-                <p className="mt-2 text-slate-500 max-w-md mx-auto">Please select a student profile to view their dashboard. If no students exist, please switch to the student role to create a profile first.</p>
-                 <button onClick={() => setIsUserModalOpen(true)} className="btn btn-primary mt-6">
-                    Select Student
-                </button>
-            </div>
-        );
-    }
-    
     return (
       <div className="flex-1 flex flex-col h-full overflow-hidden">
         <Header 
@@ -330,7 +434,12 @@ const App: React.FC = () => {
             </Suspense>
           </ErrorBoundary>
         </main>
-        <UserManagementModal isOpen={isUserModalOpen} onClose={() => setIsUserModalOpen(false)} onSwitchUser={onSwitchUser} />
+        <UserManagementModal 
+            isOpen={isUserModalOpen} 
+            onClose={() => setIsUserModalOpen(false)} 
+            onSwitchUser={onSwitchUser}
+            profilesToList={profilesForModal}
+        />
       </div>
     );
   }

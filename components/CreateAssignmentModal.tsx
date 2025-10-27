@@ -1,7 +1,6 @@
-import React, { useState, useMemo, Suspense } from 'react';
+import React, { useState, useMemo, Suspense, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { XIcon, ClipboardListIcon, ChevronDownIcon, PlusIcon } from '../constants/icons';
-// FIX: Moved QuestionPoolItem import from ../constants/icons to ../types
 import { QuestionPoolItem } from '../types';
 import { curriculum } from '../constants/curriculum';
 import AddQuestionModal from './AddQuestionModal';
@@ -10,9 +9,13 @@ interface CreateAssignmentModalProps {
   isOpen: boolean;
   onClose: () => void;
   grade: string;
+  initialData?: {
+    studentIds?: number[];
+    instructions?: string;
+  }
 }
 
-const CreateAssignmentModal: React.FC<CreateAssignmentModalProps> = ({ isOpen, onClose, grade }) => {
+const CreateAssignmentModal: React.FC<CreateAssignmentModalProps> = ({ isOpen, onClose, grade, initialData }) => {
   const { handleCreateAssignment, userProfiles } = useAuth();
   
   // Form State
@@ -28,6 +31,19 @@ const CreateAssignmentModal: React.FC<CreateAssignmentModalProps> = ({ isOpen, o
 
   // Modal State
   const [isAddQuestionModalOpen, setIsAddQuestionModalOpen] = useState(false);
+  
+  useEffect(() => {
+    if (isOpen && initialData) {
+        if (initialData.studentIds) {
+            setAssignTo('specific');
+            setSelectedStudentIds(new Set(initialData.studentIds));
+        }
+        if (initialData.instructions) {
+            setInstructions(initialData.instructions);
+            setTitle(`Remedial Work: ${initialData.instructions.substring(0, 20)}...`);
+        }
+    }
+  }, [isOpen, initialData]);
 
   const studentsInGrade = useMemo(() => {
     return userProfiles.filter(p => p.grade === grade);

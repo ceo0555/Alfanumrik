@@ -11,14 +11,14 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Poppins:wght@500;600;700;800&display=swap" rel="stylesheet">
     <style>
       :root {
-        --bg-main: #f4f7fa; /* Lighter grey for a softer feel */
-        --bg-app: #f4f7fa;
+        --bg-main: #f8fafc; /* slate-50 */
+        --bg-app: #f1f5f9; /* slate-100 */
         --bg-content: #ffffff;
-        --bg-sidebar: #111827; /* Dark Grey for sidebar */
-        --border-color: #e5e7eb; /* gray-200 */
-        --text-primary: #1f2937; /* gray-800 */
-        --text-secondary: #6b7280; /* gray-500 */
-        --text-sidebar: #d1d5db; /* gray-300 */
+        --bg-sidebar: #1f2937; /* gray-800 */
+        --border-color: #e2e8f0; /* slate-200 */
+        --text-primary: #1e293b; /* slate-800 */
+        --text-secondary: #64748b; /* slate-500 */
+        --text-sidebar: #9ca3af; /* gray-400 */
         --text-sidebar-hover: #ffffff;
         --sidebar-active-bg: #374151; /* gray-700 */
         --brand-primary: #4f46e5; /* Indigo 600 */
@@ -28,6 +28,10 @@
         --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
         --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
         --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+        --radius-sm: 0.25rem;
+        --radius-md: 0.5rem;
+        --radius-lg: 0.75rem;
+        --radius-xl: 1rem;
       }
 
       html, body, #root {
@@ -40,6 +44,8 @@
       body {
         font-family: 'Inter', sans-serif;
         background-color: var(--bg-main);
+        background-image: radial-gradient(var(--border-color) 1px, transparent 1px);
+        background-size: 20px 20px;
         color: var(--text-primary);
         -webkit-font-smoothing: antialiased;
         -moz-osx-font-smoothing: grayscale;
@@ -59,7 +65,7 @@
       
       .btn {
         padding: 0.625rem 1.25rem; /* 10px 20px */
-        border-radius: 8px;
+        border-radius: var(--radius-md);
         font-weight: 600;
         font-family: 'Inter', sans-serif;
         transition: all 0.2s ease-in-out;
@@ -89,7 +95,7 @@
       
       .form-input, .form-select, .form-textarea {
         border: 1px solid var(--border-color);
-        border-radius: 8px;
+        border-radius: var(--radius-md);
         box-shadow: var(--shadow-sm);
         transition: all 0.2s ease-in-out;
         padding: 0.625rem 1rem;
@@ -126,7 +132,7 @@
         background-color: #f1f5f9; /* slate-100 */
         color: var(--text-primary);
         padding: 1rem;
-        border-radius: 8px;
+        border-radius: var(--radius-md);
         font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, Courier, monospace;
         font-size: 0.9em;
         overflow-x: auto;
@@ -141,6 +147,14 @@
       }
 
       /* Reusable Animations */
+      @keyframes fade-in {
+        from { opacity: 0; }
+        to { opacity: 1; }
+      }
+      .animate-fade-in {
+        animation: fade-in 0.5s ease-out forwards;
+      }
+
       @keyframes slide-in-up {
         from { opacity: 0; transform: translateY(10px); }
         to { opacity: 1; transform: translateY(0); }

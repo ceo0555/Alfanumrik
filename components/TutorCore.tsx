@@ -18,18 +18,22 @@ const TutorCore: React.FC = () => {
         if (process.env.API_KEY && activeProfile) {
             const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
             const chatInstance = ai.chats.create({
-                model: 'gemini-2.5-flash',
+                model: 'gemini-2.5-pro', // Upgraded model for better reasoning
                 config: {
                     systemInstruction: `You are MIGA, an expert academic AI specializing in the Indian K-12 CBSE curriculum. Your task is to act as a helpful and encouraging tutor for a student named ${activeProfile.name} in Class ${activeProfile.grade}.
                     
                     **Instructions**:
-                    1.  **Use Your Tools**: Rely on your search tool to find accurate, up-to-date information to answer student questions on ANY academic subject.
-                    2.  **Adhere to CBSE Standards**: Your answers must be strictly aligned with the CBSE curriculum and standards for the student's grade.
-                    3.  **Socratic Method**: Do not just give away answers. Guide the student by asking leading questions. For definitions, provide them, but then ask a follow-up question to check understanding. For calculations, guide them step-by-step.
-                    4.  **Encouraging Tone**: Be positive, patient, and encouraging.
-                    5.  **Educational Focus**: If the query is unrelated to academics, politely decline and explain your role.
+                    1.  **Multilingual Support**: You MUST detect the language the student is typing in (e.g., English, Hindi, Hinglish). You MUST respond in the exact same language. Do not translate unless explicitly asked.
+                    2.  **Use Your Tools**: Rely on your search tool to find accurate, up-to-date information to answer student questions on ANY academic subject.
+                    3.  **Adhere to CBSE Standards**: Your answers must be strictly aligned with the CBSE curriculum and standards for the student's grade.
+                    4.  **Socratic Method**: Do not just give away answers. Guide the student by asking leading questions. For definitions, provide them, but then ask a follow-up question to check for understanding.
+                    5.  **Mathematical Accuracy**: For numerical or problem-solving questions, you must be 100% accurate. Before responding, think step-by-step to deconstruct the problem, identify the correct formulas, perform the calculations carefully, and double-check your work. Guide the student through these verified steps. Do not provide the final answer directly, but ensure every step and calculation you provide is mathematically sound.
+                    6.  **Structure and Formatting**: Format your answers clearly. Use numbered lists, bullet points, and short paragraphs to break down complex topics or steps, similar to how answers are presented in CBSE model answer sheets. Make it easy to read and learn from.
+                    7.  **Encouraging Tone**: Be positive, patient, and encouraging.
+                    8.  **Educational Focus**: If the query is unrelated to academics, politely decline and explain your role.
                     `,
                     tools: [{ googleSearch: {} }],
+                    thinkingConfig: { thinkingBudget: 32768 } // Max budget for deep reasoning
                 },
             });
             setChat(chatInstance);
@@ -56,27 +60,16 @@ const TutorCore: React.FC = () => {
         try {
             const responseStream = await chat.sendMessageStream({ message: input });
             let modelResponse = '';
-            let sources: { title: string; content: string }[] = [];
             
             setMessages(prev => [...prev, { role: 'model', content: '...', status: 'generating' }]);
             
             for await (const chunk of responseStream) {
                 modelResponse += chunk.text;
                 
-                const groundingChunks = chunk.candidates?.[0]?.groundingMetadata?.groundingChunks as GroundingChunk[] | undefined;
-                if (groundingChunks) {
-                    sources = groundingChunks
-                        .filter(c => c.web)
-                        .map(c => ({ title: c.web!.title, content: c.web!.uri }));
-                }
-
                 setMessages(prev => {
                     const newMessages = [...prev];
                     const lastMessage = newMessages[newMessages.length - 1];
                     lastMessage.content = modelResponse;
-                    if (sources.length > 0) {
-                        lastMessage.sources = sources;
-                    }
                     return newMessages;
                 });
             }
@@ -125,19 +118,6 @@ const TutorCore: React.FC = () => {
                                 {msg.role === 'model' && <div className="w-8 h-8 rounded-full bg-[var(--brand-primary)] flex items-center justify-center text-white font-bold flex-shrink-0">A</div>}
                                 <div className={`max-w-lg p-3 rounded-lg ${msg.role === 'user' ? 'bg-slate-100 text-slate-800' : 'bg-indigo-50 text-slate-700'}`}>
                                     {renderMessageContent(msg)}
-                                    {msg.sources && msg.sources.length > 0 && (
-                                        <div className="mt-3 pt-3 border-t border-indigo-200">
-                                            <h5 className="text-xs font-bold text-slate-500 mb-2 flex items-center gap-1.5"><QuoteIcon className="w-4 h-4" /> SOURCES</h5>
-                                            <div className="space-y-2">
-                                                {msg.sources.map((source, s_index) => (
-                                                    <a key={s_index} href={source.content} target="_blank" rel="noopener noreferrer" className="block text-xs bg-white p-2 rounded border border-indigo-100 hover:bg-indigo-50">
-                                                        <p className="font-semibold text-indigo-700 truncate">{source.title}</p>
-                                                        <p className="text-indigo-500 truncate">{source.content}</p>
-                                                    </a>
-                                                ))}
-                                            </div>
-                                        </div>
-                                    )}
                                 </div>
                                 {msg.role === 'user' && <div className="w-8 h-8 rounded-full bg-slate-400 flex items-center justify-center text-white font-bold flex-shrink-0">{activeProfile?.name.charAt(0)}</div>}
                             </div>

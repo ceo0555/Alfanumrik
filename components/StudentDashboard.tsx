@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { CalendarCheckIcon, BarChartIcon, BookIcon, CalendarDaysIcon, FlameIcon, AwardIcon, ScienceIcon, MathIcon, SocialStudiesIcon, PhysicsIcon, ChemistryIcon, BiologyIcon, ArrowRightIcon, TargetIcon, CheckCircleIcon, SpeakerIcon } from '../constants/icons';
+import { CalendarCheckIcon, BarChartIcon, BookIcon, CalendarDaysIcon, FlameIcon, AwardIcon, ScienceIcon, MathIcon, SocialStudiesIcon, PhysicsIcon, ChemistryIcon, BiologyIcon, ArrowRightIcon, TargetIcon, CheckCircleIcon, SpeakerIcon, UsersIcon } from '../constants/icons';
 import { ChapterProgress, Badge, DailyChallenge, UserBktData } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 import { useStudentData } from '../contexts/StudentDataContext';
@@ -164,13 +164,13 @@ const DailyChallengeCard: React.FC<{ challenge: DailyChallenge }> = ({ challenge
 };
 
 
-const StudentDashboard: React.FC<{ onContinue: () => void }> = ({ onContinue }) => {
-    const { activeProfile, allAnnouncements } = useAuth();
+const StudentDashboard: React.FC<{ onContinue: () => void; }> = ({ onContinue }) => {
+    const { activeProfile, allAnnouncements, handleSetRole } = useAuth();
     const { progressData, userBktData } = useStudentData();
     
     if (!activeProfile || !progressData) return null;
 
-    const { grade, currentStreak, achievements, level, xp, dailyChallenge } = activeProfile;
+    const { name, grade, currentStreak, achievements, level, xp, dailyChallenge } = activeProfile;
     
     const latestAnnouncement = allAnnouncements
         .filter(a => a.grade === grade)
@@ -216,33 +216,40 @@ const StudentDashboard: React.FC<{ onContinue: () => void }> = ({ onContinue }) 
         'Biology': 'bg-teal-500',
     };
 
+    const StatCard: React.FC<{ title: string; value: number; icon: React.ReactNode; color: string }> = ({ title, value, icon, color }) => (
+      <div className="bg-white p-4 rounded-xl shadow-sm border border-[var(--border-color)] flex items-center gap-4">
+        <div className={`w-12 h-12 rounded-full ${color} text-white flex items-center justify-center flex-shrink-0`}>
+          {icon}
+        </div>
+        <div>
+          <AnimatedCounter value={value} className="text-2xl font-bold text-slate-800" />
+          <p className="text-xs text-slate-500 font-semibold">{title}</p>
+        </div>
+      </div>
+    );
+
     return (
         <div className="animate-slide-in-up">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                <div className="bg-white p-5 rounded-xl shadow-sm border border-[var(--border-color)] text-center flex flex-col justify-center">
-                    <h3 className="text-sm font-bold text-slate-700 flex items-center justify-center gap-1.5 mb-1">
-                        <FlameIcon className="w-5 h-5 text-orange-500" />
-                        Learning Streak
-                    </h3>
-                    <AnimatedCounter value={currentStreak || 0} className="text-4xl font-bold text-orange-500" />
-                    <p className="text-xs text-slate-500">Consecutive Days</p>
+            <div className="p-6 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 text-white shadow-lg mb-6">
+                <div className="flex justify-between items-start">
+                    <div>
+                        <h1 className="text-2xl font-bold">Welcome back, {name}!</h1>
+                        <p className="text-indigo-200">Let's continue your learning journey.</p>
+                    </div>
+                    <button 
+                      onClick={() => handleSetRole(null)} 
+                      className="btn bg-white/20 text-white hover:bg-white/30 text-sm"
+                    >
+                      <UsersIcon className="w-4 h-4 mr-2" />
+                      Switch User
+                    </button>
                 </div>
-                <div className="bg-white p-5 rounded-xl shadow-sm border border-[var(--border-color)] text-center flex flex-col justify-center">
-                    <h3 className="text-sm font-bold text-slate-700 flex items-center justify-center gap-1.5 mb-1">
-                        <BarChartIcon className="w-5 h-5 text-emerald-500" />
-                        Lessons Completed
-                    </h3>
-                    <AnimatedCounter value={lessonsCompleted} className="text-4xl font-bold text-slate-800" />
-                    <p className="text-xs text-slate-500">Total</p>
-                </div>
-                <div className="bg-white p-5 rounded-xl shadow-sm border border-[var(--border-color)] text-center flex flex-col justify-center">
-                    <h3 className="text-sm font-bold text-slate-700 flex items-center justify-center gap-1.5 mb-1">
-                        <AwardIcon className="w-5 h-5 text-yellow-500" />
-                         Achievements
-                    </h3>
-                    <AnimatedCounter value={(achievements || []).length} className="text-4xl font-bold text-yellow-500" />
-                    <p className="text-xs text-slate-500">Badges Earned</p>
-                </div>
+            </div>
+            
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+                <StatCard title="Learning Streak" value={currentStreak} icon={<FlameIcon className="w-6 h-6"/>} color="bg-orange-500" />
+                <StatCard title="Lessons Completed" value={lessonsCompleted} icon={<CheckCircleIcon className="w-6 h-6"/>} color="bg-emerald-500" />
+                <StatCard title="Achievements" value={achievements.length} icon={<AwardIcon className="w-6 h-6"/>} color="bg-yellow-500" />
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
