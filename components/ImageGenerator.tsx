@@ -32,6 +32,7 @@ const ImageGenerator: React.FC = () => {
 - Ensure all text and labels in the image are spelled correctly and are clearly legible.
 - The image must be factually and visually accurate for the subject matter.
 - The overall aesthetic should be clean, professional, and suitable for a textbook or learning material.
+- The diagram must be 100% authentic and correctly marked for the CBSE curriculum.
 `;
             
             const response = await ai.models.generateContent({

@@ -7,9 +7,10 @@ import { LtiContext } from '../types';
 interface LessonViewProps {
   isTransitioning: boolean;
   ltiContext: LtiContext | null;
+  onFinish: () => void;
 }
 
-const LessonView: React.FC<LessonViewProps> = ({ isTransitioning, ltiContext }) => {
+const LessonView: React.FC<LessonViewProps> = ({ isTransitioning, ltiContext, onFinish }) => {
   const { activeProfile } = useAuth();
 
   if (!activeProfile) {
@@ -27,6 +28,7 @@ const LessonView: React.FC<LessonViewProps> = ({ isTransitioning, ltiContext }) 
       lessonPack={lessonPack}
       ltiContext={ltiContext}
       isTransitioning={isTransitioning}
+      onFinish={onFinish}
     />
   );
 };

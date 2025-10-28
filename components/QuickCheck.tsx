@@ -14,6 +14,7 @@ const QuickCheckStep: React.FC<QuickCheckStepProps> = ({ content, stepAnswer, on
   const selectedOption = stepAnswer?.answer;
 
   const shuffledOptions = useMemo(() => {
+    if (!content.options) return [];
     return [...content.options].sort(() => Math.random() - 0.5);
   }, [content.options]);
 

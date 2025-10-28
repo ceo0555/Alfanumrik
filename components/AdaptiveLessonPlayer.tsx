@@ -35,6 +35,7 @@ interface AdaptiveLessonPlayerProps {
   lessonPack: LessonPack | null;
   ltiContext?: LtiContext | null;
   isTransitioning?: boolean;
+  onFinish: () => void;
 }
 
 const getTextForTTS = (step: LessonStep | undefined): string => {
@@ -52,7 +53,7 @@ const getTextForTTS = (step: LessonStep | undefined): string => {
                     textParts.push(block.content);
                     break;
                 case 'list':
-                    textParts.push(block.items.join('. '));
+                    textParts.push((block.items || []).join('. '));
                     break;
                 case 'key_term':
                     textParts.push(`${block.term}. ${block.definition}`);
@@ -91,14 +92,14 @@ const getTextForTTS = (step: LessonStep | undefined): string => {
             textParts.push(`A common mistake to avoid. The mistake is: ${step.content.error}. The correction is: ${step.content.fix}`);
             break;
         case 'fill_in_the_blanks':
-            textParts.push(`Fill in the blank. ${step.content.sentence_parts.join(' blank ')}`);
+            textParts.push(`Fill in the blank. ${(step.content.sentence_parts || []).join(' blank ')}`);
             break;
     }
     return textParts.join('\n\n');
 };
 
 
-const AdaptiveLessonPlayer: React.FC<AdaptiveLessonPlayerProps> = ({ lessonPack, ltiContext, isTransitioning }) => {
+const AdaptiveLessonPlayer: React.FC<AdaptiveLessonPlayerProps> = ({ lessonPack, ltiContext, isTransitioning, onFinish }) => {
   const { activeProfile } = useAuth();
   const { progressData, markChapterAsCompleted, awardXP, recordAnswer, updateChapterStep } = useStudentData();
   
@@ -196,7 +197,7 @@ const AdaptiveLessonPlayer: React.FC<AdaptiveLessonPlayerProps> = ({ lessonPack,
             } else if (step.type === 'assessment_question') {
                 questionContent = step.content.question.question;
             } else if (step.type === 'fill_in_the_blanks') {
-                questionContent = step.content.sentence_parts.join(' ___ ');
+                questionContent = (step.content.sentence_parts || []).join(' ___ ');
             }
 
             if (questionContent) {
@@ -290,7 +291,8 @@ const AdaptiveLessonPlayer: React.FC<AdaptiveLessonPlayerProps> = ({ lessonPack,
   const currentStep = steps[currentStepIndex];
   const progress = ((currentStepIndex + 1) / steps.length) * 100;
   
-  const isFinalStepInLti = ltiContext && currentStepIndex === steps.length - 1;
+  const isFinalStep = currentStepIndex === steps.length - 1;
+  const isFinalStepInLti = ltiContext && isFinalStep;
   
   const renderStepContent = () => {
     if (!currentStep) return <div>Loading step...</div>;
@@ -403,8 +405,12 @@ const AdaptiveLessonPlayer: React.FC<AdaptiveLessonPlayerProps> = ({ lessonPack,
             <button onClick={handleSubmitToLMS} disabled={isSubmittingToLMS} className="btn btn-primary bg-emerald-600 hover:bg-emerald-700">
               {isSubmittingToLMS ? "Submitting..." : "Submit Score to LMS"}
             </button>
+        ) : isFinalStep ? (
+             <button onClick={onFinish} className="btn btn-primary bg-emerald-600 hover:bg-emerald-700 flex items-center gap-2">
+                Finish Lesson <CheckCircleIcon className="w-5 h-5" />
+            </button>
         ) : (
-            <button onClick={goToNextStep} disabled={currentStepIndex === steps.length - 1 || !isStepCompleted} className="btn btn-primary flex items-center gap-2">
+            <button onClick={goToNextStep} disabled={!isStepCompleted} className="btn btn-primary flex items-center gap-2">
               Next <ArrowRightIcon className="w-5 h-5" />
             </button>
         )}

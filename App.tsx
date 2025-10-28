@@ -129,7 +129,11 @@ const StudentApp: React.FC<StudentAppProps> = ({ isLtiLaunch = false, ltiContext
         return (
           <ErrorBoundary>
             <Suspense fallback={<LessonPlayerSkeleton />}>
-              <LessonView isTransitioning={isPending} ltiContext={ltiContext} />
+              <LessonView
+                isTransitioning={isPending}
+                ltiContext={ltiContext}
+                onFinish={() => setView('learn')}
+              />
             </Suspense>
           </ErrorBoundary>
         );
