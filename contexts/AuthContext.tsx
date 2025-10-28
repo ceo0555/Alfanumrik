@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
-import { UserProfile, UserRole, AllProgressData, AllFlashcardsData, AllBktData, Assignment, Announcement, StudentSubmission, StudentFlnProgress, TeacherSchedule, AttendanceRecord, QuickFormativeAssessment, Notification, QuestionPoolItem, BusRoute, PrintQuota, FeeStatus, AfterSchoolProgram, FacilityBooking, BoardPlannerEvent, CrossCurricularProject, CodingModule, CommunicationTemplate, TeacherAssignment } from '../types';
+import { UserProfile, UserRole, AllProgressData, AllFlashcardsData, AllBktData, Assignment, Announcement, StudentSubmission, StudentFlnProgress, TeacherSchedule, AttendanceRecord, QuickFormativeAssessment, Notification, QuestionPoolItem, BusRoute, PrintQuota, FeeStatus, AfterSchoolProgram, FacilityBooking, BoardPlannerEvent, CrossCurricularProject, CodingModule, CommunicationTemplate, TeacherAssignment, StudentPortfolioProject, AllPortfolios } from '../types';
 import * as apiService from '../services/apiService';
 
 interface AuthContextType {
@@ -32,6 +32,7 @@ interface AuthContextType {
   crossCurricularProjects: CrossCurricularProject[];
   codingModules: CodingModule[];
   communicationTemplates: CommunicationTemplate[];
+  allPortfolios: AllPortfolios;
 
   // Handlers
   handleSetRole: (role: UserRole | null) => void;
@@ -55,6 +56,7 @@ interface AuthContextType {
   handleUpdateFacilityBookings: (bookings: FacilityBooking[]) => void;
   handleUpdateBoardPlannerEvents: (events: BoardPlannerEvent[]) => void;
   handleUpdateCrossCurricularProjects: (projects: CrossCurricularProject[]) => void;
+  handleUpdatePortfolios: (portfolios: AllPortfolios) => void;
   _dangerouslySetAllProfiles: (profiles: UserProfile[]) => void;
 }
 
@@ -89,6 +91,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [crossCurricularProjects, setCrossCurricularProjects] = useState<CrossCurricularProject[]>([]);
   const [codingModules, setCodingModules] = useState<CodingModule[]>([]);
   const [communicationTemplates, setCommunicationTemplates] = useState<CommunicationTemplate[]>([]);
+  const [allPortfolios, setAllPortfolios] = useState<AllPortfolios>([]);
 
 
   // Initial data load from the "backend"
@@ -122,6 +125,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         setCrossCurricularProjects(data.crossCurricularProjects);
         setCodingModules(data.codingModules);
         setCommunicationTemplates(data.communicationTemplates);
+        setAllPortfolios(data.allPortfolios);
       } catch (e) {
         console.error("Failed to load user data:", e);
         setError("Could not load your data. Please try refreshing the page.");
@@ -385,6 +389,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setCrossCurricularProjects(projects);
     await apiService.saveAllCrossCurricularProjects(projects);
   }, []);
+  const handleUpdatePortfolios = useCallback(async (portfolios: AllPortfolios) => {
+    setAllPortfolios(portfolios);
+    await apiService.saveAllPortfolios(portfolios);
+  }, []);
 
 
   const value = {
@@ -416,6 +424,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     crossCurricularProjects,
     codingModules,
     communicationTemplates,
+    allPortfolios,
     handleSetRole,
     handleSaveUser,
     handleSwitchUser,
@@ -437,6 +446,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     handleUpdateFacilityBookings,
     handleUpdateBoardPlannerEvents,
     handleUpdateCrossCurricularProjects,
+    handleUpdatePortfolios,
     _dangerouslySetAllProfiles: setUserProfiles, // For StudentDataContext to update profile with XP
   };
 

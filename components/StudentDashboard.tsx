@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { CalendarCheckIcon, BarChartIcon, BookIcon, CalendarDaysIcon, FlameIcon, AwardIcon, ScienceIcon, MathIcon, SocialStudiesIcon, PhysicsIcon, ChemistryIcon, BiologyIcon, ArrowRightIcon, TargetIcon, CheckCircleIcon, SpeakerIcon, UsersIcon } from '../constants/icons';
+import { CalendarCheckIcon, BarChartIcon, BookIcon, CalendarDaysIcon, FlameIcon, AwardIcon, ScienceIcon, MathIcon, SocialStudiesIcon, PhysicsIcon, ChemistryIcon, BiologyIcon, ArrowRightIcon, TargetIcon, CheckCircleIcon, SpeakerIcon, UsersIcon, SparklesIcon } from '../constants/icons';
 import { ChapterProgress, Badge, DailyChallenge, UserBktData } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 import { useStudentData } from '../contexts/StudentDataContext';
@@ -246,9 +246,10 @@ const StudentDashboard: React.FC<{ onContinue: () => void; }> = ({ onContinue })
                 </div>
             </div>
             
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
                 <StatCard title="Learning Streak" value={currentStreak} icon={<FlameIcon className="w-6 h-6"/>} color="bg-orange-500" />
                 <StatCard title="Lessons Completed" value={lessonsCompleted} icon={<CheckCircleIcon className="w-6 h-6"/>} color="bg-emerald-500" />
+                <StatCard title="XP Points" value={xp} icon={<SparklesIcon className="w-6 h-6"/>} color="bg-purple-500" />
                 <StatCard title="Achievements" value={achievements.length} icon={<AwardIcon className="w-6 h-6"/>} color="bg-yellow-500" />
             </div>
 

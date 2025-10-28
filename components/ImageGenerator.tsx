@@ -1,10 +1,9 @@
 import React, { useState } from 'react';
-import { GoogleGenAI } from '@google/genai';
+import { GoogleGenAI, Modality } from '@google/genai';
 import { ImageIcon } from '../constants/icons';
 
 const ImageGenerator: React.FC = () => {
     const [prompt, setPrompt] = useState('');
-    const [aspectRatio, setAspectRatio] = useState('4:3');
     const [isLoading, setIsLoading] = useState(false);
     const [imageUrl, setImageUrl] = useState('');
     const [error, setError] = useState('');
@@ -35,19 +34,27 @@ const ImageGenerator: React.FC = () => {
 - The overall aesthetic should be clean, professional, and suitable for a textbook or learning material.
 `;
             
-            const response = await ai.models.generateImages({
-                model: 'imagen-4.0-generate-001',
-                prompt: educationalPrompt,
+            const response = await ai.models.generateContent({
+                model: 'gemini-2.5-flash-image',
+                contents: {
+                    parts: [{ text: educationalPrompt }],
+                },
                 config: {
-                    numberOfImages: 1,
-                    outputMimeType: 'image/png',
-                    aspectRatio: aspectRatio as "1:1" | "16:9" | "9:16" | "4:3" | "3:4",
+                    responseModalities: [Modality.IMAGE],
                 },
             });
+
+            for (const part of response.candidates[0].content.parts) {
+                if (part.inlineData) {
+                    const base64ImageBytes: string = part.inlineData.data;
+                    const url = `data:${part.inlineData.mimeType};base64,${base64ImageBytes}`;
+                    setImageUrl(url);
+                    setIsLoading(false);
+                    return;
+                }
+            }
             
-            const base64ImageBytes: string = response.generatedImages[0].image.imageBytes;
-            const url = `data:image/png;base64,${base64ImageBytes}`;
-            setImageUrl(url);
+            throw new Error("No image data found in response.");
 
         } catch (err) {
             console.error(err);
@@ -70,26 +77,11 @@ const ImageGenerator: React.FC = () => {
                     className="w-full p-3 text-base border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
                     rows={3}
                 />
-                <div className="flex flex-col sm:flex-row items-center gap-4">
-                    <div className="w-full sm:w-auto">
-                        <label htmlFor="aspect-ratio" className="sr-only">Aspect Ratio</label>
-                        <select
-                            id="aspect-ratio"
-                            value={aspectRatio}
-                            onChange={(e) => setAspectRatio(e.target.value)}
-                            className="block w-full pl-3 pr-10 py-2 text-base border-slate-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 rounded-md bg-white"
-                        >
-                            <option value="4:3">Standard (4:3)</option>
-                            <option value="1:1">Square (1:1)</option>
-                            <option value="16:9">Landscape (16:9)</option>
-                            <option value="9:16">Portrait (9:16)</option>
-                            <option value="3:4">Tall (3:4)</option>
-                        </select>
-                    </div>
+                <div className="flex items-center gap-4">
                     <button
                         onClick={handleGenerate}
                         disabled={isLoading}
-                        className="w-full sm:w-auto flex-grow px-6 py-2 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 disabled:bg-slate-300 disabled:cursor-not-allowed transition-colors"
+                        className="w-full px-6 py-2 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 disabled:bg-slate-300 disabled:cursor-not-allowed transition-colors"
                     >
                         {isLoading ? 'Generating...' : 'Generate Image'}
                     </button>

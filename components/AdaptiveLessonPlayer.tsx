@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, Suspense } from 'react';
-import { LessonPack, AssessmentResult, AdaptiveFollowUp, LessonStep, LessonStepType, QuestionPoolItem, InteractiveSimulation, LtiContext, CoreExplanationStep, QuickCheckStep } from '../types';
+import { LessonPack, AssessmentResult, AdaptiveFollowUp, LessonStep, LessonStepType, QuestionPoolItem, InteractiveSimulation, LtiContext, CoreExplanationStep, QuickCheckStep, StructuredContent } from '../types';
 import { generateAdaptiveFollowUp, generateStudyNotes, generatePracticeQuiz, explainTextSnippet, generateMicroRemediation } from '../services/geminiService';
 import { transformLessonPackToSteps } from '../utils/lessonHelpers';
 import { SparklesIcon, ArrowLeftIcon, ArrowRightIcon, BookIcon, FileTextIcon, ClipboardCopyIcon, ClipboardListIcon, CheckCircleIcon, ChevronDownIcon } from '../constants/icons';
@@ -25,6 +25,7 @@ import AdaptiveFollowUpStep from './AdaptiveFollowUpStep';
 import FeedbackStep from './FeedbackStep';
 import KeyTermStep from './KeyTermStep';
 import NoteStep from './NoteStep';
+import TTSPlayer from './TTSPlayer';
 
 const SimulationExplainerModal = React.lazy(() => import('./SimulationExplainerModal'));
 const InteractiveVideoStep = React.lazy(() => import('./InteractiveVideoStep'));
@@ -33,9 +34,71 @@ const InteractiveVideoStep = React.lazy(() => import('./InteractiveVideoStep'));
 interface AdaptiveLessonPlayerProps {
   lessonPack: LessonPack | null;
   ltiContext?: LtiContext | null;
+  isTransitioning?: boolean;
 }
 
-const AdaptiveLessonPlayer: React.FC<AdaptiveLessonPlayerProps> = ({ lessonPack, ltiContext }) => {
+const getTextForTTS = (step: LessonStep | undefined): string => {
+    if (!step) return '';
+    
+    let textParts: string[] = [];
+    
+    const extractFromStructuredContent = (content: StructuredContent[]) => {
+        content.forEach(block => {
+            switch(block.type) {
+                case 'heading':
+                    textParts.push(block.content);
+                    break;
+                case 'paragraph':
+                    textParts.push(block.content);
+                    break;
+                case 'list':
+                    textParts.push(block.items.join('. '));
+                    break;
+                case 'key_term':
+                    textParts.push(`${block.term}. ${block.definition}`);
+                    break;
+                case 'note':
+                    textParts.push(`Note: ${block.content}`);
+                    break;
+            }
+        });
+    };
+
+    switch(step.type) {
+        case 'topic_title':
+            textParts.push(`Starting lesson: ${step.content.topic_name}`);
+            break;
+        case 'core_explanation':
+            extractFromStructuredContent(step.content);
+            break;
+        case 'quick_check':
+        case 'assessment_question':
+            textParts.push((step.content as any).question);
+            break;
+        case 'worked_example':
+             textParts.push(`Worked example. Prompt: ${step.content.prompt}. Solution: ${step.content.solution}. Here is why it works: ${step.content.why_it_works}`);
+            break;
+        case 'guided_practice':
+             textParts.push(`Guided practice. Question: ${step.content.question}`);
+            break;
+        case 'independent_practice':
+            textParts.push(`Practice Problem. Question: ${step.content.question}`);
+            break;
+        case 'HOTS':
+            textParts.push(`Higher-Order Thinking Question: ${step.content.question}`);
+            break;
+        case 'common_error':
+            textParts.push(`A common mistake to avoid. The mistake is: ${step.content.error}. The correction is: ${step.content.fix}`);
+            break;
+        case 'fill_in_the_blanks':
+            textParts.push(`Fill in the blank. ${step.content.sentence_parts.join(' blank ')}`);
+            break;
+    }
+    return textParts.join('\n\n');
+};
+
+
+const AdaptiveLessonPlayer: React.FC<AdaptiveLessonPlayerProps> = ({ lessonPack, ltiContext, isTransitioning }) => {
   const { activeProfile } = useAuth();
   const { progressData, markChapterAsCompleted, awardXP, recordAnswer, updateChapterStep } = useStudentData();
   
@@ -128,8 +191,12 @@ const AdaptiveLessonPlayer: React.FC<AdaptiveLessonPlayerProps> = ({ lessonPack,
             const step = steps[stepIndex];
             
             let questionContent = '';
-            if (step.type === 'quick_check' || step.type === 'fill_in_the_blanks' || (step.type === 'assessment_question' && 'question' in step.content)) {
-                questionContent = (step.content as any).question;
+            if (step.type === 'quick_check') {
+                questionContent = step.content.question;
+            } else if (step.type === 'assessment_question') {
+                questionContent = step.content.question.question;
+            } else if (step.type === 'fill_in_the_blanks') {
+                questionContent = step.content.sentence_parts.join(' ___ ');
             }
 
             if (questionContent) {
@@ -300,7 +367,15 @@ const AdaptiveLessonPlayer: React.FC<AdaptiveLessonPlayerProps> = ({ lessonPack,
   };
 
   return (
-    <div className="flex flex-col">
+    <div className="flex flex-col relative">
+      {isTransitioning && (
+        <div className="absolute inset-0 bg-white/70 z-20 transition-opacity duration-300">
+            <div className="absolute top-0 left-0 h-1 w-full bg-slate-200 overflow-hidden">
+                <div className="h-full bg-indigo-500 animate-indeterminate-progress"></div>
+            </div>
+        </div>
+      )}
+      
       <div className="mb-6">
         <div className="flex justify-between items-center mb-2">
           <h2 className="font-bold text-slate-700">{lessonPack.topic_name}</h2>
@@ -311,7 +386,10 @@ const AdaptiveLessonPlayer: React.FC<AdaptiveLessonPlayerProps> = ({ lessonPack,
         </div>
       </div>
 
-      <div ref={contentRef} className="relative flex-grow p-6 bg-slate-50 rounded-xl shadow-lg border border-[var(--border-color)] mb-6">
+      <div ref={contentRef} className="relative flex-grow p-6 bg-white rounded-xl shadow-lg border border-[var(--border-color)] mb-6">
+         <div className="mb-4 pb-4 border-b border-slate-200">
+            <TTSPlayer textToSpeak={getTextForTTS(currentStep)} />
+         </div>
         <div key={currentStepIndex} className="animate-fade-in min-h-[400px]">
           {renderStepContent()}
         </div>

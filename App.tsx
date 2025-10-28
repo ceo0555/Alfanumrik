@@ -1,10 +1,9 @@
-import React, { useState, useEffect, useCallback, ErrorInfo, ReactNode, Suspense, Component, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, ErrorInfo, ReactNode, Suspense, useMemo, useTransition } from 'react';
 import Header from './components/Header';
 import Loader from './components/Loader';
 import BottomNavBar from './components/BottomNavBar';
 import ProfileSetup from './components/ProfileSetup';
 import UserManagementModal from './components/UserManagementModal';
-import { fetchChapterContent } from './services/geminiService';
 import { LessonPack, UserRole, Assignment, UserProfile, LtiContext } from './types';
 import { useAuth } from './contexts/AuthContext';
 import { StudentDataProvider, useStudentData } from './contexts/StudentDataContext';
@@ -20,9 +19,12 @@ interface ErrorBoundaryProps {
 interface ErrorBoundaryState {
   hasError: boolean;
 }
-class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
-  // FIX: Initialize state using a class property. This is a more modern and concise approach that resolves issues with `this.state` and `this.props` not being recognized on the class instance.
-  state: ErrorBoundaryState = { hasError: false };
+class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
+  // FIX: Using a constructor to initialize state and call super(props) ensures that `this.state` and `this.props` are correctly set up, resolving errors about these properties not existing.
+  constructor(props: ErrorBoundaryProps) {
+    super(props);
+    this.state = { hasError: false };
+  }
 
   static getDerivedStateFromError(_: Error): ErrorBoundaryState {
     return { hasError: true };
@@ -46,7 +48,8 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
 }
 
 // 2. Code Splitting / Lazy Loading for main views
-const AdaptiveLessonPlayer = React.lazy(() => import('./components/AdaptiveLessonPlayer'));
+const LessonView = React.lazy(() => import('./components/LessonView'));
+const LessonPlayerSkeleton = React.lazy(() => import('./components/LessonPlayerSkeleton'));
 const TutorCore = React.lazy(() => import('./components/TutorCore'));
 const AIAssistant = React.lazy(() => import('./components/AIAssistant'));
 const AITools = React.lazy(() => import('./components/AITools'));
@@ -60,34 +63,36 @@ const ParentDashboard = React.lazy(() => import('./components/ParentDashboard'))
 const SchoolDashboard = React.lazy(() => import('./components/SchoolDashboard'));
 const StudentAssignments = React.lazy(() => import('./components/StudentAssignments'));
 const QuizTaker = React.lazy(() => import('./components/QuizTaker'));
+const PracticeCentre = React.lazy(() => import('./components/PracticeCentre'));
+const MoreScreen = React.lazy(() => import('./components/MoreScreen'));
 
 
 // --- App Component ---
 
-export type View = 'home' | 'learn' | 'lesson' | 'ask' | 'tools' | 'tutor' | 'planner' | 'parentDashboard' | 'schoolDashboard' | 'assignments' | 'quiz';
+export type View = 'home' | 'learn' | 'lesson' | 'ask' | 'tools' | 'tutor' | 'planner' | 'parentDashboard' | 'schoolDashboard' | 'assignments' | 'quiz' | 'practice' | 'more';
 
 
 interface StudentAppProps {
     isLtiLaunch?: boolean;
     ltiContext?: LtiContext | null;
+    onOpenUserModal: () => void;
+    onLogout: () => void;
 }
 
-const StudentApp: React.FC<StudentAppProps> = ({ isLtiLaunch = false, ltiContext = null }) => {
-  const { activeProfile, updateActiveUserProfile, handleSwitchUser, userProfiles } = useAuth();
-  const { startChapter } = useStudentData();
+const StudentApp: React.FC<StudentAppProps> = ({ isLtiLaunch = false, ltiContext = null, onOpenUserModal, onLogout }) => {
+  const { activeProfile, updateActiveUserProfile } = useAuth();
 
   const [view, setView] = useState<View>('home');
-  const [lessonPack, setLessonPack] = useState<LessonPack | null>(null);
-  const [isLessonLoading, setIsLessonLoading] = useState<boolean>(false);
-  const [lessonError, setLessonError] = useState<string | null>(null);
-  const [isUserModalOpen, setIsUserModalOpen] = useState(false);
   const [flashcardModalChapter, setFlashcardModalChapter] = useState<{ grade: string, subject: string, chapter: string } | null>(null);
   const [activeQuiz, setActiveQuiz] = useState<Assignment | null>(null);
 
+  const [isPending, startTransition] = useTransition();
 
   const handleSelectChapter = (chapter: string, subject: string, grade: string) => {
-    updateActiveUserProfile({ lastChapter: chapter, lastSubject: subject, grade: grade });
-    setView('lesson');
+    startTransition(() => {
+      updateActiveUserProfile({ lastChapter: chapter, lastSubject: subject, grade: grade });
+      setView('lesson');
+    });
   };
 
   const handleOpenFlashcardCreator = (grade: string, subject: string, chapter: string) => {
@@ -99,58 +104,37 @@ const StudentApp: React.FC<StudentAppProps> = ({ isLtiLaunch = false, ltiContext
     setView('quiz');
   };
 
-  const loadContent = useCallback(async () => {
-    if (view !== 'lesson' || !activeProfile) return;
-
-    if (lessonPack && lessonPack.topic_name === activeProfile.lastChapter && lessonPack.topic_id.startsWith(`G${activeProfile.grade}-${activeProfile.lastSubject.substring(0,3).toUpperCase()}`)) {
-        return;
-    }
-    
-    startChapter();
-
-    setIsLessonLoading(true);
-    setLessonError(null);
-    setLessonPack(null);
-    try {
-      const { grade, lastSubject, lastChapter } = activeProfile;
-      const content = await fetchChapterContent(grade, lastSubject, lastChapter);
-      setLessonPack(content);
-    } catch (err) {
-      setLessonError('Failed to fetch chapter content. Please try again.');
-      console.error(err);
-    } finally {
-      setIsLessonLoading(false);
-    }
-  }, [activeProfile, view, lessonPack, startChapter]);
-
-
   useEffect(() => {
       if (isLtiLaunch && ltiContext) {
           setView('lesson');
       }
   }, [isLtiLaunch, ltiContext]);
 
-  useEffect(() => {
-    if (view === 'lesson' && activeProfile) {
-        loadContent();
-    }
-  }, [view, loadContent, activeProfile]);
-
   const renderContent = () => {
     if (!activeProfile) return <Loader />;
     
     switch(view) {
       case 'home':
-        return <StudentDashboard onContinue={() => setView('lesson')} />;
+        return <StudentDashboard onContinue={() => {
+          startTransition(() => {
+            setView('lesson')
+          });
+        }} />;
       case 'learn':
         return <CurriculumBrowser 
           onSelectChapter={handleSelectChapter}
           onOpenFlashcardCreator={handleOpenFlashcardCreator}
         />;
       case 'lesson':
-        if (isLessonLoading) return <Loader />;
-        if (lessonError) return <div className="text-center text-red-500 p-4 bg-red-50 rounded-lg">{lessonError}</div>;
-        return <AdaptiveLessonPlayer lessonPack={lessonPack} ltiContext={ltiContext} />;
+        return (
+          <ErrorBoundary>
+            <Suspense fallback={<LessonPlayerSkeleton />}>
+              <LessonView isTransitioning={isPending} ltiContext={ltiContext} />
+            </Suspense>
+          </ErrorBoundary>
+        );
+      case 'practice':
+        return <PracticeCentre />;
       case 'planner':
         return <Planner setView={setView} />;
       case 'assignments':
@@ -167,6 +151,8 @@ const StudentApp: React.FC<StudentAppProps> = ({ isLtiLaunch = false, ltiContext
         return <AIAssistant />;
       case 'tools':
         return <AITools />;
+      case 'more':
+        return <MoreScreen setView={setView} onOpenUserModal={onOpenUserModal} onLogout={onLogout} />;
       default:
         return null;
     }
@@ -175,7 +161,7 @@ const StudentApp: React.FC<StudentAppProps> = ({ isLtiLaunch = false, ltiContext
   const getHeaderTitle = () => {
     if (view === 'lesson' && activeProfile) return `${activeProfile.lastSubject} - ${activeProfile.lastChapter}`;
     if (view === 'quiz' && activeQuiz) return `Quiz: ${activeQuiz.title}`;
-    const viewTitles = { home: `Welcome, ${activeProfile?.name}`, learn: 'Curriculum', planner: 'Planner', assignments: 'My Assignments', ask: 'AI Tutor', tutor: 'Live Tutor', tools: 'AI Studio' };
+    const viewTitles = { home: `Welcome, ${activeProfile?.name}`, learn: 'Curriculum', practice: 'Practice Centre', planner: 'Planner', assignments: 'Homework', ask: 'AI Tutor', tutor: 'Live Tutor', tools: 'AI Studio', more: 'More Options' };
     return viewTitles[view as keyof typeof viewTitles] || 'Alfanumrik';
   };
 
@@ -187,34 +173,21 @@ const StudentApp: React.FC<StudentAppProps> = ({ isLtiLaunch = false, ltiContext
           showBackButton={view === 'lesson' || view === 'quiz'}
           onBack={() => setView(view === 'lesson' ? 'learn' : 'assignments')}
           title={getHeaderTitle()}
-          onOpenUserModal={() => setIsUserModalOpen(true)}
+          onOpenUserModal={onOpenUserModal}
           userRole="student"
-          onLogout={() => {}} // Logout handled in parent
+          onLogout={onLogout}
         />
         <main className="flex-1 overflow-y-auto overflow-x-hidden p-4 md:p-6 pb-24 md:pb-6">
-          <ErrorBoundary>
-            <Suspense fallback={<Loader />}>
-              <div className="min-h-full">
-                {renderContent()}
-              </div>
-            </Suspense>
-          </ErrorBoundary>
+          <Suspense fallback={<Loader />}>
+            <div className="min-h-full">
+              {renderContent()}
+            </div>
+          </Suspense>
         </main>
       </div>
 
       {!isLtiLaunch && <BottomNavBar activeView={view} setView={setView} />}
       
-      {!isLtiLaunch && (
-        <UserManagementModal
-          isOpen={isUserModalOpen}
-          onClose={() => setIsUserModalOpen(false)}
-          onSwitchUser={(id) => { 
-            handleSwitchUser(id); 
-            setIsUserModalOpen(false);
-          }}
-          profilesToList={userProfiles.filter(p => !p.schoolRole && !p.childIds)}
-        />
-      )}
       <Suspense>
         {flashcardModalChapter && (
           <FlashcardCreationModal
@@ -401,7 +374,23 @@ const App: React.FC = () => {
     if (userRole === 'student' && activeProfile) {
       return (
         <StudentDataProvider>
-          <StudentApp isLtiLaunch={!!ltiContext} ltiContext={ltiContext} />
+          <StudentApp 
+            isLtiLaunch={!!ltiContext} 
+            ltiContext={ltiContext} 
+            onOpenUserModal={() => setIsUserModalOpen(true)}
+            onLogout={handleLogout}
+          />
+          {!ltiContext && (
+            <UserManagementModal
+              isOpen={isUserModalOpen}
+              onClose={() => setIsUserModalOpen(false)}
+              onSwitchUser={(id) => { 
+                handleSwitchUser(id); 
+                setIsUserModalOpen(false);
+              }}
+              profilesToList={userProfiles.filter(p => !p.schoolRole && !p.childIds)}
+            />
+          )}
         </StudentDataProvider>
       );
     }

@@ -3,7 +3,7 @@ import { generateGroundedAnswer, generateImageForAnswerIfNeeded, analyzeQueryCom
 import { GroundingChunk } from '../types';
 import { SearchIcon, SparklesIcon } from '../constants/icons';
 import { GoogleGenAI } from '@google/genai';
-import { cleanText } from '../utils/textHelpers';
+import MarkdownRenderer from './MarkdownRenderer';
 
 const GroundedSearch: React.FC = () => {
   const [query, setQuery] = useState('');
@@ -39,7 +39,7 @@ const GroundedSearch: React.FC = () => {
           1.  **Adhere to CBSE Standards**: Your answer must be strictly aligned with the CBSE curriculum, standards, and marking schemes.
           2.  **Detailed Explanation**: Break down the concept into fundamental principles. Explain complex terminology in simple terms. Use analogies if helpful.
           3.  **Structured Answer**: Organize your response logically. For problem-solving, outline the strategy, state the formulas, substitute the values, and then derive the solution.
-          4.  **Clean Text Output**: Provide the final answer as clean, plain text ONLY. Do not use any Markdown formatting.
+          4.  **Clean Text Output**: Provide the final answer as clean plain text ONLY. Do not use any markdown or special formatting. Use line breaks to create paragraphs and structure.
           5.  **Educational Focus**: If the query is unrelated to academic subjects, politely decline to answer.
         `;
 
@@ -119,7 +119,9 @@ const GroundedSearch: React.FC = () => {
             )}
           </div>
 
-          <p className="text-slate-700 leading-relaxed whitespace-pre-wrap text-base">{cleanText(result.answer)}</p>
+          <div className="prose prose-base max-w-none prose-indigo">
+            <MarkdownRenderer content={result.answer} />
+          </div>
           
           {result.imageUrl && (
             <div className="mt-6">

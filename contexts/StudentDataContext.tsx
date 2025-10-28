@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
-import { UserProfile, UserProgressData, ChapterProgress, UserFlashcards, Flashcard, Badge, GamificationEvent, UserFlashcardItem, UserBktData } from '../types';
+import { UserProfile, UserProgressData, ChapterProgress, UserFlashcards, Flashcard, Badge, GamificationEvent, UserFlashcardItem, UserBktData, StudyTask } from '../types';
 import { curriculum } from '../constants/curriculum';
 import { allAchievements } from '../constants/achievements';
 import * as apiService from '../services/apiService';
@@ -16,9 +16,10 @@ interface StudentDataContextType {
   startChapter: () => void;
   markChapterAsCompleted: () => void;
   handleSetDueDate: (chapterId: string, dueDate: string | null) => void;
+  handleSaveManualTask: (taskData: Omit<StudyTask, 'id' | 'type' | 'isCompleted'>) => void;
   handleSaveFlashcards: (chapterId: string, flashcards: Flashcard[]) => void;
   clearNewAchievement: () => void;
-  awardXP: (event: GamificationEvent) => void;
+  awardXP: (event: GamificationEvent, amount?: number) => void;
   gradeFlashcard: (chapterId: string, cardIndex: number, rating: 1 | 2 | 3 | 4) => void;
   recordAnswer: (skillId: string, isCorrect: boolean) => void;
   updateChapterStep: (step: number) => void;
@@ -31,6 +32,7 @@ const XP_CONFIG: { [key in GamificationEvent]: number } = {
     lesson_completed: 100,
     quiz_correct: 25,
     streak_update: 50,
+    focus_session_completed: 30,
 };
 
 const calculateLevel = (xp: number) => Math.floor(Math.sqrt(xp / 100)) + 1;
@@ -264,6 +266,18 @@ export const StudentDataProvider: React.FC<{ children: ReactNode }> = ({ childre
     }
   };
 
+  const handleSaveManualTask = useCallback((taskData: Omit<StudyTask, 'id' | 'type' | 'isCompleted'>) => {
+    if (!activeProfile) return;
+    const newTask: StudyTask = {
+        ...taskData,
+        id: `manual-${Date.now()}`,
+        type: 'manual',
+        isCompleted: false,
+    };
+    const updatedTasks = [...(activeProfile.manualTasks || []), newTask];
+    updateActiveUserProfile({ manualTasks: updatedTasks });
+  }, [activeProfile, updateActiveUserProfile]);
+
   const handleSaveFlashcards = async (chapterId: string, flashcards: Flashcard[]) => {
     if (!activeProfile) return;
     const oldFlashcards = { ...userFlashcards };
@@ -296,6 +310,10 @@ export const StudentDataProvider: React.FC<{ children: ReactNode }> = ({ childre
       const deck = oldFlashcards[chapterId];
       if (!deck || !deck[cardIndex]) return;
 
+      if (rating > 1) { // Award XP for 'Hard', 'Good', or 'Easy', but not 'Again'
+        awardXP('step_completed');
+      }
+
       const itemToGrade = deck[cardIndex];
       const now = new Date();
       
@@ -326,7 +344,7 @@ export const StudentDataProvider: React.FC<{ children: ReactNode }> = ({ childre
           console.error("Failed to update FSRS data:", e);
           setUserFlashcards(oldFlashcards); // Revert
       }
-  }, [activeProfile, userFlashcards]);
+  }, [activeProfile, userFlashcards, awardXP]);
 
   const updateChapterStep = useCallback(async (step: number) => {
     if (!activeProfile) return;
@@ -365,6 +383,7 @@ export const StudentDataProvider: React.FC<{ children: ReactNode }> = ({ childre
     startChapter,
     markChapterAsCompleted,
     handleSetDueDate,
+    handleSaveManualTask,
     handleSaveFlashcards,
     clearNewAchievement,
     awardXP,

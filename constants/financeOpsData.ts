@@ -28,7 +28,6 @@ export const energyOptimizerTips: string[] = [
 ];
 
 export const mockPrintQuotas: PrintQuota[] = [
-    // FIX: Added missing 'id' properties to conform to the PrintQuota type.
     { id: 'pq1', staffName: 'Admin Office', quota: 2000, used: 1780 },
     { id: 'pq2', staffName: 'Science Dept.', quota: 1500, used: 950 },
     { id: 'pq3', staffName: 'Maths Dept.', quota: 1500, used: 1450 },
@@ -36,7 +35,6 @@ export const mockPrintQuotas: PrintQuota[] = [
 ];
 
 export const mockFeeStatus: FeeStatus[] = [
-    // FIX: Added missing 'id' properties to conform to the FeeStatus type.
     { id: 'fs1', studentId: 101, studentName: 'Rohan Sharma', grade: '10', status: 'Paid', amountDue: 0 },
     { id: 'fs2', studentId: 102, studentName: 'Priya Singh', grade: '9', status: 'Overdue', amountDue: 15000 },
     { id: 'fs3', studentId: 103, studentName: 'Aarav Gupta', grade: '10', status: 'Paid', amountDue: 0 },

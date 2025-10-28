@@ -3,6 +3,7 @@ import { GoogleGenAI, Chat, GenerateContentResponse } from '@google/genai';
 import { useAuth } from '../contexts/AuthContext';
 import { ChatMessage, GroundingChunk } from '../types';
 import { SparklesIcon, QuoteIcon } from '../constants/icons';
+import MarkdownRenderer from './MarkdownRenderer';
 
 const TutorCore: React.FC = () => {
     const { activeProfile } = useAuth();
@@ -27,8 +28,13 @@ const TutorCore: React.FC = () => {
                     2.  **Use Your Tools**: Rely on your search tool to find accurate, up-to-date information to answer student questions on ANY academic subject.
                     3.  **Adhere to CBSE Standards**: Your answers must be strictly aligned with the CBSE curriculum and standards for the student's grade.
                     4.  **Socratic Method**: Do not just give away answers. Guide the student by asking leading questions. For definitions, provide them, but then ask a follow-up question to check for understanding.
-                    5.  **Mathematical Accuracy**: For numerical or problem-solving questions, you must be 100% accurate. Before responding, think step-by-step to deconstruct the problem, identify the correct formulas, perform the calculations carefully, and double-check your work. Guide the student through these verified steps. Do not provide the final answer directly, but ensure every step and calculation you provide is mathematically sound.
-                    6.  **Structure and Formatting**: Format your answers clearly. Use numbered lists, bullet points, and short paragraphs to break down complex topics or steps, similar to how answers are presented in CBSE model answer sheets. Make it easy to read and learn from.
+                    5.  **Mathematical Accuracy & Vertical Formatting**: For numerical or problem-solving questions, you must be 100% accurate. Present your solution in a **vertical, step-by-step format**.
+                        - **Deconstruct the Problem**: Start by listing the given values.
+                        - **State the Formula**: Clearly state the formula you will use.
+                        - **Show Each Step**: Show each calculation step-by-step, vertically. Explain the logic for each step briefly.
+                        - **Use Code Blocks**: Wrap all mathematical equations and important formulas in markdown code blocks (\`\`\`) for clarity and highlighting.
+                        - **Verify Your Work**: Before presenting the answer, double-check your calculations to ensure 100% accuracy. Guide the student through these verified steps rather than just giving a final answer.
+                    6.  **Structure and Formatting**: Format your answers clearly as step-by-step points. Use numbered lists, bullet points, and short paragraphs to break down complex topics, similar to how answers are presented in CBSE model answer sheets. The entire output must be plain text. Do not use markdown formatting like **bold** or *italics*.
                     7.  **Encouraging Tone**: Be positive, patient, and encouraging.
                     8.  **Educational Focus**: If the query is unrelated to academics, politely decline and explain your role.
                     `,
@@ -60,11 +66,22 @@ const TutorCore: React.FC = () => {
         try {
             const responseStream = await chat.sendMessageStream({ message: input });
             let modelResponse = '';
-            
+            const sources: GroundingChunk[] = [];
+            const sourceMap = new Map<string, GroundingChunk>();
+
             setMessages(prev => [...prev, { role: 'model', content: '...', status: 'generating' }]);
             
             for await (const chunk of responseStream) {
                 modelResponse += chunk.text;
+                
+                const groundingChunks = chunk.candidates?.[0]?.groundingMetadata?.groundingChunks;
+                if (groundingChunks) {
+                    for (const gc of groundingChunks) {
+                        if (gc.web?.uri && !sourceMap.has(gc.web.uri)) {
+                            sourceMap.set(gc.web.uri, gc);
+                        }
+                    }
+                }
                 
                 setMessages(prev => {
                     const newMessages = [...prev];
@@ -76,7 +93,9 @@ const TutorCore: React.FC = () => {
 
              setMessages(prev => {
                 const newMessages = [...prev];
-                newMessages[newMessages.length - 1].status = 'done';
+                const lastMessage = newMessages[newMessages.length - 1];
+                lastMessage.status = 'done';
+                lastMessage.sources = Array.from(sourceMap.values());
                 return newMessages;
             });
 
@@ -98,7 +117,11 @@ const TutorCore: React.FC = () => {
         if (message.status === 'generating' && message.content === '...') {
             return <p className="text-sm italic text-slate-500">MIGA is thinking...</p>;
         }
-        return <p className="whitespace-pre-wrap">{message.content}</p>;
+        return (
+            <div className="prose prose-sm max-w-none prose-indigo">
+                <MarkdownRenderer content={message.content} />
+            </div>
+        );
     };
 
     return (

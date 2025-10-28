@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { LightbulbIcon, SparklesIcon } from '../constants/icons';
 import { explainConceptInDepth } from '../services/geminiService';
+import MarkdownRenderer from './MarkdownRenderer';
 
 const ConceptExplainer: React.FC = () => {
     const [text, setText] = useState('');
@@ -33,51 +34,6 @@ const ConceptExplainer: React.FC = () => {
         }
     };
     
-    const renderMarkdown = (markdown: string) => {
-        if (!markdown) return null;
-
-        const processInline = (text: string): string => {
-            return text
-                .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') // Bold
-                .replace(/\*(.*?)\*/g, '<em>$1</em>');           // Italic
-        };
-
-        const blocks = markdown.trim().split(/\n\s*\n/); // Split by one or more blank lines
-
-        const html = blocks.map(block => {
-            const trimmedBlock = block.trim();
-
-            // Fenced Code Blocks for Math
-            if (trimmedBlock.startsWith('```') && trimmedBlock.endsWith('```')) {
-                const code = trimmedBlock.substring(3, trimmedBlock.length - 3).trim();
-                const escapedCode = code.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-                return `<pre><code>${escapedCode}</code></pre>`;
-            }
-            
-            // Headings
-            if (trimmedBlock.startsWith('### ')) return `<h3>${processInline(trimmedBlock.substring(4))}</h3>`;
-            if (trimmedBlock.startsWith('## ')) return `<h2>${processInline(trimmedBlock.substring(3))}</h2>`;
-            if (trimmedBlock.startsWith('# ')) return `<h1>${processInline(trimmedBlock.substring(2))}</h1>`;
-
-            // Lists
-            if (trimmedBlock.startsWith('* ') || trimmedBlock.startsWith('- ') || trimmedBlock.match(/^\d+\.\s/)) {
-                const isOrdered = trimmedBlock.match(/^\d+\.\s/);
-                const listTag = isOrdered ? 'ol' : 'ul';
-                const items = trimmedBlock.split('\n').map(item => {
-                    let content = item.trim().replace(/^(\* |-\s|\d+\.\s)/, '');
-                    return `<li>${processInline(content)}</li>`;
-                }).join('');
-                return `<${listTag}>${items}</${listTag}>`;
-            }
-
-            // Paragraphs
-            return `<p>${processInline(trimmedBlock)}</p>`;
-
-        }).join('');
-
-        return <div dangerouslySetInnerHTML={{ __html: html }} />;
-    };
-
     return (
         <div className="text-center">
             <h3 className="text-xl font-bold text-slate-800 mb-2">Concept Explainer</h3>
@@ -116,7 +72,9 @@ const ConceptExplainer: React.FC = () => {
                         <LightbulbIcon className="w-5 h-5 text-amber-500" />
                         Here's the breakdown:
                     </h4>
-                    <div className="prose prose-sm max-w-none prose-slate text-slate-700">{renderMarkdown(result)}</div>
+                    <div className="prose prose-sm max-w-none prose-slate text-slate-700">
+                        <MarkdownRenderer content={result} />
+                    </div>
                 </div>
             )}
         </div>

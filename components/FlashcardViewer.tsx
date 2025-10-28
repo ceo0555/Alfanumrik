@@ -18,7 +18,6 @@ const FlashcardViewer: React.FC = () => {
   // Quiz Mode State
   const [quizActive, setQuizActive] = useState(false);
   const [currentQuizIndex, setCurrentQuizIndex] = useState(0);
-  // FIX: Change state type to UserFlashcardItem[] to match the data being stored.
   const [shuffledDeck, setShuffledDeck] = useState<UserFlashcardItem[]>([]);
   const [userAnswer, setUserAnswer] = useState('');
   const [answerFeedback, setAnswerFeedback] = useState<{ isCorrect: boolean; feedback: string } | null>(null);
@@ -59,10 +58,8 @@ const FlashcardViewer: React.FC = () => {
     setIsCheckingAnswer(true);
     setAnswerFeedback(null);
     try {
-        // FIX: Access term and definition from the nested `card` object.
         const result = await checkFlashcardAnswer(userAnswer, currentCard.card.definition, currentCard.card.term);
         setAnswerFeedback(result);
-        // FIX: Pass the nested `card` object to the history.
         setQuizHistory(prev => [...prev, { card: currentCard.card, userAnswer, isCorrect: result.isCorrect }]);
     } catch(err) {
         console.error(err);
@@ -129,15 +126,12 @@ const FlashcardViewer: React.FC = () => {
             className={`w-full h-full absolute transition-transform duration-700 transform-style-3d ${isFlipped ? 'rotate-y-180' : ''}`}
             onClick={() => setIsFlipped(!isFlipped)}
             role="button"
-            // FIX: Access term from the nested `card` object.
             aria-label={`Flashcard: ${currentCard.card.term}. Click to flip.`}
           >
             <div className="absolute w-full h-full backface-hidden flex items-center justify-center p-6 bg-white rounded-lg border-2 border-[var(--border-color)] shadow-lg cursor-pointer">
-              {/* FIX: Access term from the nested `card` object. */}
               <p className="text-2xl font-bold text-slate-800">{currentCard.card.term}</p>
             </div>
             <div className="absolute w-full h-full backface-hidden flex items-center justify-center p-6 bg-[var(--brand-primary)] text-white rounded-lg border-2 border-[var(--brand-primary-hover)] shadow-lg cursor-pointer rotate-y-180">
-              {/* FIX: Access definition from the nested `card` object. */}
               <p className="text-lg font-semibold">{currentCard.card.definition}</p>
             </div>
           </div>

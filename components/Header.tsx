@@ -36,13 +36,15 @@ const Header: React.FC<HeaderProps> = ({ showBackButton, onBack, title, onOpenUs
             {activeProfile && (
               <>
                 {userRole === 'student' ? (
-                  <button 
-                      onClick={onOpenUserModal}
-                      className="h-10 w-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 text-white flex items-center justify-center font-bold text-lg ring-2 ring-offset-2 ring-indigo-200 shadow-md transition-transform transform hover:scale-110"
-                      aria-label={`Switch from ${activeProfile.name} profile`}
-                  >
-                      {activeProfile.name.charAt(0).toUpperCase()}
-                  </button>
+                  <div className="hidden md:flex items-center">
+                    <button 
+                        onClick={onOpenUserModal}
+                        className="h-10 w-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 text-white flex items-center justify-center font-bold text-lg ring-2 ring-offset-2 ring-indigo-200 shadow-md transition-transform transform hover:scale-110"
+                        aria-label={`Switch from ${activeProfile.name} profile`}
+                    >
+                        {activeProfile.name.charAt(0).toUpperCase()}
+                    </button>
+                  </div>
                 ) : (
                   <button 
                       onClick={onLogout}

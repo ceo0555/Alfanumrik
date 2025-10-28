@@ -17,8 +17,7 @@ const IconMap: React.FC<{ icon: BoardPlannerEvent['icon'], className?: string }>
 };
 
 const BoardPlanner: React.FC = () => {
-    // FIX: Destructure communicationTemplates from useAuth hook
-    const { teacherSchedules, boardPlannerEvents, communicationTemplates } = useAuth();
+    const { teacherSchedules, boardPlannerEvents, communicationTemplates, handleUpdateBoardPlannerEvents } = useAuth();
     const [view, setView] = useState<View>('calendar');
     const [copiedId, setCopiedId] = useState<string | null>(null);
     const [isEventModalOpen, setIsEventModalOpen] = useState(false);

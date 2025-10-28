@@ -59,10 +59,10 @@ const UserManagementModal: React.FC<UserManagementModalProps> = ({
         role="dialog"
     >
       <div 
-        className="bg-slate-50 rounded-2xl shadow-xl w-full max-w-md overflow-hidden"
+        className="bg-slate-50 rounded-2xl shadow-xl w-full max-w-md flex flex-col max-h-[90vh]"
         onClick={e => e.stopPropagation()}
       >
-        <header className="flex items-center justify-between p-4 border-b border-[var(--border-color)]">
+        <header className="flex items-center justify-between p-4 border-b border-[var(--border-color)] flex-shrink-0">
             <h2 className="text-lg font-bold text-slate-800">
                 {view === 'list' ? 'Switch Profile' : userToEdit ? 'Edit Profile' : 'Add New Profile'}
             </h2>
@@ -71,7 +71,7 @@ const UserManagementModal: React.FC<UserManagementModalProps> = ({
             </button>
         </header>
 
-        <div className="p-6">
+        <div className="p-6 overflow-y-auto">
             {view === 'list' ? (
                 <div className="space-y-3">
                     {profiles.map(profile => (

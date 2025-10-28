@@ -6,7 +6,6 @@ export const transformLessonPackToSteps = (lessonPack: LessonPack): LessonStep[]
   if (!lessonPack) return steps;
   
   const addStep = (stepData: Omit<LessonStep, 'originalIndex'>) => {
-    // FIX: Add a type assertion to resolve a TypeScript issue where spreading a discriminated union type ('stepData') loses its type information, causing an incorrect type inference error.
     steps.push({ ...stepData, originalIndex: steps.length } as LessonStep);
   };
 

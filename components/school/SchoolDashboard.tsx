@@ -1,30 +1,29 @@
-// FIX: Add useEffect to the import from 'react'.
 import React, { useState, useMemo, Suspense, useEffect } from 'react';
-import { useAuth } from '../contexts/AuthContext';
-import { EditIcon, SchoolIcon } from '../constants/icons';
-import SchoolSidebar from './school/SchoolSidebar';
+import { useAuth } from '../../contexts/AuthContext';
+import { EditIcon, SchoolIcon } from '../../constants/icons';
+import SchoolSidebar from './SchoolSidebar';
 
 // Lazy load tab components for better initial load performance
-const OverviewTab = React.lazy(() => import('./school/OverviewTab'));
-const StudentsTab = React.lazy(() => import('./school/StudentsTab'));
-const AssignmentsTab = React.lazy(() => import('./school/AssignmentsTab'));
-const ReportsTab = React.lazy(() => import('./school/ReportsTab'));
-const AnnouncementsTab = React.lazy(() => import('./school/AnnouncementsTab'));
-const PaperBuilder = React.lazy(() => import('./PaperBuilder'));
-const DiagnosticsDashboard = React.lazy(() => import('./DiagnosticsDashboard'));
-const CodingModuleDashboard = React.lazy(() => import('./CodingModuleDashboard'));
-const BoardPlanner = React.lazy(() => import('./BoardPlanner'));
-const ClassroomCore = React.lazy(() => import('./ClassroomCore'));
-const FinanceOpsDashboard = React.lazy(() => import('./FinanceOpsDashboard'));
-const GrowthDashboard = React.lazy(() => import('./GrowthDashboard'));
+const OverviewTab = React.lazy(() => import('./OverviewTab'));
+const StudentsTab = React.lazy(() => import('./StudentsTab'));
+const AssignmentsTab = React.lazy(() => import('./AssignmentsTab'));
+const ReportsTab = React.lazy(() => import('./ReportsTab'));
+const AnnouncementsTab = React.lazy(() => import('./AnnouncementsTab'));
+const PaperBuilder = React.lazy(() => import('../PaperBuilder'));
+const DiagnosticsDashboard = React.lazy(() => import('../DiagnosticsDashboard'));
+const CodingModuleDashboard = React.lazy(() => import('../CodingModuleDashboard'));
+const BoardPlanner = React.lazy(() => import('../BoardPlanner'));
+const ClassroomCore = React.lazy(() => import('../ClassroomCore'));
+const FinanceOpsDashboard = React.lazy(() => import('../FinanceOpsDashboard'));
+const GrowthDashboard = React.lazy(() => import('../GrowthDashboard'));
 
 // Lazy load modals
-const BrandingModal = React.lazy(() => import('./school/BrandingModal'));
-const BulkOnboardModal = React.lazy(() => import('./BulkOnboardModal'));
-const CreateAssignmentModal = React.lazy(() => import('./CreateAssignmentModal'));
-const ReportCardModal = React.lazy(() => import('./ReportCardModal'));
-const CreateAnnouncementModal = React.lazy(() => import('./CreateAnnouncementModal'));
-const GradingModal = React.lazy(() => import('./GradingModal'));
+const BrandingModal = React.lazy(() => import('./BrandingModal'));
+const BulkOnboardModal = React.lazy(() => import('../BulkOnboardModal'));
+const CreateAssignmentModal = React.lazy(() => import('../CreateAssignmentModal'));
+const ReportCardModal = React.lazy(() => import('../ReportCardModal'));
+const CreateAnnouncementModal = React.lazy(() => import('../CreateAnnouncementModal'));
+const GradingModal = React.lazy(() => import('../GradingModal'));
 
 const SchoolLogo = ({ className }: { className?: string }) => (
     <div className={`p-2 bg-slate-700 rounded-lg ${className}`}>

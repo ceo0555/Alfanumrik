@@ -1,11 +1,11 @@
-import { UserProfile, AllProgressData, AllFlashcardsData, UserRole, DailyChallenge, UserFlashcards, UserFlashcardItem, SrsData, AllBktData, Assignment, Announcement, StudentSubmission, StudentFlnProgress, TeacherSchedule, AttendanceRecord, QuickFormativeAssessment, Notification, QuestionPoolItem, BusRoute, PrintQuota, FeeStatus, AfterSchoolProgram, FacilityBooking, BoardPlannerEvent, CrossCurricularProject, CodingModule, CommunicationTemplate, TeacherAssignment } from '../types';
+import { UserProfile, AllProgressData, AllFlashcardsData, UserRole, DailyChallenge, UserFlashcards, UserFlashcardItem, SrsData, AllBktData, Assignment, Announcement, StudentSubmission, StudentFlnProgress, TeacherSchedule, AttendanceRecord, QuickFormativeAssessment, Notification, QuestionPoolItem, BusRoute, PrintQuota, FeeStatus, AfterSchoolProgram, FacilityBooking, BoardPlannerEvent, CrossCurricularProject, CodingModule, CommunicationTemplate, TeacherAssignment, StudentPortfolioProject, AllPortfolios } from '../types';
 import { curriculum } from '../constants/curriculum';
 import { mockTeacherAssignments as initialTeacherAssignments, mockTeacherSchedule as initialTeacherSchedule } from '../constants/schoolData';
 import { mockItemBank as initialItemBank } from '../constants/itemBank';
 import { mockBusRoutes as initialBusRoutes, mockPrintQuotas as initialPrintQuotas, mockFeeStatus as initialFeeStatus } from '../constants/financeOpsData';
 import { mockAfterSchoolPrograms as initialAfterSchoolPrograms, mockFacilityBookings as initialFacilityBookings } from '../constants/growthData';
 import { mockCalendarEvents as initialBoardPlannerEvents, communicationTemplates as initialCommunicationTemplates } from '../constants/boardPlannerData';
-import { codingModules as initialCodingModules, crossCurricularProjects as initialCrossCurricularProjects } from '../constants/codingModules';
+import { codingModules as initialCodingModules, crossCurricularProjects as initialCrossCurricularProjects, mockPortfolios } from '../constants/codingModules';
 
 
 const API_LATENCY = 300; // ms
@@ -83,6 +83,7 @@ export const fetchAllData = async (): Promise<{
   crossCurricularProjects: CrossCurricularProject[];
   codingModules: CodingModule[];
   communicationTemplates: CommunicationTemplate[];
+  allPortfolios: AllPortfolios;
 }> => {
   console.log("API: Fetching all user data...");
   const profilesStr = localStorage.getItem('userProfiles') || '[]';
@@ -110,6 +111,7 @@ export const fetchAllData = async (): Promise<{
   const crossCurricularProjectsStr = localStorage.getItem('crossCurricularProjects');
   const codingModulesStr = localStorage.getItem('codingModules');
   const communicationTemplatesStr = localStorage.getItem('communicationTemplates');
+  const portfoliosStr = localStorage.getItem('allPortfolios');
 
 
   let profiles: UserProfile[] = JSON.parse(profilesStr);
@@ -138,6 +140,7 @@ export const fetchAllData = async (): Promise<{
   const crossCurricularProjects: CrossCurricularProject[] = crossCurricularProjectsStr ? JSON.parse(crossCurricularProjectsStr) : initialCrossCurricularProjects;
   const codingModules: CodingModule[] = codingModulesStr ? JSON.parse(codingModulesStr) : initialCodingModules;
   const communicationTemplates: CommunicationTemplate[] = communicationTemplatesStr ? JSON.parse(communicationTemplatesStr) : initialCommunicationTemplates;
+  const allPortfolios: AllPortfolios = portfoliosStr ? JSON.parse(portfoliosStr) : mockPortfolios;
 
   // If no profiles exist, create default demo users for RBAC
   if (profiles.length === 0) {
@@ -230,7 +233,7 @@ export const fetchAllData = async (): Promise<{
     localStorage.setItem('activeUserId', JSON.stringify(activeId));
   }
 
-  return simulateNetwork({ profiles, activeId, progress, flashcards, userRole, allBktData, allAssignments, allAnnouncements, allSubmissions, allFlnProgress, teacherSchedules, teacherAssignments, attendanceRecords, quickFormativeAssessments, allNotifications, itemBank, busRoutes, printQuotas, feeStatus, afterSchoolPrograms, facilityBookings, boardPlannerEvents, crossCurricularProjects, codingModules, communicationTemplates });
+  return simulateNetwork({ profiles, activeId, progress, flashcards, userRole, allBktData, allAssignments, allAnnouncements, allSubmissions, allFlnProgress, teacherSchedules, teacherAssignments, attendanceRecords, quickFormativeAssessments, allNotifications, itemBank, busRoutes, printQuotas, feeStatus, afterSchoolPrograms, facilityBookings, boardPlannerEvents, crossCurricularProjects, codingModules, communicationTemplates, allPortfolios });
 };
 
 /**
@@ -493,4 +496,10 @@ export const saveAllCrossCurricularProjects = async (projects: CrossCurricularPr
     console.log("API: Saving cross-curricular projects...");
     localStorage.setItem('crossCurricularProjects', JSON.stringify(projects));
     return simulateNetwork(projects);
+};
+
+export const saveAllPortfolios = async (portfolios: AllPortfolios): Promise<AllPortfolios> => {
+    console.log("API: Saving all portfolios...");
+    localStorage.setItem('allPortfolios', JSON.stringify(portfolios));
+    return simulateNetwork(portfolios);
 };

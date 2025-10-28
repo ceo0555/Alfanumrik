@@ -472,6 +472,39 @@ export interface GeneratedPaper {
     };
 }
 
+// --- PRACTICE CENTRE TYPES ---
+export interface PracticeBlueprint {
+  id: string;
+  title: string;
+  description: string;
+  durationMinutes: number;
+  totalMarks: number;
+  structure: {
+    section: string;
+    questionType: 'MCQ' | 'SA';
+    count: number;
+    marksPerQuestion: number;
+  }[];
+}
+
+export interface PracticeExam {
+  blueprint: PracticeBlueprint;
+  questions: QuestionPoolItem[];
+  answers: { [q_id: string]: string };
+  markedForReview: Set<string>;
+  startTime: number;
+  endTime?: number;
+}
+
+export interface PracticeResult {
+  q_id: string;
+  question: QuestionPoolItem;
+  studentAnswer: string;
+  isCorrect: boolean;
+  marksAwarded: number;
+  aiFeedback: string | null;
+}
+
 // --- DIAGNOSTICS & FLN TYPES ---
 export interface SafalDiagnosticResult {
     studentId: number;
@@ -519,6 +552,8 @@ export interface StudentPortfolioProject {
     status: 'Completed' | 'In Progress';
     submissionUrl: string; // link to a mock project
 }
+
+export type AllPortfolios = StudentPortfolioProject[];
 
 export interface CrossCurricularProject {
     id: string;
@@ -649,22 +684,22 @@ export interface Notification {
 
 // LTI 1.3 Context
 export interface LtiContext {
-    isLtiLaunch: true;
-    user: {
-        id: string;
-        name: string;
-        roles: string[];
-    };
-    course: {
-        id: string;
-        title: string;
-    };
-    ags: {
-        lineitem: string; // URL for grade passback
-    };
-    linkedResource: {
-        chapterId: string;
-    };
+  isLtiLaunch: true;
+  user: {
+    id: string;
+    name: string;
+    roles: string[];
+  };
+  course: {
+    id: string;
+    title: string;
+  };
+  ags: {
+    lineitem: string; // URL for grade passback
+  };
+  linkedResource: {
+    chapterId: string;
+  };
 }
 
 
@@ -678,11 +713,12 @@ export interface Curriculum {
   };
 }
 
+// FIX: Changed `sources` type to `GroundingChunk[]` to match the data structure from Gemini API's grounding responses.
 export interface ChatMessage {
   role: 'user' | 'model';
   content: string;
   status?: 'retrieving' | 'generating' | 'done';
-  sources?: { title: string; content: string }[];
+  sources?: GroundingChunk[];
 }
 
 export interface GroundingSource {
@@ -721,6 +757,23 @@ export interface AllBktData {
   [userId: number]: UserBktData;
 }
 
+// --- SMART STUDY PLAN TYPES ---
+export type StudyTaskType = 'review_weakness' | 'srs_review' | 'next_lesson' | 'assignment' | 'manual';
+
+export interface StudyTask {
+  id: string;
+  type: StudyTaskType;
+  title: string;
+  notes?: string;
+  subtitle: string;
+  dueDate: string; // ISO string
+  isCompleted?: boolean; // for manual tasks primarily
+  data?: {
+      chapterId?: string;
+      assignmentId?: string;
+  };
+}
+
 // --- --- --- ---
 
 export interface DailyChallenge {
@@ -745,6 +798,7 @@ export interface UserProfile {
   xp: number;
   level: number;
   dailyChallenge?: DailyChallenge;
+  manualTasks?: StudyTask[];
   // RBAC fields
   schoolRole?: 'principal' | 'teacher';
   childIds?: number[];
@@ -759,7 +813,7 @@ export interface Badge {
   color: string;
 }
 
-export type GamificationEvent = 'step_completed' | 'lesson_completed' | 'quiz_correct' | 'streak_update';
+export type GamificationEvent = 'step_completed' | 'lesson_completed' | 'quiz_correct' | 'streak_update' | 'focus_session_completed';
 
 
 // --- FLASHCARD & SRS TYPES ---

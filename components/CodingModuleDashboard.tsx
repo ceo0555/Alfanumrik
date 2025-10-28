@@ -1,25 +1,27 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, Suspense } from 'react';
 import { CodingModule, CrossCurricularProject } from '../types';
-import { BookIcon, CpuIcon, LayersIcon, UsersIcon } from '../constants/icons';
+import { BookIcon, CpuIcon, LayersIcon, UsersIcon, SparklesIcon } from '../constants/icons';
 import { useAuth } from '../contexts/AuthContext';
 import ManagePortfolioModal from './school/ManagePortfolioModal';
+
+const AIProjectGeneratorModal = React.lazy(() => import('./school/AIProjectGeneratorModal'));
 
 type View = 'modules' | 'projects';
 
 const CodingModuleDashboard: React.FC = () => {
-    // FIX: Destructure codingModules from useAuth hook
     const { codingModules, crossCurricularProjects, handleUpdateCrossCurricularProjects } = useAuth();
     const [view, setView] = useState<View>('modules');
     const [selectedModule, setSelectedModule] = useState<CodingModule | null>(codingModules[0] || null);
     const [selectedProject, setSelectedProject] = useState<CrossCurricularProject | null>(null);
     const [isPortfolioModalOpen, setIsPortfolioModalOpen] = useState(false);
+    const [isAiGeneratorOpen, setIsAiGeneratorOpen] = useState(false);
 
     // Filters for cross-curricular projects
     const [gradeFilter, setGradeFilter] = useState('all');
     const [subjectFilter, setSubjectFilter] = useState('all');
 
-    const uniqueGrades = useMemo(() => ['all', ...Array.from(new Set(crossCurricularProjects.map(p => p.grade)))], [crossCurricularProjects]);
-    const uniqueSubjects = useMemo(() => ['all', ...Array.from(new Set(crossCurricularProjects.map(p => p.subject)))], [crossCurricularProjects]);
+    const uniqueGrades = useMemo(() => ['all', ...Array.from(new Set(crossCurricularProjects.map(p => p.grade)))].sort(), [crossCurricularProjects]);
+    const uniqueSubjects = useMemo(() => ['all', ...Array.from(new Set(crossCurricularProjects.map(p => p.subject)))].sort(), [crossCurricularProjects]);
 
     const filteredProjects = useMemo(() => {
         return crossCurricularProjects.filter(p => {
@@ -35,6 +37,16 @@ const CodingModuleDashboard: React.FC = () => {
         if (selectedProject?.id === projectId) {
             setSelectedProject(prev => prev ? { ...prev, evidence: newEvidence } : null);
         }
+    };
+
+    const handleAddProject = (newProjectData: Omit<CrossCurricularProject, 'id' | 'evidence'>) => {
+        const newProject: CrossCurricularProject = {
+            ...newProjectData,
+            id: `ccp-gen-${Date.now()}`,
+            evidence: '',
+        };
+        handleUpdateCrossCurricularProjects([newProject, ...crossCurricularProjects]);
+        setIsAiGeneratorOpen(false);
     };
 
     const TabButton: React.FC<{ currentView: View, targetView: View, label: string }> = ({ currentView, targetView, label }) => (
@@ -103,6 +115,9 @@ const CodingModuleDashboard: React.FC = () => {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                     <div className="md:col-span-1">
                         <h3 className="font-bold text-lg mb-2">Project Library</h3>
+                        <button onClick={() => setIsAiGeneratorOpen(true)} className="btn btn-primary w-full mb-4 flex items-center justify-center gap-2 text-sm">
+                            <SparklesIcon className="w-4 h-4" /> AI Generate Project Idea
+                        </button>
                          <div className="grid grid-cols-2 gap-2 mb-4">
                             <select value={gradeFilter} onChange={e => setGradeFilter(e.target.value)} className="form-select text-sm"><option value="all">All Grades</option>{uniqueGrades.slice(1).map(g => <option key={g} value={g}>Grade {g}</option>)}</select>
                             <select value={subjectFilter} onChange={e => setSubjectFilter(e.target.value)} className="form-select text-sm"><option value="all">All Subjects</option>{uniqueSubjects.slice(1).map(s => <option key={s} value={s}>{s}</option>)}</select>
@@ -148,6 +163,15 @@ const CodingModuleDashboard: React.FC = () => {
                     onClose={() => setIsPortfolioModalOpen(false)}
                     module={selectedModule}
                 />
+            )}
+            {isAiGeneratorOpen && (
+                <Suspense>
+                    <AIProjectGeneratorModal
+                        isOpen={isAiGeneratorOpen}
+                        onClose={() => setIsAiGeneratorOpen(false)}
+                        onAddProject={handleAddProject}
+                    />
+                </Suspense>
             )}
         </div>
     );

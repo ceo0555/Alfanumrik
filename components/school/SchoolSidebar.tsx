@@ -33,7 +33,7 @@ const SchoolSidebar: React.FC<SchoolSidebarProps> = ({ activeTab, setActiveTab }
     );
 
     return (
-        <aside className="w-64 bg-white border-r border-slate-200 flex-shrink-0 flex flex-col">
+        <aside className="w-64 bg-white border-r border-slate-200 flex-shrink-0 hidden md:flex flex-col">
             <div className="flex items-center gap-3 h-16 px-4 border-b border-slate-200">
                 <div className="w-10 h-10 bg-indigo-600 rounded-lg flex items-center justify-center shadow-inner">
                     <SchoolIcon className="w-6 h-6 text-white"/>

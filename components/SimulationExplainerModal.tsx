@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { InteractiveSimulation } from '../types';
 import { generateSimulationExplanation } from '../services/geminiService';
 import { XIcon, SparklesIcon } from '../constants/icons';
+import MarkdownRenderer from './MarkdownRenderer';
 
 interface SimulationExplainerModalProps {
   simulationContent: InteractiveSimulation;
@@ -29,51 +30,6 @@ const SimulationExplainerModal: React.FC<SimulationExplainerModalProps> = ({ sim
     };
     fetchExplanation();
   }, [simulationContent]);
-
-  const renderMarkdown = (markdown: string) => {
-    if (!markdown) return null;
-
-    const processInline = (text: string): string => {
-        return text
-            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') // Bold
-            .replace(/\*(.*?)\*/g, '<em>$1</em>');           // Italic
-    };
-
-    const blocks = markdown.trim().split(/\n\s*\n/); // Split by one or more blank lines
-
-    const html = blocks.map(block => {
-        const trimmedBlock = block.trim();
-
-        // Fenced Code Blocks for Math
-        if (trimmedBlock.startsWith('```') && trimmedBlock.endsWith('```')) {
-            const code = trimmedBlock.substring(3, trimmedBlock.length - 3).trim();
-            const escapedCode = code.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-            return `<pre><code>${escapedCode}</code></pre>`;
-        }
-        
-        // Headings
-        if (trimmedBlock.startsWith('### ')) return `<h3>${processInline(trimmedBlock.substring(4))}</h3>`;
-        if (trimmedBlock.startsWith('## ')) return `<h2>${processInline(trimmedBlock.substring(3))}</h2>`;
-        if (trimmedBlock.startsWith('# ')) return `<h1>${processInline(trimmedBlock.substring(2))}</h1>`;
-
-        // Lists
-        if (trimmedBlock.startsWith('* ') || trimmedBlock.startsWith('- ') || trimmedBlock.match(/^\d+\.\s/)) {
-            const isOrdered = trimmedBlock.match(/^\d+\.\s/);
-            const listTag = isOrdered ? 'ol' : 'ul';
-            const items = trimmedBlock.split('\n').map(item => {
-                let content = item.trim().replace(/^(\* |-\s|\d+\.\s)/, '');
-                return `<li>${processInline(content)}</li>`;
-            }).join('');
-            return `<${listTag}>${items}</${listTag}>`;
-        }
-
-        // Paragraphs
-        return `<p>${processInline(trimmedBlock)}</p>`;
-
-    }).join('');
-
-    return <div dangerouslySetInnerHTML={{ __html: html }} />;
-  };
 
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={onClose} aria-modal="true">
@@ -106,7 +62,7 @@ const SimulationExplainerModal: React.FC<SimulationExplainerModalProps> = ({ sim
           
           {!isLoading && !error && explanation && (
              <div className="mt-4 p-4 bg-white rounded-lg border border-slate-200 prose prose-sm max-w-none prose-slate">
-                {renderMarkdown(explanation)}
+                <MarkdownRenderer content={explanation} />
              </div>
           )}
         </div>

@@ -1,7 +1,11 @@
+
+
+
 import React, { useState, useRef, useEffect } from 'react';
 import { GoogleGenAI, Chat, GenerateContentResponse } from '@google/genai';
-import { ChatMessage } from '../types';
-import { SparklesIcon } from '../constants/icons';
+// FIX: Corrected the import path for ChatMessage, which is now defined in types.ts
+import { ChatMessage } from './types';
+import { SparklesIcon } from './constants/icons';
 
 const ChatBot: React.FC = () => {
     const [chat, setChat] = useState<Chat | null>(null);
@@ -24,7 +28,7 @@ const ChatBot: React.FC = () => {
                     2.  **Socratic Method**: Do not just give away answers. Guide the student byasking leading questions. If a student asks for a definition, provide it, but then ask a follow-up question to check for understanding.
                     3.  **Encouraging Tone**: Be positive, patient, and encouraging.
                     4.  **Educational Focus**: Your purpose is to help with educational topics. If the query is unrelated to academics, school subjects, or learning, you must politely decline to answer and explain that your role is to assist with educational questions.
-                    5.  **Clarity and Brevity**: Keep responses clear, concise, and easy to understand for a K-12 student. Use plain text only, no markdown formatting.
+                    5.  **Clarity and Brevity**: Keep responses clear, concise, and easy to understand for a K-12 student.
                     `,
                 },
             });
@@ -87,10 +91,8 @@ const ChatBot: React.FC = () => {
                     {messages.map((msg, index) => (
                          <div key={index} className={`flex items-start gap-3 ${msg.role === 'user' ? 'justify-end' : ''}`}>
                             {msg.role === 'model' && <div className="w-8 h-8 rounded-full bg-indigo-600 flex items-center justify-center text-white font-bold flex-shrink-0">M</div>}
-                            <div className={`max-w-lg p-3 rounded-lg ${msg.role === 'user' ? 'bg-slate-200 text-slate-800' : 'bg-indigo-50 text-slate-700'}`}>
-                                <div style={{ whiteSpace: 'pre-wrap' }}>
-                                  <p>{msg.content}</p>
-                                </div>
+                            <div className={`max-w-lg p-3 rounded-lg whitespace-pre-wrap ${msg.role === 'user' ? 'bg-slate-200 text-slate-800' : 'bg-indigo-50 text-slate-700'}`}>
+                                <p>{msg.content}</p>
                             </div>
                             {msg.role === 'user' && <div className="w-8 h-8 rounded-full bg-slate-500 flex items-center justify-center text-white font-bold flex-shrink-0">You</div>}
                         </div>

@@ -1,8 +1,7 @@
-import React, { useState } from 'react';
+import React, { useMemo } from 'react';
 import { XIcon } from '../../constants/icons';
 import { useAuth } from '../../contexts/AuthContext';
-import { CodingModule, StudentPortfolioProject } from '../../types';
-import { mockPortfolios } from '../../constants/codingModules'; // In real app, this would come from context/API
+import { CodingModule } from '../../types';
 
 interface ManagePortfolioModalProps {
     isOpen: boolean;
@@ -11,20 +10,24 @@ interface ManagePortfolioModalProps {
 }
 
 const ManagePortfolioModal: React.FC<ManagePortfolioModalProps> = ({ isOpen, onClose, module }) => {
-    // In a real app, portfolios would be part of the global state. For this demo, we use a local state.
-    const [portfolios, setPortfolios] = useState<StudentPortfolioProject[]>(mockPortfolios);
+    const { allPortfolios, handleUpdatePortfolios } = useAuth();
     
+    const portfoliosForModule = useMemo(() => {
+        // This is a simple link; a real app might use a module ID on the portfolio item.
+        const projectTitlesInModule = module.lessonPlan
+            .filter(l => l.type === 'Activity' && l.title.toLowerCase().includes('project:'))
+            .map(l => l.title.replace('Project: ', '').trim());
+            
+        return allPortfolios.filter(p => projectTitlesInModule.includes(p.projectTitle));
+    }, [allPortfolios, module]);
+
     if (!isOpen) return null;
 
     const handleStatusChange = (studentId: number, newStatus: 'Completed' | 'In Progress') => {
-        setPortfolios(prev => prev.map(p => p.studentId === studentId ? { ...p, status: newStatus } : p));
-    };
-
-    const handleSave = () => {
-        // In a real app, call a handler from AuthContext to save the updated portfolio data.
-        // e.g., handleUpdatePortfolios(portfolios);
-        console.log("Saving portfolios:", portfolios);
-        onClose();
+        const updatedPortfolios = allPortfolios.map(p => 
+            p.studentId === studentId ? { ...p, status: newStatus } : p
+        );
+        handleUpdatePortfolios(updatedPortfolios);
     };
 
     return (
@@ -45,7 +48,7 @@ const ManagePortfolioModal: React.FC<ManagePortfolioModalProps> = ({ isOpen, onC
                              </tr>
                          </thead>
                          <tbody className="bg-white">
-                            {portfolios.map(p => (
+                            {portfoliosForModule.map(p => (
                                 <tr key={p.studentId} className="border-b">
                                     <td className="px-4 py-2 font-medium">{p.studentName}</td>
                                     <td className="px-4 py-2">{p.projectTitle}</td>
@@ -64,10 +67,14 @@ const ManagePortfolioModal: React.FC<ManagePortfolioModalProps> = ({ isOpen, onC
                             ))}
                          </tbody>
                      </table>
+                     {portfoliosForModule.length === 0 && (
+                        <div className="text-center py-8 text-slate-500">
+                            <p>No portfolio submissions for this module yet.</p>
+                        </div>
+                     )}
                 </div>
                 <div className="mt-4 flex gap-4">
-                    <button onClick={onClose} className="btn w-full bg-slate-200">Cancel</button>
-                    <button onClick={handleSave} className="btn btn-primary w-full">Save Changes</button>
+                    <button onClick={onClose} className="btn btn-primary w-full">Done</button>
                 </div>
             </div>
         </div>

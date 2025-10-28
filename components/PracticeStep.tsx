@@ -1,6 +1,6 @@
 import React from 'react';
 import { GuidedPracticeStep, IndependentPracticeStep } from '../types';
-import { cleanText } from '../utils/textHelpers';
+import MarkdownRenderer from './MarkdownRenderer';
 
 interface PracticeStepProps {
   content: GuidedPracticeStep['content'] | IndependentPracticeStep['content'];
@@ -15,25 +15,25 @@ const PracticeStep: React.FC<PracticeStepProps> = ({ content, type, onCompleted 
     : { border: 'border-sky-400', bg: 'bg-sky-50', text: 'text-sky-800', hover: 'hover:text-sky-900', hintBorder: 'border-sky-200' };
 
   return (
-    <div className={`p-4 border-l-4 ${themeClasses.border} ${themeClasses.bg} rounded-r-lg`}>
-      <p className="font-bold">Question: {cleanText(content.question)}</p>
+    <div className={`p-4 border-l-4 ${themeClasses.border} ${themeClasses.bg} rounded-r-lg prose prose-sm max-w-none`}>
+      <div className="font-bold flex gap-2">Question: <MarkdownRenderer content={content.question} /></div>
       
       {isGuided && 'hint' in content && (
         <details className="mt-2" onToggle={(e) => { if ((e.target as HTMLDetailsElement).open) onCompleted(); }}>
-          <summary className={`cursor-pointer font-semibold ${themeClasses.text} ${themeClasses.hover}`}>
+          <summary className={`cursor-pointer font-semibold not-prose ${themeClasses.text} ${themeClasses.hover}`}>
             Stuck? Click for a hint.
           </summary>
-          <p className={`mt-1 p-2 bg-white rounded border ${themeClasses.hintBorder}`}>{cleanText(content.hint)}</p>
+          <div className={`mt-1 p-2 bg-white rounded border ${themeClasses.hintBorder}`}><MarkdownRenderer content={content.hint} /></div>
         </details>
       )}
 
       <details className="mt-2" onToggle={(e) => { if ((e.target as HTMLDetailsElement).open) onCompleted(); }}>
-        <summary className={`cursor-pointer font-semibold ${themeClasses.text} ${themeClasses.hover}`}>
+        <summary className={`cursor-pointer font-semibold not-prose ${themeClasses.text} ${themeClasses.hover}`}>
           Check the solution.
         </summary>
-        <p className="mt-1 p-2 bg-white rounded border whitespace-pre-wrap">
-          {isGuided && 'stepwise_solution' in content ? content.stepwise_solution : 'answer_key' in content ? content.answer_key : ''}
-        </p>
+        <div className="mt-1 p-2 bg-white rounded border whitespace-pre-wrap">
+          <MarkdownRenderer content={isGuided && 'stepwise_solution' in content ? content.stepwise_solution : 'answer_key' in content ? content.answer_key : ''} />
+        </div>
       </details>
     </div>
   );
