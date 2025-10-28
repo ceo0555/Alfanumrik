@@ -5,9 +5,10 @@ import { ArrowLeftIcon, ArrowRightIcon, EditIcon, FlameIcon } from '../constants
 interface PracticeTakerProps {
     exam: PracticeExam;
     onFinishExam: (answers: { [q_id: string]: string }, infractions: number) => void;
+    onBack: () => void;
 }
 
-const PracticeTaker: React.FC<PracticeTakerProps> = ({ exam, onFinishExam }) => {
+const PracticeTaker: React.FC<PracticeTakerProps> = ({ exam, onFinishExam, onBack }) => {
     const [currentQIndex, setCurrentQIndex] = useState(0);
     const [answers, setAnswers] = useState<{ [q_id: string]: string }>({});
     const [markedForReview, setMarkedForReview] = useState<Set<string>>(new Set());
@@ -18,7 +19,8 @@ const PracticeTaker: React.FC<PracticeTakerProps> = ({ exam, onFinishExam }) => 
     const [infractions, setInfractions] = useState(0);
     const [isFocused, setIsFocused] = useState(true);
 
-    const timerRef = useRef<number>();
+    // FIX: Initialize useRef with null to provide an initial value, which is better practice and avoids potential environment-specific errors.
+    const timerRef = useRef<number | null>(null);
     const answersRef = useRef(answers);
     const infractionsRef = useRef(infractions);
 
@@ -68,7 +70,8 @@ const PracticeTaker: React.FC<PracticeTakerProps> = ({ exam, onFinishExam }) => 
             timerRef.current = window.setInterval(() => {
                 setTimeLeft(prev => {
                     if (prev <= 1) {
-                        clearInterval(timerRef.current);
+                        // FIX: Add a check for timerRef.current to ensure it's not null before calling clearInterval, satisfying TypeScript's strict null checks.
+                        if (timerRef.current) clearInterval(timerRef.current);
                         onFinishExam(answersRef.current, infractionsRef.current);
                         return 0;
                     }
@@ -161,9 +164,14 @@ const PracticeTaker: React.FC<PracticeTakerProps> = ({ exam, onFinishExam }) => 
     return (
         <div className="flex flex-col h-full">
             <header className="flex-shrink-0 bg-white p-4 border-b flex justify-between items-center">
-                <div>
-                    <h1 className="font-bold text-lg">{exam.blueprint.title}</h1>
-                    <p className="text-sm text-slate-500">{exam.blueprint.description}</p>
+                <div className="flex items-center gap-4">
+                    <button onClick={onBack} className="btn p-2 bg-slate-100 text-slate-600 hover:bg-slate-200" aria-label="Back to setup">
+                        <ArrowLeftIcon className="w-5 h-5" />
+                    </button>
+                    <div>
+                        <h1 className="font-bold text-lg">{exam.blueprint.title}</h1>
+                        <p className="text-sm text-slate-500">{exam.blueprint.description}</p>
+                    </div>
                 </div>
                 <div className="flex items-center gap-4">
                     <div className="font-mono text-xl font-bold bg-slate-100 px-3 py-1 rounded-lg">{formatTime(timeLeft)}</div>

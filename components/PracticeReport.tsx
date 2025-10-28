@@ -71,9 +71,11 @@ const PracticeReport: React.FC<PracticeReportProps> = ({ exam, results, summary,
                             <div className={`p-2 rounded border ${result.isCorrect ? 'bg-emerald-50 border-emerald-200' : 'bg-red-50 border-red-200'}`}>
                                 <p><strong>Your Answer:</strong> {result.studentAnswer || '(Not answered)'}</p>
                             </div>
-                            <div className="p-2 rounded border bg-slate-50 border-slate-200">
-                                <p><strong>Correct Answer:</strong> {result.question.answer}</p>
-                            </div>
+                            {!result.isCorrect && (
+                                <div className="p-2 rounded border bg-emerald-50 border-emerald-200">
+                                    <p><strong>Correct Answer:</strong> {result.question.answer}</p>
+                                </div>
+                            )}
                             {result.aiFeedback && (
                                  <div className="p-2 rounded border bg-indigo-50 border-indigo-200">
                                     <p><strong>AI Feedback:</strong> {result.aiFeedback}</p>
@@ -88,7 +90,7 @@ const PracticeReport: React.FC<PracticeReportProps> = ({ exam, results, summary,
             </div>
             
             <div className="mt-8 text-center">
-                <button onClick={onTryAgain} className="btn btn-primary">Try Another Practice Exam</button>
+                <button onClick={onTryAgain} className="btn btn-primary">Back to Practice Setup</button>
             </div>
         </div>
     );

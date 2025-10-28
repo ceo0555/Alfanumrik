@@ -102,6 +102,16 @@ const PracticeCentre: React.FC = () => {
         setExamInfractions(0);
     };
 
+    const handleBackToSetup = useCallback(() => {
+        if (window.confirm('Are you sure you want to exit the exam? Your progress will be lost.')) {
+            setExamState('setup');
+            setActiveExam(null);
+            setExamResults([]);
+            setReportSummary('');
+            setExamInfractions(0);
+        }
+    }, []);
+
     const renderContent = () => {
         switch (examState) {
             case 'setup':
@@ -114,7 +124,7 @@ const PracticeCentre: React.FC = () => {
                 </div>;
             case 'active':
                 if (!activeExam) return <p>Error: Exam data not found.</p>;
-                return <PracticeTaker exam={activeExam} onFinishExam={handleFinishExam} />;
+                return <PracticeTaker exam={activeExam} onFinishExam={handleFinishExam} onBack={handleBackToSetup} />;
             case 'report':
                  if (!activeExam) return <p>Error: Exam data not found.</p>;
                 return <PracticeReport exam={activeExam} results={examResults} summary={reportSummary} onTryAgain={handleTryAgain} infractions={examInfractions} />;
@@ -124,7 +134,7 @@ const PracticeCentre: React.FC = () => {
     };
 
     return (
-        <div className="h-full">
+        <div>
             {renderContent()}
             <HonourCodeModal 
                 isOpen={isHonourCodeOpen}
