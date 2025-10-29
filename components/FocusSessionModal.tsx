@@ -17,6 +17,7 @@ const STUDY_MINUTES = 25;
 const BREAK_MINUTES = 5;
 
 const FocusSessionModal: React.FC<FocusSessionModalProps> = ({ isOpen, onClose, task, onSessionComplete }) => {
+  // FIX: Renamed handleGamificationEvent to awardXP to match the context provider.
   const { awardXP } = useStudentData();
   const [mode, setMode] = useState<'study' | 'break'>('study');
   const [isActive, setIsActive] = useState(false);
@@ -98,7 +99,7 @@ const FocusSessionModal: React.FC<FocusSessionModalProps> = ({ isOpen, onClose, 
                     <p className="font-bold text-4xl font-mono tracking-tighter text-slate-800">
                         {`${Math.floor(secondsLeft/60).toString().padStart(2,'0')}:${(secondsLeft%60).toString().padStart(2,'0')}`}
                     </p>
-                    <p className={`font-semibold text-sm ${mode === 'study' ? 'text-indigo-600' : 'text-green-600'}`}>
+                    <p className={`font-semibold text-sm ${mode === 'study' ? 'text-indigo-600' : 'text-green-500'}`}>
                         {mode === 'study' ? 'Study Session' : 'Break Time'}
                     </p>
                 </div>

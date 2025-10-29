@@ -122,15 +122,20 @@ const BlueprintEditor: React.FC<BlueprintEditorProps> = ({ grade, blueprints, on
                         <h4 className="font-semibold mb-2">Sections</h4>
                         <div className="space-y-3">
                             {sections.map(sec => (
-                                <div key={sec.id} className="grid grid-cols-10 gap-2 items-center p-2 bg-slate-50 rounded">
-                                    <input type="text" value={sec.name} onChange={e => handleSectionChange(sec.id, 'name', e.target.value)} className="form-input col-span-3 text-sm" />
-                                    <select value={sec.questionType} onChange={e => handleSectionChange(sec.id, 'questionType', e.target.value)} className="form-select col-span-2 text-sm">
+                                <div key={sec.id} className="flex flex-wrap items-center gap-2 p-2 bg-slate-50 rounded">
+                                    <input type="text" value={sec.name} onChange={e => handleSectionChange(sec.id, 'name', e.target.value)} className="form-input text-sm flex-grow min-w-[120px]" placeholder="Section Name" />
+                                    <select value={sec.questionType} onChange={e => handleSectionChange(sec.id, 'questionType', e.target.value)} className="form-select text-sm flex-grow min-w-[100px]">
                                         <option value="MCQ">MCQ</option><option value="SA">SA</option><option value="LA">LA</option><option value="Case">Case</option>
                                     </select>
-                                    <input type="number" value={sec.questions} onChange={e => handleSectionChange(sec.id, 'questions', Number(e.target.value))} className="form-input col-span-2 text-sm" />
-                                    <span className="text-center text-sm">x</span>
-                                    <input type="number" value={sec.marksPerQuestion} onChange={e => handleSectionChange(sec.id, 'marksPerQuestion', Number(e.target.value))} className="form-input col-span-1 text-sm" />
-                                    <button onClick={() => handleRemoveSection(sec.id)} className="p-2 text-red-500 hover:bg-red-100 rounded-full col-span-1"><XIcon className="w-4 h-4 mx-auto"/></button>
+                                    <div className="flex items-center gap-1">
+                                        <input type="number" value={sec.questions} onChange={e => handleSectionChange(sec.id, 'questions', Number(e.target.value))} className="form-input text-sm w-20" placeholder="Qs" />
+                                        <span className="text-sm font-semibold">x</span>
+                                        <input type="number" value={sec.marksPerQuestion} onChange={e => handleSectionChange(sec.id, 'marksPerQuestion', Number(e.target.value))} className="form-input text-sm w-20" placeholder="Marks" />
+                                    </div>
+                                    <div className="flex-grow text-sm font-semibold text-center">= {sec.questions * sec.marksPerQuestion} Marks</div>
+                                    <button onClick={() => handleRemoveSection(sec.id)} className="p-2 text-red-500 hover:bg-red-100 rounded-full ml-auto">
+                                        <XIcon className="w-4 h-4 mx-auto"/>
+                                    </button>
                                 </div>
                             ))}
                             <button onClick={handleAddSection} className="btn w-full bg-slate-200 text-slate-700 hover:bg-slate-300 text-sm"><PlusIcon className="w-4 h-4 mr-1"/> Add Section</button>

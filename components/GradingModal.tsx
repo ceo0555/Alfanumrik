@@ -177,14 +177,16 @@ const GradingModal: React.FC<GradingModalProps> = ({ isOpen, onClose, assignment
                                  <p className={`font-bold ${isMcqCorrect ? 'text-emerald-600' : 'text-red-600'}`}>
                                     {isMcqCorrect ? 'Correct' : 'Incorrect'}. Correct answer: {q.answer}
                                  </p>
-                                 <div className="text-xs text-slate-500 mt-1 space-y-0.5">
+                                 <div className="text-xs text-slate-500 mt-2 space-y-1">
+                                    <p className="font-bold text-slate-600">Class Response Distribution:</p>
                                     {q.options?.map(opt => {
                                         const count = mcqAnswerDistribution[q.q_id]?.[opt] || 0;
                                         const percentage = submissionsForAssignment.length > 0 ? Math.round((count / submissionsForAssignment.length) * 100) : 0;
+                                        const isCorrectOption = opt === q.answer;
                                         return <div key={opt} className="flex items-center gap-2">
-                                            <div className="w-20 truncate">{opt}</div>
-                                            <div className="w-full bg-slate-200 rounded-full h-2"><div className="bg-slate-400 h-2 rounded-full" style={{width: `${percentage}%`}}></div></div>
-                                            <div className="w-10 text-right">{percentage}%</div>
+                                            <div className={`w-20 truncate font-semibold ${isCorrectOption ? 'text-emerald-700' : ''}`}>{opt}</div>
+                                            <div className="w-full bg-slate-200 rounded-full h-2"><div className={`${isCorrectOption ? 'bg-emerald-500' : 'bg-slate-400'} h-2 rounded-full`} style={{width: `${percentage}%`}}></div></div>
+                                            <div className="w-10 text-right font-mono">{percentage}%</div>
                                         </div>
                                     })}
                                  </div>

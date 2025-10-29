@@ -1,5 +1,3 @@
-
-
 import React, { useState, useEffect } from 'react';
 import { QuizState, QuestionPoolItem } from '../types';
 import { curriculum } from '../constants/curriculum';
@@ -309,7 +307,7 @@ const AdaptiveQuizGenerator: React.FC = () => {
                 <h3 className="text-3xl font-bold text-slate-800">Quiz Complete!</h3>
                 <p className="text-lg text-slate-500 mt-2">Your Final Score</p>
                 <div className="my-6 text-6xl font-extrabold text-[var(--brand-primary)]">{score} / {history.length}</div>
-                <div className="space-y-4 text-left">
+                <div className="space-y-4 text-left max-h-80 overflow-y-auto pr-2">
                     <h4 className="text-xl font-bold">Review Your Answers</h4>
                     {history.map((item, index) => (
                         <div key={index} className={`p-4 rounded-lg border-l-4 ${item.isCorrect ? 'border-emerald-500 bg-emerald-50' : 'border-red-500 bg-red-50'}`}>

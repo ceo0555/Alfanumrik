@@ -1,4 +1,4 @@
-import { UserProfile, AllProgressData, AllFlashcardsData, UserRole, DailyChallenge, UserFlashcards, UserFlashcardItem, SrsData, AllBktData, Assignment, Announcement, StudentSubmission, StudentFlnProgress, TeacherSchedule, AttendanceRecord, QuickFormativeAssessment, Notification, QuestionPoolItem, BusRoute, PrintQuota, FeeStatus, AfterSchoolProgram, FacilityBooking, BoardPlannerEvent, CrossCurricularProject, CodingModule, CommunicationTemplate, TeacherAssignment, StudentPortfolioProject, AllPortfolios } from '../types';
+import { UserProfile, AllProgressData, AllFlashcardsData, UserRole, DailyChallenge, UserFlashcards, UserFlashcardItem, SrsData, AllBktData, Assignment, Announcement, StudentSubmission, StudentFlnProgress, TeacherSchedule, AttendanceRecord, QuickFormativeAssessment, Notification, QuestionPoolItem, BusRoute, PrintQuota, FeeStatus, AfterSchoolProgram, FacilityBooking, BoardPlannerEvent, CrossCurricularProject, CodingModule, CommunicationTemplate, TeacherAssignment, StudentPortfolioProject, AllPortfolios, PaperBlueprint } from '../types';
 import { curriculum } from '../constants/curriculum';
 import { mockTeacherAssignments as initialTeacherAssignments, mockTeacherSchedule as initialTeacherSchedule } from '../constants/schoolData';
 import { mockItemBank as initialItemBank } from '../constants/itemBank';
@@ -36,6 +36,7 @@ const generateDailyChallenge = (grade: string): DailyChallenge => {
             isCompleted: false,
             description: `Earn ${targetXP} XP today`,
             reward: 50,
+            coinReward: 20,
         };
     } else {
         const subjects = Object.keys(curriculum[grade as keyof typeof curriculum]);
@@ -48,6 +49,7 @@ const generateDailyChallenge = (grade: string): DailyChallenge => {
             isCompleted: false,
             description: `Complete 1 ${targetSubject} lesson`,
             reward: 75,
+            coinReward: 30,
         };
     }
 };
@@ -84,6 +86,8 @@ export const fetchAllData = async (): Promise<{
   codingModules: CodingModule[];
   communicationTemplates: CommunicationTemplate[];
   allPortfolios: AllPortfolios;
+  schoolName: string;
+  allBlueprints: PaperBlueprint[];
 }> => {
   console.log("API: Fetching all user data...");
   const profilesStr = localStorage.getItem('userProfiles') || '[]';
@@ -112,6 +116,8 @@ export const fetchAllData = async (): Promise<{
   const codingModulesStr = localStorage.getItem('codingModules');
   const communicationTemplatesStr = localStorage.getItem('communicationTemplates');
   const portfoliosStr = localStorage.getItem('allPortfolios');
+  const schoolNameStr = localStorage.getItem('schoolName');
+  const allBlueprintsStr = localStorage.getItem('allBlueprints') || '[]';
 
 
   let profiles: UserProfile[] = JSON.parse(profilesStr);
@@ -141,6 +147,8 @@ export const fetchAllData = async (): Promise<{
   const codingModules: CodingModule[] = codingModulesStr ? JSON.parse(codingModulesStr) : initialCodingModules;
   const communicationTemplates: CommunicationTemplate[] = communicationTemplatesStr ? JSON.parse(communicationTemplatesStr) : initialCommunicationTemplates;
   const allPortfolios: AllPortfolios = portfoliosStr ? JSON.parse(portfoliosStr) : mockPortfolios;
+  const schoolName: string = schoolNameStr ? JSON.parse(schoolNameStr) : "Alfanumrik Model School";
+  const allBlueprints: PaperBlueprint[] = JSON.parse(allBlueprintsStr);
 
   // If no profiles exist, create default demo users for RBAC
   if (profiles.length === 0) {
@@ -148,19 +156,19 @@ export const fetchAllData = async (): Promise<{
       const demoStudent: UserProfile = {
         id: 101, name: 'Rohan Sharma', grade: '10', lastSubject: 'Science', lastChapter: 'Chemical Reactions and Equations',
         currentStreak: 3, lastStreakDate: new Date(Date.now() - 86400000 * 3).toISOString().split('T')[0],
-        achievements: ['first_lesson', 'streak_3'], xp: 350, level: 2,
+        achievements: ['first_lesson', 'streak_3'], xp: 350, level: 2, scholarCoins: 1250, tutorSessionUnlocked: false,
       };
       const demoParent: UserProfile = {
         id: 201, name: 'Mr. Sharma', grade: '', lastSubject: '', lastChapter: '', childIds: [101],
-        currentStreak: 0, lastStreakDate: '', achievements: [], xp: 0, level: 1,
+        currentStreak: 0, lastStreakDate: '', achievements: [], xp: 0, level: 1, scholarCoins: 0, tutorSessionUnlocked: false,
       };
       const demoTeacher: UserProfile = {
         id: 301, name: 'Ms. Davis', grade: '', lastSubject: '', lastChapter: '', schoolRole: 'teacher',
-        currentStreak: 0, lastStreakDate: '', achievements: [], xp: 0, level: 1,
+        currentStreak: 0, lastStreakDate: '', achievements: [], xp: 0, level: 1, scholarCoins: 0, tutorSessionUnlocked: false,
       };
        const demoPrincipal: UserProfile = {
         id: 401, name: 'Mr. Singh', grade: '', lastSubject: '', lastChapter: '', schoolRole: 'principal',
-        currentStreak: 0, lastStreakDate: '', achievements: [], xp: 0, level: 1,
+        currentStreak: 0, lastStreakDate: '', achievements: [], xp: 0, level: 1, scholarCoins: 0, tutorSessionUnlocked: false,
       };
       profiles = [demoStudent, demoParent, demoTeacher, demoPrincipal];
       localStorage.setItem('userProfiles', JSON.stringify(profiles));
@@ -176,11 +184,18 @@ export const fetchAllData = async (): Promise<{
     if (!p.schoolRole && !p.childIds && (!p.dailyChallenge || p.dailyChallenge.id !== todayStr)) {
         p.dailyChallenge = generateDailyChallenge(p.grade);
     }
+    // Add default widgets if they don't exist
+    if (!p.schoolRole && !p.childIds && !p.widgets) {
+        p.widgets = [{ id: `default-focus-${p.id}`, type: 'today_focus' }];
+    }
     return {
         ...p,
         xp: p.xp || 0,
         level: p.level || 1,
+        scholarCoins: p.scholarCoins || 0,
         achievements: p.achievements || [],
+        tutorSessionUnlocked: p.tutorSessionUnlocked || false,
+        unlockedPetAccessories: p.unlockedPetAccessories || [],
     };
   });
   
@@ -233,7 +248,7 @@ export const fetchAllData = async (): Promise<{
     localStorage.setItem('activeUserId', JSON.stringify(activeId));
   }
 
-  return simulateNetwork({ profiles, activeId, progress, flashcards, userRole, allBktData, allAssignments, allAnnouncements, allSubmissions, allFlnProgress, teacherSchedules, teacherAssignments, attendanceRecords, quickFormativeAssessments, allNotifications, itemBank, busRoutes, printQuotas, feeStatus, afterSchoolPrograms, facilityBookings, boardPlannerEvents, crossCurricularProjects, codingModules, communicationTemplates, allPortfolios });
+  return simulateNetwork({ profiles, activeId, progress, flashcards, userRole, allBktData, allAssignments, allAnnouncements, allSubmissions, allFlnProgress, teacherSchedules, teacherAssignments, attendanceRecords, quickFormativeAssessments, allNotifications, itemBank, busRoutes, printQuotas, feeStatus, afterSchoolPrograms, facilityBookings, boardPlannerEvents, crossCurricularProjects, codingModules, communicationTemplates, allPortfolios, schoolName, allBlueprints });
 };
 
 /**
@@ -265,7 +280,11 @@ export const saveUserProfile = async (
         achievements: [],
         xp: 0,
         level: 1,
+        scholarCoins: 0,
         dailyChallenge: generateDailyChallenge(user.grade),
+        widgets: [{ id: `widget-${newId}`, type: 'today_focus' }],
+        tutorSessionUnlocked: false,
+        unlockedPetAccessories: [],
       };
     });
     updatedProfiles.push(...newUsers);
@@ -299,7 +318,11 @@ export const saveUserProfile = async (
       achievements: [],
       xp: 0,
       level: 1,
+      scholarCoins: 0,
       dailyChallenge: generateDailyChallenge(grade),
+      widgets: [{ id: `widget-${newId}`, type: 'today_focus' }],
+      tutorSessionUnlocked: false,
+      unlockedPetAccessories: [],
     };
     updatedProfiles.push(newUser);
   }
@@ -503,3 +526,16 @@ export const saveAllPortfolios = async (portfolios: AllPortfolios): Promise<AllP
     localStorage.setItem('allPortfolios', JSON.stringify(portfolios));
     return simulateNetwork(portfolios);
 };
+
+// --- NEW PERSISTENCE FOR SCHOOL OS ---
+export const saveSchoolName = async (name: string): Promise<string> => {
+    console.log("API: Saving school name...");
+    localStorage.setItem('schoolName', JSON.stringify(name));
+    return simulateNetwork(name);
+}
+
+export const saveAllBlueprints = async (blueprints: PaperBlueprint[]): Promise<PaperBlueprint[]> => {
+    console.log("API: Saving all paper blueprints...");
+    localStorage.setItem('allBlueprints', JSON.stringify(blueprints));
+    return simulateNetwork(blueprints);
+}

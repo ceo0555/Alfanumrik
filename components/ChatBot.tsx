@@ -88,7 +88,7 @@ const ChatBot: React.FC = () => {
                          <div key={index} className={`flex items-start gap-3 ${msg.role === 'user' ? 'justify-end' : ''}`}>
                             {msg.role === 'model' && <div className="w-8 h-8 rounded-full bg-indigo-600 flex items-center justify-center text-white font-bold flex-shrink-0">M</div>}
                             <div className={`max-w-lg p-3 rounded-lg ${msg.role === 'user' ? 'bg-slate-200 text-slate-800' : 'bg-indigo-50 text-slate-700'}`}>
-                                <div style={{ whiteSpace: 'pre-wrap' }}>
+                                <div className="whitespace-pre-wrap">
                                   <p>{msg.content}</p>
                                 </div>
                             </div>

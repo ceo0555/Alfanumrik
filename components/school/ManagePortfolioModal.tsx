@@ -38,35 +38,37 @@ const ManagePortfolioModal: React.FC<ManagePortfolioModalProps> = ({ isOpen, onC
                     <button onClick={onClose} className="p-1"><XIcon className="w-5 h-5"/></button>
                 </div>
                 <div className="max-h-96 overflow-y-auto pr-2">
-                     <table className="w-full text-sm text-left">
-                         <thead className="text-xs text-slate-700 uppercase bg-slate-50 sticky top-0">
-                             <tr>
-                                 <th className="px-4 py-2">Student</th>
-                                 <th className="px-4 py-2">Project</th>
-                                 <th className="px-4 py-2">Status</th>
-                                 <th className="px-4 py-2">Link</th>
-                             </tr>
-                         </thead>
-                         <tbody className="bg-white">
-                            {portfoliosForModule.map(p => (
-                                <tr key={p.studentId} className="border-b">
-                                    <td className="px-4 py-2 font-medium">{p.studentName}</td>
-                                    <td className="px-4 py-2">{p.projectTitle}</td>
-                                    <td className="px-4 py-2">
-                                        <select 
-                                            value={p.status} 
-                                            onChange={e => handleStatusChange(p.studentId, e.target.value as any)}
-                                            className={`text-xs p-1 rounded border-0 font-bold ${p.status === 'Completed' ? 'bg-emerald-100 text-emerald-700' : 'bg-yellow-100 text-yellow-700'}`}
-                                        >
-                                            <option value="In Progress">In Progress</option>
-                                            <option value="Completed">Completed</option>
-                                        </select>
-                                    </td>
-                                    <td className="px-4 py-2"><a href={p.submissionUrl} target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:underline text-xs">View</a></td>
-                                </tr>
-                            ))}
-                         </tbody>
-                     </table>
+                     <div className="overflow-x-auto">
+                         <table className="w-full text-sm text-left">
+                             <thead className="text-xs text-slate-700 uppercase bg-slate-50 sticky top-0">
+                                 <tr>
+                                     <th className="px-4 py-2">Student</th>
+                                     <th className="px-4 py-2">Project</th>
+                                     <th className="px-4 py-2">Status</th>
+                                     <th className="px-4 py-2">Link</th>
+                                 </tr>
+                             </thead>
+                             <tbody className="bg-white">
+                                {portfoliosForModule.map(p => (
+                                    <tr key={p.studentId} className="border-b">
+                                        <td className="px-4 py-2 font-medium">{p.studentName}</td>
+                                        <td className="px-4 py-2">{p.projectTitle}</td>
+                                        <td className="px-4 py-2">
+                                            <select 
+                                                value={p.status} 
+                                                onChange={e => handleStatusChange(p.studentId, e.target.value as any)}
+                                                className={`text-xs p-1 rounded border-0 font-bold ${p.status === 'Completed' ? 'bg-emerald-100 text-emerald-700' : 'bg-yellow-100 text-yellow-700'}`}
+                                            >
+                                                <option value="In Progress">In Progress</option>
+                                                <option value="Completed">Completed</option>
+                                            </select>
+                                        </td>
+                                        <td className="px-4 py-2"><a href={p.submissionUrl} target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:underline text-xs">View</a></td>
+                                    </tr>
+                                ))}
+                             </tbody>
+                         </table>
+                     </div>
                      {portfoliosForModule.length === 0 && (
                         <div className="text-center py-8 text-slate-500">
                             <p>No portfolio submissions for this module yet.</p>

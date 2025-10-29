@@ -1,6 +1,6 @@
 import React from 'react';
 import { View } from '../App';
-import { HomeIcon, CompassIcon, CalendarDaysIcon, MessageSquareIcon, MicrophoneIcon, WandIcon, ClipboardListIcon, TargetIcon } from '../constants/icons';
+import { HomeIcon, CompassIcon, CalendarDaysIcon, MessageSquareIcon, MicrophoneIcon, WandIcon, ClipboardListIcon, TargetIcon, ScholarCoinIcon } from '../constants/icons';
 import { useAuth } from '../contexts/AuthContext';
 
 interface SidebarProps {
@@ -17,6 +17,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeView, setView }) => {
     { view: 'practice' as View, label: 'Practice', icon: TargetIcon },
     { view: 'assignments' as View, label: 'Homework', icon: ClipboardListIcon },
     { view: 'planner' as View, label: 'Planner', icon: CalendarDaysIcon },
+    { view: 'wallet' as View, label: 'Wallet', icon: ScholarCoinIcon },
     { view: 'ask' as View, label: 'AI Tutor', icon: MessageSquareIcon },
     { view: 'tutor' as View, label: 'Tutor', icon: MicrophoneIcon },
     { view: 'tools' as View, label: 'AI Studio', icon: WandIcon },

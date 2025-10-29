@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, Suspense } from 'react';
-import { LessonPack, AssessmentResult, AdaptiveFollowUp, LessonStep, LessonStepType, QuestionPoolItem, InteractiveSimulation, LtiContext, CoreExplanationStep, QuickCheckStep, StructuredContent } from '../types';
+import { LessonPack, AssessmentResult, AdaptiveFollowUp, LessonStep, LessonStepType, QuestionPoolItem, InteractiveSimulation, LtiContext, CoreExplanationStep, QuickCheckStep, StructuredContent, QuickCheck } from '../types';
 import { generateAdaptiveFollowUp, generateStudyNotes, generatePracticeQuiz, explainTextSnippet, generateMicroRemediation } from '../services/geminiService';
 import { transformLessonPackToSteps } from '../utils/lessonHelpers';
 import { SparklesIcon, ArrowLeftIcon, ArrowRightIcon, BookIcon, FileTextIcon, ClipboardCopyIcon, ClipboardListIcon, CheckCircleIcon, ChevronDownIcon } from '../constants/icons';
@@ -53,7 +53,9 @@ const getTextForTTS = (step: LessonStep | undefined): string => {
                     textParts.push(block.content);
                     break;
                 case 'list':
-                    textParts.push((block.items || []).join('. '));
+                    if (block.items) {
+                        textParts.push(block.items.join('. '));
+                    }
                     break;
                 case 'key_term':
                     textParts.push(`${block.term}. ${block.definition}`);
@@ -92,7 +94,9 @@ const getTextForTTS = (step: LessonStep | undefined): string => {
             textParts.push(`A common mistake to avoid. The mistake is: ${step.content.error}. The correction is: ${step.content.fix}`);
             break;
         case 'fill_in_the_blanks':
-            textParts.push(`Fill in the blank. ${(step.content.sentence_parts || []).join(' blank ')}`);
+            if (step.content.sentence_parts) {
+                textParts.push(`Fill in the blank. ${step.content.sentence_parts.join(' blank ')}`);
+            }
             break;
     }
     return textParts.join('\n\n');
@@ -190,19 +194,17 @@ const AdaptiveLessonPlayer: React.FC<AdaptiveLessonPlayerProps> = ({ lessonPack,
         setIsGeneratingRemediation(stepIndex);
         try {
             const step = steps[stepIndex];
+            let questionObject: QuestionPoolItem | QuickCheck | null = null;
             
-            let questionContent = '';
             if (step.type === 'quick_check') {
-                questionContent = step.content.question;
+                questionObject = step.content;
             } else if (step.type === 'assessment_question') {
-                questionContent = step.content.question.question;
-            } else if (step.type === 'fill_in_the_blanks') {
-                questionContent = (step.content.sentence_parts || []).join(' ___ ');
+                questionObject = step.content.question;
             }
 
-            if (questionContent) {
+            if (questionObject) {
                 const studentAnswer = answer || '';
-                const remediationContent = await generateMicroRemediation(lessonPack.topic_name, questionContent, studentAnswer);
+                const remediationContent = await generateMicroRemediation(lessonPack.topic_name, questionObject, studentAnswer);
                 
                 if (remediationContent) {
                     const remediationExplanationStep: CoreExplanationStep = {

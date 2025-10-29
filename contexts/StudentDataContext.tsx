@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
-import { UserProfile, UserProgressData, ChapterProgress, UserFlashcards, Flashcard, Badge, GamificationEvent, UserFlashcardItem, UserBktData, StudyTask } from '../types';
-import { curriculum } from '../constants/curriculum';
+import { GamificationEvent, UserProgressData, UserFlashcards, UserBktData, Badge, StudyTask, Flashcard, ChapterProgress, UserFlashcardItem, UserProfile } from '../types';
 import { allAchievements } from '../constants/achievements';
+import { curriculum } from '../constants/curriculum';
 import * as apiService from '../services/apiService';
 import { useAuth } from './AuthContext';
 import { gradeFsrsCard, initFsrsCard } from '../services/fsrs';
@@ -33,6 +33,8 @@ const XP_CONFIG: { [key in GamificationEvent]: number } = {
     quiz_correct: 25,
     streak_update: 50,
     focus_session_completed: 30,
+    mastery_unlock: 200,
+    streak_milestone: 150,
 };
 
 const calculateLevel = (xp: number) => Math.floor(Math.sqrt(xp / 100)) + 1;

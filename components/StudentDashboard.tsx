@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { CalendarCheckIcon, BarChartIcon, BookIcon, CalendarDaysIcon, FlameIcon, AwardIcon, ScienceIcon, MathIcon, SocialStudiesIcon, PhysicsIcon, ChemistryIcon, BiologyIcon, ArrowRightIcon, TargetIcon, CheckCircleIcon, SpeakerIcon, UsersIcon, SparklesIcon } from '../constants/icons';
+import { CalendarCheckIcon, BarChartIcon, BookIcon, CalendarDaysIcon, FlameIcon, AwardIcon, ScienceIcon, MathIcon, SocialStudiesIcon, PhysicsIcon, ChemistryIcon, BiologyIcon, ArrowRightIcon, TargetIcon, CheckCircleIcon, SpeakerIcon, UsersIcon, SparklesIcon, ScholarCoinIcon } from '../constants/icons';
 import { ChapterProgress, Badge, DailyChallenge, UserBktData } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 import { useStudentData } from '../contexts/StudentDataContext';
 import { curriculum } from '../constants/curriculum';
 import { allAchievements } from '../constants/achievements';
 import { p_L0 } from '../services/bkt';
+import StudyPet from './StudyPet';
 
 const AnimatedCounter: React.FC<{ value: number; className: string }> = ({ value, className }) => {
   const [count, setCount] = useState(0);
@@ -141,7 +142,7 @@ const DailyChallengeCard: React.FC<{ challenge: DailyChallenge }> = ({ challenge
                 <div className="text-center py-4">
                     <CheckCircleIcon className="w-12 h-12 text-green-500 mx-auto" />
                     <p className="font-bold text-green-700 mt-2">Challenge Complete!</p>
-                    <p className="text-sm text-green-600">You earned {challenge.reward} bonus XP!</p>
+                    <p className="text-sm text-green-600">You earned {challenge.reward} bonus XP & {challenge.coinReward} Coins!</p>
                 </div>
             ) : (
                 <>
@@ -151,7 +152,10 @@ const DailyChallengeCard: React.FC<{ challenge: DailyChallenge }> = ({ challenge
                             <span className="text-xs font-medium text-slate-500">
                                 {challenge.progress} / {challenge.type === 'earn_xp' ? challenge.target : 1}
                             </span>
-                             <span className="text-xs font-bold text-purple-600">+{challenge.reward} XP</span>
+                             <div className="flex items-center gap-2">
+                                <span className="text-xs font-bold text-amber-600 flex items-center gap-1"><ScholarCoinIcon className="w-4 h-4"/>+{challenge.coinReward}</span>
+                                <span className="text-xs font-bold text-purple-600">+{challenge.reward} XP</span>
+                             </div>
                         </div>
                         <div className="w-full bg-slate-200 rounded-full h-2">
                             <div className="bg-purple-500 h-2 rounded-full" style={{ width: `${progressPercentage}%` }}></div>
@@ -170,7 +174,7 @@ const StudentDashboard: React.FC<{ onContinue: () => void; }> = ({ onContinue })
     
     if (!activeProfile || !progressData) return null;
 
-    const { name, grade, currentStreak, achievements, level, xp, dailyChallenge } = activeProfile;
+    const { name, grade, currentStreak, achievements, level, xp, dailyChallenge, unlockedPetAccessories } = activeProfile;
     
     const latestAnnouncement = allAnnouncements
         .filter(a => a.grade === grade)
@@ -292,6 +296,7 @@ const StudentDashboard: React.FC<{ onContinue: () => void; }> = ({ onContinue })
                 </div>
 
                 <div className="lg:col-span-1 space-y-6">
+                    <StudyPet accessories={unlockedPetAccessories || []} />
                     <div className="bg-white p-5 rounded-xl shadow-sm border border-[var(--border-color)]">
                         <h3 className="text-md font-bold text-slate-800 mb-3">Level Progress</h3>
                         <div className="text-center my-4">

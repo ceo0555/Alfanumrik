@@ -2,16 +2,19 @@ import React, { useState, useEffect, useRef } from 'react';
 import { GoogleGenAI, Chat, GenerateContentResponse } from '@google/genai';
 import { useAuth } from '../contexts/AuthContext';
 import { ChatMessage, GroundingChunk } from '../types';
-import { SparklesIcon, QuoteIcon } from '../constants/icons';
+import { SparklesIcon, QuoteIcon, RupeeIcon } from '../constants/icons';
 import MarkdownRenderer from './MarkdownRenderer';
 
+const SESSION_LIMIT = 5;
+
 const TutorCore: React.FC = () => {
-    const { activeProfile } = useAuth();
+    const { activeProfile, handleSetTutorLock } = useAuth();
     const [chat, setChat] = useState<Chat | null>(null);
     const [messages, setMessages] = useState<ChatMessage[]>([]);
     const [input, setInput] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [messageCount, setMessageCount] = useState(0);
 
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -44,6 +47,7 @@ const TutorCore: React.FC = () => {
             });
             setChat(chatInstance);
             setMessages([]); // Clear messages when profile changes
+            setMessageCount(0); // Reset message count
         } else if (!process.env.API_KEY) {
             setError("API_KEY not found. This feature is disabled.");
         }
@@ -57,6 +61,7 @@ const TutorCore: React.FC = () => {
         e.preventDefault();
         if (!input.trim() || !chat || isLoading) return;
 
+        setMessageCount(prev => prev + 1);
         const userMessage: ChatMessage = { role: 'user', content: input };
         setMessages(prev => [...prev, userMessage]);
         setInput('');
@@ -123,6 +128,8 @@ const TutorCore: React.FC = () => {
             </div>
         );
     };
+    
+    const isSessionLocked = messageCount >= SESSION_LIMIT && !activeProfile?.tutorSessionUnlocked;
 
     return (
         <div className="max-w-4xl mx-auto flex flex-col h-full animate-slide-in-up">
@@ -150,27 +157,34 @@ const TutorCore: React.FC = () => {
                 </div>
                 {error && <div className="p-2 text-center text-sm text-red-600 bg-red-50 border-t">{error}</div>}
                 <div className="p-4 border-t border-[var(--border-color)] bg-white">
-                    <form onSubmit={handleSendMessage} className="flex items-center gap-3">
-                        <input
-                            type="text"
-                            value={input}
-                            onChange={(e) => setInput(e.target.value)}
-                            placeholder="Ask any academic question..."
-                            disabled={isLoading || !chat}
-                            className="form-input w-full px-4 py-2 text-base"
-                        />
-                        <button
-                            type="submit"
-                            disabled={isLoading || !input.trim() || !chat}
-                            className="btn btn-primary w-full sm:w-auto px-6 py-2"
-                        >
-                            {isLoading ? (
-                                <div className="w-5 h-5 border-2 border-dashed rounded-full animate-spin border-white"></div>
-                            ) : (
-                                "Ask"
-                            )}
-                        </button>
-                    </form>
+                    {isSessionLocked ? (
+                        <div className="text-center p-3 bg-yellow-50 rounded-lg border border-yellow-200">
+                            <p className="font-semibold text-yellow-800">You've reached your free message limit for this session.</p>
+                            <p className="text-sm text-yellow-700">Unlock unlimited messages with an AI Tutor Priority Pass from the Scholar's Wallet.</p>
+                        </div>
+                    ) : (
+                        <form onSubmit={handleSendMessage} className="flex items-center gap-3">
+                            <input
+                                type="text"
+                                value={input}
+                                onChange={(e) => setInput(e.target.value)}
+                                placeholder="Ask any academic question..."
+                                disabled={isLoading || !chat || isSessionLocked}
+                                className="form-input w-full px-4 py-2 text-base"
+                            />
+                            <button
+                                type="submit"
+                                disabled={isLoading || !input.trim() || !chat || isSessionLocked}
+                                className="btn btn-primary w-full sm:w-auto px-6 py-2"
+                            >
+                                {isLoading ? (
+                                    <div className="w-5 h-5 border-2 border-dashed rounded-full animate-spin border-white"></div>
+                                ) : (
+                                    "Ask"
+                                )}
+                            </button>
+                        </form>
+                    )}
                 </div>
             </div>
         </div>

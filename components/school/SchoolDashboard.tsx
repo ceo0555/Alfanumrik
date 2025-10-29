@@ -1,3 +1,4 @@
+// FIX: Add useEffect to the import from 'react'.
 import React, { useState, useMemo, Suspense, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { EditIcon, SchoolIcon } from '../../constants/icons';

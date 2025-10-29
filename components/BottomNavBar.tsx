@@ -1,6 +1,6 @@
 import React from 'react';
 import { View } from '../App';
-import { HomeIcon, CompassIcon, MessageSquareIcon, GridIcon, TargetIcon } from '../constants/icons';
+import { HomeIcon, CompassIcon, MessageSquareIcon, GridIcon, TargetIcon, ScholarCoinIcon } from '../constants/icons';
 
 interface BottomNavBarProps {
   activeView: View;
@@ -13,7 +13,7 @@ const BottomNavBar: React.FC<BottomNavBarProps> = ({ activeView, setView }) => {
     { view: 'home' as View, label: 'Home', icon: HomeIcon },
     { view: 'learn' as View, label: 'Learn', icon: CompassIcon },
     { view: 'practice' as View, label: 'Practice', icon: TargetIcon },
-    { view: 'ask' as View, label: 'AI Tutor', icon: MessageSquareIcon },
+    { view: 'wallet' as View, label: 'Wallet', icon: ScholarCoinIcon },
     { view: 'more' as View, label: 'More', icon: GridIcon },
   ];
 

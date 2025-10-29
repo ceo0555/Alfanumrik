@@ -1,7 +1,8 @@
 import React from 'react';
 import { SchoolTab } from '../SchoolDashboard';
 import { useAuth } from '../../contexts/AuthContext';
-import { BarChartIcon, UsersIcon, ClipboardListIcon, FileTextIcon, ClipboardCheckIcon, TargetIcon, CpuIcon, CalendarDaysIcon, SpeakerIcon, DollarSignIcon, TrendingUpIcon, SchoolIcon } from '../../constants/icons';
+// FIX: Replace DollarSignIcon with RupeeIcon which is available.
+import { BarChartIcon, UsersIcon, ClipboardListIcon, FileTextIcon, ClipboardCheckIcon, TargetIcon, CpuIcon, CalendarDaysIcon, SpeakerIcon, RupeeIcon, TrendingUpIcon, SchoolIcon } from '../../constants/icons';
 
 interface SchoolSidebarProps {
     activeTab: SchoolTab;
@@ -70,7 +71,7 @@ const SchoolSidebar: React.FC<SchoolSidebarProps> = ({ activeTab, setActiveTab }
                 
                 {schoolRole === 'principal' && (
                     <NavGroup title="Operations">
-                        <NavLink tab="finance_ops" label="Finance & Ops" icon={<DollarSignIcon className="w-5 h-5"/>} />
+                        <NavLink tab="finance_ops" label="Finance & Ops" icon={<RupeeIcon className="w-5 h-5"/>} />
                         <NavLink tab="growth" label="Growth" icon={<TrendingUpIcon className="w-5 h-5"/>} />
                     </NavGroup>
                 )}

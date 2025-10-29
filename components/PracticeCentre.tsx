@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { PracticeBlueprint, QuestionPoolItem, PracticeExam, PracticeResult } from '../types';
 import { generatePracticeExam, generatePracticeReportSummary, gradeShortAnswer } from '../services/geminiService';
@@ -7,10 +7,18 @@ import PracticeTaker from './PracticeTaker';
 import PracticeReport from './PracticeReport';
 import Loader from './Loader';
 import HonourCodeModal from './HonourCodeModal';
+import OnDemandPracticeSetup from './OnDemandPracticeSetup';
 
 type ExamState = 'setup' | 'loading' | 'active' | 'grading' | 'report';
 
-const PracticeCentre: React.FC = () => {
+interface PracticeCentreProps {
+    examToStart?: { subject: string; blueprint: PracticeBlueprint } | null;
+    onExamFinish: () => void;
+    mode: 'on-demand' | null;
+    onBack?: () => void;
+}
+
+const PracticeCentre: React.FC<PracticeCentreProps> = ({ examToStart, onExamFinish, mode, onBack }) => {
     const { activeProfile } = useAuth();
     const [examState, setExamState] = useState<ExamState>('setup');
     const [activeExam, setActiveExam] = useState<PracticeExam | null>(null);
@@ -18,28 +26,33 @@ const PracticeCentre: React.FC = () => {
     const [reportSummary, setReportSummary] = useState<string>('');
     const [error, setError] = useState<string | null>(null);
 
-    // New states for focus mode flow
     const [isHonourCodeOpen, setIsHonourCodeOpen] = useState(false);
-    const [examToStart, setExamToStart] = useState<{ subject: string, blueprint: PracticeBlueprint } | null>(null);
+    const [examPendingStart, setExamPendingStart] = useState<{ subject: string, blueprint: PracticeBlueprint, chapters?: string[] } | null>(null);
     const [examInfractions, setExamInfractions] = useState(0);
+    
+    useEffect(() => {
+        if (examToStart) {
+            handleShowHonourCode(examToStart.subject, examToStart.blueprint);
+        }
+    }, [examToStart]);
 
-    const handleShowHonourCode = useCallback((subject: string, blueprint: PracticeBlueprint) => {
+    const handleShowHonourCode = useCallback((subject: string, blueprint: PracticeBlueprint, chapters?: string[]) => {
         if (!activeProfile) return;
-        setExamToStart({ subject, blueprint });
+        setExamPendingStart({ subject, blueprint, chapters });
         setIsHonourCodeOpen(true);
     }, [activeProfile]);
 
     const handleStartExam = useCallback(async () => {
-        if (!examToStart || !activeProfile) return;
+        if (!examPendingStart || !activeProfile) return;
         
         setIsHonourCodeOpen(false);
         setExamState('loading');
         setError(null);
 
         try {
-            const questions = await generatePracticeExam(activeProfile.grade, examToStart.subject, examToStart.blueprint);
+            const questions = await generatePracticeExam(activeProfile.grade, examPendingStart.subject, examPendingStart.blueprint, examPendingStart.chapters);
             setActiveExam({
-                blueprint: examToStart.blueprint,
+                blueprint: examPendingStart.blueprint,
                 questions,
                 answers: {},
                 markedForReview: new Set(),
@@ -51,9 +64,9 @@ const PracticeCentre: React.FC = () => {
             setError('Failed to generate the practice exam. The AI model may be unavailable. Please try again.');
             setExamState('setup');
         } finally {
-            setExamToStart(null);
+            setExamPendingStart(null);
         }
-    }, [activeProfile, examToStart]);
+    }, [activeProfile, examPendingStart]);
 
 
     const handleFinishExam = useCallback(async (finalAnswers: { [q_id: string]: string }, infractions: number) => {
@@ -94,27 +107,31 @@ const PracticeCentre: React.FC = () => {
 
     }, [activeExam]);
 
-    const handleTryAgain = () => {
+    const resetState = () => {
         setExamState('setup');
         setActiveExam(null);
         setExamResults([]);
         setReportSummary('');
         setExamInfractions(0);
+        onExamFinish();
+    };
+
+    const handleTryAgain = () => {
+        resetState();
     };
 
     const handleBackToSetup = useCallback(() => {
         if (window.confirm('Are you sure you want to exit the exam? Your progress will be lost.')) {
-            setExamState('setup');
-            setActiveExam(null);
-            setExamResults([]);
-            setReportSummary('');
-            setExamInfractions(0);
+            resetState();
         }
-    }, []);
+    }, [onExamFinish]);
 
     const renderContent = () => {
         switch (examState) {
             case 'setup':
+                if (mode === 'on-demand') {
+                    return <OnDemandPracticeSetup onStartExam={handleShowHonourCode} onBack={onBack} />;
+                }
                 return <PracticeSetup onStartExam={handleShowHonourCode} error={error} />;
             case 'loading':
             case 'grading':
@@ -138,7 +155,10 @@ const PracticeCentre: React.FC = () => {
             {renderContent()}
             <HonourCodeModal 
                 isOpen={isHonourCodeOpen}
-                onClose={() => setIsHonourCodeOpen(false)}
+                onClose={() => {
+                    setIsHonourCodeOpen(false);
+                    onExamFinish(); // Clear state if user cancels
+                }}
                 onAgree={handleStartExam}
             />
         </div>

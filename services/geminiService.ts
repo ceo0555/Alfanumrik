@@ -738,6 +738,31 @@ export const explainConceptInDepth = async (text: string): Promise<string> => {
     return response.text;
 };
 
+export const generateConceptDeepDive = async (text: string): Promise<string> => {
+    if (!process.env.API_KEY) throw new Error("API_KEY not found.");
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    const prompt = `
+        You are a distinguished professor and an expert CBSE tutor. Your task is to provide a "deep dive" explanation of the following text for a curious K-12 student. Go beyond a simple explanation.
+
+        **CRITICAL INSTRUCTIONS**:
+        1.  **First Principles**: Break down the concept to its fundamental principles.
+        2.  **Detailed Analogies**: Use detailed, relatable analogies to explain complex parts.
+        3.  **Connections**: Explain how this concept connects to other topics in the curriculum or real-world applications.
+        4.  **Structure**: Structure your answer logically with clear sub-headings. The entire output must be plain text, using line breaks for structure. Do not use markdown.
+        5.  **Depth**: This is a deep dive. Be comprehensive and thorough.
+
+        **Text to explain**: "${text}"
+    `;
+    const response = await ai.models.generateContent({
+        model: 'gemini-2.5-pro',
+        contents: prompt,
+        config: {
+            thinkingConfig: { thinkingBudget: 32768 }
+        }
+    });
+    return response.text;
+};
+
 export const checkFlashcardAnswer = async (studentAnswer: string, correctAnswer: string, term: string): Promise<{ isCorrect: boolean, feedback: string }> => {
     if (!process.env.API_KEY) throw new Error("API_KEY not found.");
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
@@ -887,13 +912,23 @@ export const explainTextSnippet = async (snippet: string): Promise<string> => {
     return response.text;
 };
 
-export const generateMicroRemediation = async (topic: string, question: string, studentAnswer: string): Promise<{ explanation: StructuredContent[], quick_check: QuickCheck }> => {
+export const generateMicroRemediation = async (topic: string, question: QuestionPoolItem | QuickCheck, studentAnswer: string): Promise<{ explanation: StructuredContent[], quick_check: QuickCheck }> => {
     if (!process.env.API_KEY) throw new Error("API_KEY not found.");
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+
+    const isMcq = 'options' in question && Array.isArray(question.options);
+    const mcqContext = isMcq ? `
+      This was a multiple-choice question.
+      - Options: ${JSON.stringify(question.options)}
+      - Correct Answer: "${'correct_answer' in question ? question.correct_answer : question.answer}"
+      - Analyze the student's incorrect choice ("${studentAnswer}"). What specific misconception does this choice likely reveal? Tailor your explanation to directly address this misconception before re-explaining the core concept.
+    ` : '';
+
     const prompt = `
         A student answered a question about "${topic}" incorrectly.
-        - Question: "${question}"
+        - Question: "${question.question}"
         - Student's incorrect answer: "${studentAnswer}"
+        ${mcqContext}
         
         Generate a micro-remediation plan. This must include:
         1. A concise "explanation" (as an array of StructuredContent, e.g., paragraph or list) of the core concept the student missed.
@@ -1027,14 +1062,18 @@ export const generateStudentReportCardSummary = async (student: UserProfile, con
     return response.text;
 };
 
-export const generatePracticeExam = async (grade: string, subject: string, blueprint: PracticeBlueprint): Promise<QuestionPoolItem[]> => {
+export const generatePracticeExam = async (grade: string, subject: string, blueprint: PracticeBlueprint, chapters?: string[]): Promise<QuestionPoolItem[]> => {
     if (!process.env.API_KEY) throw new Error("API_KEY not found.");
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    const chapterContext = chapters && chapters.length > 0
+        ? `- The questions must ONLY cover topics from the following chapters: ${chapters.join(', ')}.`
+        : '- The questions must be relevant to the subject and grade level.';
+    
     const prompt = `
       Generate a practice exam paper for a Class ${grade} ${subject} student.
       Adhere strictly to this blueprint: ${JSON.stringify(blueprint.structure)}.
       - The questions must be original and distinct.
-      - They must be relevant to the subject and grade level.
+      ${chapterContext}
       - For each question, create a valid QuestionPoolItem object.
       Return a single raw JSON array of these QuestionPoolItem objects, containing exactly the number of questions specified in the blueprint.
     `;

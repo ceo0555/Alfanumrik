@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
-import { UserProfile, UserRole, AllProgressData, AllFlashcardsData, AllBktData, Assignment, Announcement, StudentSubmission, StudentFlnProgress, TeacherSchedule, AttendanceRecord, QuickFormativeAssessment, Notification, QuestionPoolItem, BusRoute, PrintQuota, FeeStatus, AfterSchoolProgram, FacilityBooking, BoardPlannerEvent, CrossCurricularProject, CodingModule, CommunicationTemplate, TeacherAssignment, StudentPortfolioProject, AllPortfolios } from '../types';
+import { UserProfile, UserRole, AllProgressData, AllFlashcardsData, AllBktData, Assignment, Announcement, StudentSubmission, StudentFlnProgress, TeacherSchedule, AttendanceRecord, QuickFormativeAssessment, Notification, QuestionPoolItem, BusRoute, PrintQuota, FeeStatus, AfterSchoolProgram, FacilityBooking, BoardPlannerEvent, CrossCurricularProject, CodingModule, CommunicationTemplate, TeacherAssignment, StudentPortfolioProject, AllPortfolios, WidgetConfig, PaperBlueprint } from '../types';
 import * as apiService from '../services/apiService';
 
 interface AuthContextType {
@@ -33,12 +33,16 @@ interface AuthContextType {
   codingModules: CodingModule[];
   communicationTemplates: CommunicationTemplate[];
   allPortfolios: AllPortfolios;
+  schoolName: string;
+  allBlueprints: PaperBlueprint[];
 
   // Handlers
   handleSetRole: (role: UserRole | null) => void;
   handleSaveUser: (userData: { name: string; grade: string } | { name: string; grade: string }[], id?: number) => void;
   handleSwitchUser: (id: number) => void;
   updateActiveUserProfile: (updates: Partial<UserProfile>) => void;
+  handleUpdateWidgets: (widgets: WidgetConfig[]) => void;
+  handleUpdateScholarCoins: (newBalance: number) => void;
   handleSaveAllBktData: (bktData: AllBktData) => void; // For StudentDataContext to persist BKT updates
   handleCreateAssignment: (assignmentData: Omit<Assignment, 'id'>) => void;
   handleCreateAnnouncement: (announcementData: Omit<Announcement, 'id' | 'date'>) => void;
@@ -57,6 +61,9 @@ interface AuthContextType {
   handleUpdateBoardPlannerEvents: (events: BoardPlannerEvent[]) => void;
   handleUpdateCrossCurricularProjects: (projects: CrossCurricularProject[]) => void;
   handleUpdatePortfolios: (portfolios: AllPortfolios) => void;
+  handleUpdateSchoolName: (name: string) => void;
+  handleUpdateBlueprints: (blueprints: PaperBlueprint[]) => void;
+  handleSetTutorLock: (isUnlocked: boolean) => void;
   _dangerouslySetAllProfiles: (profiles: UserProfile[]) => void;
 }
 
@@ -92,6 +99,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [codingModules, setCodingModules] = useState<CodingModule[]>([]);
   const [communicationTemplates, setCommunicationTemplates] = useState<CommunicationTemplate[]>([]);
   const [allPortfolios, setAllPortfolios] = useState<AllPortfolios>([]);
+  const [schoolName, setSchoolName] = useState("");
+  const [allBlueprints, setAllBlueprints] = useState<PaperBlueprint[]>([]);
 
 
   // Initial data load from the "backend"
@@ -126,6 +135,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         setCodingModules(data.codingModules);
         setCommunicationTemplates(data.communicationTemplates);
         setAllPortfolios(data.allPortfolios);
+        setSchoolName(data.schoolName);
+        setAllBlueprints(data.allBlueprints);
       } catch (e) {
         console.error("Failed to load user data:", e);
         setError("Could not load your data. Please try refreshing the page.");
@@ -275,6 +286,21 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       }
   }, [activeUserId, userProfiles]);
   
+  const handleUpdateWidgets = useCallback((widgets: WidgetConfig[]) => {
+    if (!activeProfile) return;
+    updateActiveUserProfile({ widgets });
+  }, [activeProfile, updateActiveUserProfile]);
+
+  const handleUpdateScholarCoins = useCallback((newBalance: number) => {
+    if (!activeProfile) return;
+    updateActiveUserProfile({ scholarCoins: newBalance });
+  }, [activeProfile, updateActiveUserProfile]);
+
+  const handleSetTutorLock = useCallback((isUnlocked: boolean) => {
+    if (!activeProfile) return;
+    updateActiveUserProfile({ tutorSessionUnlocked: isUnlocked });
+  }, [activeProfile, updateActiveUserProfile]);
+
   const handleSaveAllBktData = useCallback(async (bktData: AllBktData) => {
     setAllBktData(bktData); // Optimistic update
     try {
@@ -393,6 +419,14 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setAllPortfolios(portfolios);
     await apiService.saveAllPortfolios(portfolios);
   }, []);
+  const handleUpdateSchoolName = useCallback(async (name: string) => {
+    setSchoolName(name);
+    await apiService.saveSchoolName(name);
+  }, []);
+  const handleUpdateBlueprints = useCallback(async (blueprints: PaperBlueprint[]) => {
+      setAllBlueprints(blueprints);
+      await apiService.saveAllBlueprints(blueprints);
+  }, []);
 
 
   const value = {
@@ -425,10 +459,14 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     codingModules,
     communicationTemplates,
     allPortfolios,
+    schoolName,
+    allBlueprints,
     handleSetRole,
     handleSaveUser,
     handleSwitchUser,
     updateActiveUserProfile,
+    handleUpdateWidgets,
+    handleUpdateScholarCoins,
     handleSaveAllBktData,
     handleCreateAssignment,
     handleCreateAnnouncement,
@@ -447,6 +485,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     handleUpdateBoardPlannerEvents,
     handleUpdateCrossCurricularProjects,
     handleUpdatePortfolios,
+    handleUpdateSchoolName,
+    handleUpdateBlueprints,
+    handleSetTutorLock,
     _dangerouslySetAllProfiles: setUserProfiles, // For StudentDataContext to update profile with XP
   };
 

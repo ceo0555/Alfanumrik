@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
-import { BusIcon, ZapIcon, PrinterIcon, DollarSignIcon, SparklesIcon, ClipboardCopyIcon, CheckCircleIcon, EditIcon } from '../constants/icons';
+// FIX: Replace DollarSignIcon with RupeeIcon which is available.
+import { BusIcon, ZapIcon, PrinterIcon, RupeeIcon, SparklesIcon, ClipboardCopyIcon, CheckCircleIcon, EditIcon } from '../constants/icons';
 import { transportOptimizerTips, energyOptimizerTips, feeReminderTemplate } from '../constants/financeOpsData'; // Tips can remain constants
 import { useAuth } from '../contexts/AuthContext';
 import { FeeStatus, PrintQuota, BusRoute } from '../types';
@@ -89,11 +90,11 @@ const FinanceOpsDashboard: React.FC = () => {
             {/* Fee Realization Card */}
             <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200">
                 <div className="flex justify-between items-center mb-3">
-                    <h3 className="font-bold text-lg flex items-center gap-2"><DollarSignIcon className="w-6 h-6 text-emerald-600" /> Fee Realization</h3>
+                    <h3 className="font-bold text-lg flex items-center gap-2"><RupeeIcon className="w-6 h-6 text-emerald-600" /> Fee Realization</h3>
                      <button onClick={() => setItemToEdit({ type: 'fee', data: feeStatus[0] })} className="btn text-xs bg-slate-100 hover:bg-slate-200"><EditIcon className="w-3 h-3 mr-1" /> Manage</button>
                 </div>
-                 <div className="max-h-72 overflow-y-auto pr-2">
-                     <table className="w-full text-sm text-left">
+                 <div className="overflow-x-auto">
+                     <table className="w-full text-sm text-left min-w-[600px]">
                          <thead className="text-xs text-slate-700 uppercase bg-slate-50 sticky top-0">
                              <tr>
                                  <th className="px-4 py-2">Student</th>

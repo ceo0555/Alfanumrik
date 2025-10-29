@@ -713,7 +713,6 @@ export interface Curriculum {
   };
 }
 
-// FIX: Changed `sources` type to `GroundingChunk[]` to match the data structure from Gemini API's grounding responses.
 export interface ChatMessage {
   role: 'user' | 'model';
   content: string;
@@ -784,6 +783,7 @@ export interface DailyChallenge {
   isCompleted: boolean;
   description: string;
   reward: number; // XP reward
+  coinReward: number; // Scholar Coin reward
 }
 
 export interface UserProfile {
@@ -797,8 +797,12 @@ export interface UserProfile {
   achievements: string[]; // Array of badge IDs
   xp: number;
   level: number;
+  scholarCoins: number;
   dailyChallenge?: DailyChallenge;
   manualTasks?: StudyTask[];
+  widgets?: WidgetConfig[];
+  tutorSessionUnlocked: boolean;
+  unlockedPetAccessories?: string[];
   // RBAC fields
   schoolRole?: 'principal' | 'teacher';
   childIds?: number[];
@@ -813,7 +817,7 @@ export interface Badge {
   color: string;
 }
 
-export type GamificationEvent = 'step_completed' | 'lesson_completed' | 'quiz_correct' | 'streak_update' | 'focus_session_completed';
+export type GamificationEvent = 'step_completed' | 'lesson_completed' | 'quiz_correct' | 'streak_update' | 'focus_session_completed' | 'mastery_unlock' | 'streak_milestone';
 
 
 // --- FLASHCARD & SRS TYPES ---
@@ -860,4 +864,57 @@ export interface ParentalReport {
     icon: 'FlameIcon' | 'BookIcon' | 'WandIcon' | 'CalendarDaysIcon';
     tip: string;
   }[];
+}
+
+// --- PLANNER WIDGET TYPES ---
+export type WidgetType = 'today_focus' | 'pinned_chapter' | 'pinned_practice' | 'quick_note';
+
+export interface BaseWidgetConfig {
+    id: string;
+    type: WidgetType;
+}
+
+export interface TodayFocusWidgetConfig extends BaseWidgetConfig {
+    type: 'today_focus';
+}
+
+export interface PinnedChapterWidgetConfig extends BaseWidgetConfig {
+    type: 'pinned_chapter';
+    data: {
+        grade: string;
+        subject: string;
+        chapter: string;
+    };
+}
+
+export interface PinnedPracticeWidgetConfig extends BaseWidgetConfig {
+    type: 'pinned_practice';
+    data: {
+        subject: string;
+        blueprintId: string;
+    };
+}
+
+export interface QuickNoteWidgetConfig extends BaseWidgetConfig {
+    type: 'quick_note';
+    data: {
+        content: string;
+    };
+}
+
+export type WidgetConfig = TodayFocusWidgetConfig | PinnedChapterWidgetConfig | PinnedPracticeWidgetConfig | QuickNoteWidgetConfig;
+
+// --- SCHOLAR'S WALLET TYPES ---
+export type MarketplaceCategory = 'power-up' | 'customization' | 'voucher';
+
+export interface MarketplaceItem {
+    id: string;
+    title: string;
+    description: string;
+    cost: number;
+    category: MarketplaceCategory;
+    action: {
+        type: 'navigate' | 'unlock' | 'redeem';
+        payload: any;
+    };
 }

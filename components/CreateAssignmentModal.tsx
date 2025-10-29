@@ -137,7 +137,7 @@ const CreateAssignmentModal: React.FC<CreateAssignmentModalProps> = ({ isOpen, o
   return (
     <>
       <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={handleClose}>
-        <div className="bg-white rounded-lg p-6 w-full max-w-3xl flex flex-col" onClick={e => e.stopPropagation()}>
+        <div className="bg-white rounded-lg p-6 w-full max-w-3xl flex flex-col max-h-[90vh]" onClick={e => e.stopPropagation()}>
           <div className="flex justify-between items-center mb-4 flex-shrink-0">
             <h3 className="text-lg font-bold flex items-center gap-2">
               <ClipboardListIcon className="w-6 h-6" /> Create New Assignment for Class {grade}

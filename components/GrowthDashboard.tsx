@@ -60,7 +60,7 @@ const GrowthDashboard: React.FC = () => {
                     <h3 className="font-bold text-lg flex items-center gap-2"><CalendarDaysIcon className="w-6 h-6 text-emerald-600" /> Facility Rentals</h3>
                     <button onClick={() => setItemToEdit({ type: 'booking' })} className="btn text-xs bg-slate-100 hover:bg-slate-200"><PlusIcon className="w-3 h-3 mr-1" /> Add Booking</button>
                 </div>
-                <div className="max-h-80 overflow-y-auto">
+                <div className="overflow-x-auto">
                     <table className="w-full text-sm text-left">
                         <thead className="text-xs text-slate-700 uppercase bg-slate-50 sticky top-0">
                             <tr>
