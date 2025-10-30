@@ -73,11 +73,19 @@ const GradingModal: React.FC<GradingModalProps> = ({ isOpen, onClose, assignment
 
   const handleAiGrade = async (q_id: string, question: string, rubric: string, studentAnswer: string) => {
     setIsAiGrading(q_id);
+    const questionData = assignment.quizQuestions?.find(q => q.q_id === q_id);
+    if (!questionData) return;
+
     try {
-        const result = await gradeShortAnswer(question, rubric, studentAnswer);
+        const result = await gradeShortAnswer(question, rubric, questionData.marks, studentAnswer);
         if (result) {
-            handleMarkShortAnswer(q_id, result.isCorrect);
-            handleFeedbackChange(q_id, result.feedback);
+            // Suggest 'correct' if student gets at least half marks, teacher can override.
+            const suggestedIsCorrect = result.awardedMarks >= questionData.marks / 2;
+            handleMarkShortAnswer(q_id, suggestedIsCorrect);
+            
+            // Pre-fill the feedback box with the AI's detailed analysis
+            const aiFeedback = `AI Suggestion (awarded ${result.awardedMarks}/${questionData.marks}):\n${result.feedback}`;
+            handleFeedbackChange(q_id, aiFeedback);
         }
     } catch (e) {
         console.error("AI grading failed", e);

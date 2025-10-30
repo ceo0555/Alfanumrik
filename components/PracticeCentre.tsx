@@ -2,6 +2,7 @@ import React, { useState, useCallback, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { PracticeBlueprint, QuestionPoolItem, PracticeExam, PracticeResult } from '../types';
 import { generatePracticeExam, generatePracticeReportSummary, gradeShortAnswer } from '../services/geminiService';
+import { pastPapers } from '../constants/pastPapers';
 import PracticeSetup from './PracticeSetup';
 import PracticeTaker from './PracticeTaker';
 import PracticeReport from './PracticeReport';
@@ -10,6 +11,7 @@ import HonourCodeModal from './HonourCodeModal';
 import OnDemandPracticeSetup from './OnDemandPracticeSetup';
 
 type ExamState = 'setup' | 'loading' | 'active' | 'grading' | 'report';
+type PracticeMode = 'blueprint' | 'past_paper' | 'unit_test';
 
 interface PracticeCentreProps {
     examToStart?: { subject: string; blueprint: PracticeBlueprint } | null;
@@ -27,18 +29,18 @@ const PracticeCentre: React.FC<PracticeCentreProps> = ({ examToStart, onExamFini
     const [error, setError] = useState<string | null>(null);
 
     const [isHonourCodeOpen, setIsHonourCodeOpen] = useState(false);
-    const [examPendingStart, setExamPendingStart] = useState<{ subject: string, blueprint: PracticeBlueprint, chapters?: string[] } | null>(null);
+    const [examPendingStart, setExamPendingStart] = useState<{ subject: string; blueprint: PracticeBlueprint; mode: PracticeMode; chapters?: string[]; year?: string; } | null>(null);
     const [examInfractions, setExamInfractions] = useState(0);
     
     useEffect(() => {
         if (examToStart) {
-            handleShowHonourCode(examToStart.subject, examToStart.blueprint);
+            handleShowHonourCode({ subject: examToStart.subject, blueprint: examToStart.blueprint, mode: 'blueprint' });
         }
     }, [examToStart]);
 
-    const handleShowHonourCode = useCallback((subject: string, blueprint: PracticeBlueprint, chapters?: string[]) => {
+    const handleShowHonourCode = useCallback((startConfig: { subject: string, blueprint: PracticeBlueprint, mode: PracticeMode, chapters?: string[], year?: string }) => {
         if (!activeProfile) return;
-        setExamPendingStart({ subject, blueprint, chapters });
+        setExamPendingStart(startConfig);
         setIsHonourCodeOpen(true);
     }, [activeProfile]);
 
@@ -50,9 +52,21 @@ const PracticeCentre: React.FC<PracticeCentreProps> = ({ examToStart, onExamFini
         setError(null);
 
         try {
-            const questions = await generatePracticeExam(activeProfile.grade, examPendingStart.subject, examPendingStart.blueprint, examPendingStart.chapters);
+            let questions: QuestionPoolItem[];
+            const { blueprint, subject, mode, chapters, year } = examPendingStart;
+
+            if (mode === 'past_paper' && year) {
+                const paperData = pastPapers[year]?.[subject];
+                if (!paperData) {
+                    throw new Error(`Past paper for ${subject} ${year} not found.`);
+                }
+                questions = paperData;
+            } else {
+                questions = await generatePracticeExam(activeProfile.grade, subject, blueprint, chapters);
+            }
+
             setActiveExam({
-                blueprint: examPendingStart.blueprint,
+                blueprint: blueprint,
                 questions,
                 answers: {},
                 markedForReview: new Set(),
@@ -61,7 +75,8 @@ const PracticeCentre: React.FC<PracticeCentreProps> = ({ examToStart, onExamFini
             setExamState('active');
         } catch (err) {
             console.error(err);
-            setError('Failed to generate the practice exam. The AI model may be unavailable. Please try again.');
+            const errorMessage = err instanceof Error ? err.message : 'Failed to generate the practice exam. The AI model may be unavailable. Please try again.';
+            setError(errorMessage);
             setExamState('setup');
         } finally {
             setExamPendingStart(null);
@@ -83,14 +98,22 @@ const PracticeCentre: React.FC<PracticeCentreProps> = ({ examToStart, onExamFini
 
             if (question.type === 'MCQ') {
                 isCorrect = studentAnswer.trim().toLowerCase() === question.answer.trim().toLowerCase();
-            } else if (question.type === 'SA') {
-                const gradingResult = await gradeShortAnswer(question.question, question.rubric, studentAnswer);
-                isCorrect = gradingResult?.isCorrect ?? false;
-                aiFeedback = gradingResult?.feedback ?? "AI grading failed for this question.";
-            }
-            
-            if (isCorrect) {
-                marksAwarded = question.marks;
+                if (isCorrect) {
+                    marksAwarded = question.marks;
+                }
+            } else if (question.type === 'SA' || question.type === 'LA' || question.type === 'Case') { // Handle all written types
+                try {
+                    const gradingResult = await gradeShortAnswer(question.question, question.rubric, question.marks, studentAnswer as string);
+                    marksAwarded = gradingResult?.awardedMarks ?? 0;
+                    aiFeedback = gradingResult?.feedback ?? "AI grading failed for this question.";
+                    // A question is considered fully "correct" only if they get full marks.
+                    isCorrect = marksAwarded === question.marks;
+                } catch(e) {
+                    console.error("Error during AI grading for SA question:", e);
+                    marksAwarded = 0;
+                    aiFeedback = "An error occurred during AI grading.";
+                    isCorrect = false;
+                }
             }
             
             results.push({ q_id: question.q_id, question, studentAnswer, isCorrect, marksAwarded, aiFeedback });
@@ -130,7 +153,7 @@ const PracticeCentre: React.FC<PracticeCentreProps> = ({ examToStart, onExamFini
         switch (examState) {
             case 'setup':
                 if (mode === 'on-demand') {
-                    return <OnDemandPracticeSetup onStartExam={handleShowHonourCode} onBack={onBack} />;
+                    return <OnDemandPracticeSetup onStartExam={(subject, blueprint, chapters) => handleShowHonourCode({ subject, blueprint, mode: 'unit_test', chapters })} onBack={onBack} />;
                 }
                 return <PracticeSetup onStartExam={handleShowHonourCode} error={error} />;
             case 'loading':

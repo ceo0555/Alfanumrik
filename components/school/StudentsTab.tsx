@@ -1,7 +1,6 @@
 import React, { useMemo } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
-import { UserProfile } from '../../types';
-import { p_L0 } from '../../services/bkt';
+import { UserProfile, DktSkillState } from '../../types';
 
 interface StudentsTabProps {
     selectedGrade: string | null;
@@ -9,7 +8,7 @@ interface StudentsTabProps {
 }
 
 const StudentsTab: React.FC<StudentsTabProps> = ({ selectedGrade, setIsBulkOnboardOpen }) => {
-    const { userProfiles, allBktData, activeProfile, teacherAssignments } = useAuth();
+    const { userProfiles, allDktData, activeProfile, teacherAssignments } = useAuth();
     const schoolRole = activeProfile?.schoolRole;
 
     const studentsToDisplay = useMemo(() => {
@@ -25,10 +24,10 @@ const StudentsTab: React.FC<StudentsTabProps> = ({ selectedGrade, setIsBulkOnboa
     }, [userProfiles, selectedGrade, schoolRole, activeProfile, teacherAssignments]);
 
     const calculateOverallMastery = (userId: number) => {
-        const userBkt = allBktData[userId];
-        if (!userBkt || Object.keys(userBkt).length === 0) return 0;
-        const totalMastery = Object.keys(userBkt).reduce((sum, skillId) => sum + userBkt[skillId].p_L, 0);
-        return Math.round((totalMastery / Object.keys(userBkt).length) * 100);
+        const userDkt = allDktData[userId];
+        if (!userDkt || Object.keys(userDkt).length === 0) return 0;
+        const totalMastery = (Object.values(userDkt) as DktSkillState[]).reduce((sum, skill) => sum + skill.mastery, 0);
+        return Math.round((totalMastery / Object.keys(userDkt).length) * 100);
     };
 
     return (

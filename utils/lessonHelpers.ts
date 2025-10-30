@@ -34,15 +34,6 @@ export const transformLessonPackToSteps = (lessonPack: LessonPack): LessonStep[]
     });
   }
 
-  // 3. Image Briefs
-  lessonPack.image_briefs?.forEach(brief => {
-    addStep({
-      type: 'image_brief',
-      title: 'Visual Aid',
-      content: brief,
-    });
-  });
-
   // 4. Worked Examples
   lessonPack.student_explanation?.worked_examples?.forEach(ex => {
     addStep({

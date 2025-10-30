@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { generateGroundedAnswer, generateImageForAnswerIfNeeded, analyzeQueryComplexity } from '../services/geminiService';
+import { generateGroundedAnswer, analyzeQueryComplexity } from '../services/geminiService';
 import { GroundingChunk } from '../types';
 import { SearchIcon, SparklesIcon } from '../constants/icons';
 import { GoogleGenAI } from '@google/genai';
@@ -7,7 +7,7 @@ import MarkdownRenderer from './MarkdownRenderer';
 
 const GroundedSearch: React.FC = () => {
   const [query, setQuery] = useState('');
-  const [result, setResult] = useState<{ answer: string; sources: GroundingChunk[]; imageUrl?: string } | null>(null);
+  const [result, setResult] = useState<{ answer: string; sources: GroundingChunk[] } | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [analysis, setAnalysis] = useState<'simple' | 'complex' | null>(null);
@@ -54,8 +54,7 @@ const GroundedSearch: React.FC = () => {
 
       } else {
         const textResponse = await generateGroundedAnswer(query);
-        const imageUrl = await generateImageForAnswerIfNeeded(query, textResponse.answer);
-        setResult({ ...textResponse, imageUrl: imageUrl ?? undefined });
+        setResult(textResponse);
       }
     } catch (err) {
       setError('Failed to get an answer. Please check the API key and try again.');
@@ -123,14 +122,6 @@ const GroundedSearch: React.FC = () => {
             <MarkdownRenderer content={result.answer} />
           </div>
           
-          {result.imageUrl && (
-            <div className="mt-6">
-              <h4 className="font-semibold text-slate-600 mb-2">Visual Aid:</h4>
-              <div className="flex justify-center p-4 bg-slate-50 rounded-lg border border-slate-200">
-                <img src={result.imageUrl} alt="Generated visual aid for the answer" className="max-w-full max-h-[400px] h-auto rounded-md shadow-md" />
-              </div>
-            </div>
-          )}
         </div>
       )}
     </div>

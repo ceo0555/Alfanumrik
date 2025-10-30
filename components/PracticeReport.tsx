@@ -1,6 +1,38 @@
+
+
 import React from 'react';
-import { PracticeExam, PracticeResult } from '../types';
+import { PracticeExam, PracticeResult, ScratchpadState } from '../types';
 import { SparklesIcon, CheckCircleIcon, XIcon, TriangleAlertIcon } from '../constants/icons';
+
+const pathsToDataURL = (scratchpadState: ScratchpadState, width = 400, height = 225) => {
+    if (!scratchpadState || !scratchpadState.paths) return '';
+    const paths = scratchpadState.paths;
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return '';
+
+    ctx.fillStyle = '#f8fafc'; // bg-slate-50
+    ctx.fillRect(0, 0, width, height);
+
+    paths.forEach(path => {
+        ctx.beginPath();
+        ctx.strokeStyle = path.color;
+        ctx.lineWidth = path.strokeWidth * (width/800); // Scale line width
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        path.points.forEach((point, i) => {
+            const x = point.x * (width / 800); // Scale coordinates
+            const y = point.y * (height / 450);
+            if (i === 0) ctx.moveTo(x, y);
+            else ctx.lineTo(x, y);
+        });
+        ctx.stroke();
+    });
+    return canvas.toDataURL();
+};
+
 
 interface PracticeReportProps {
     exam: PracticeExam;
@@ -57,36 +89,45 @@ const PracticeReport: React.FC<PracticeReportProps> = ({ exam, results, summary,
 
             <div className="space-y-4">
                 <h2 className="font-bold text-xl">Question Analysis</h2>
-                {results.map((result, index) => (
-                    <details key={result.q_id} className="p-4 bg-white rounded-lg border border-slate-200">
-                        <summary className="cursor-pointer list-none flex justify-between items-center">
-                            <div className="flex items-center gap-3">
-                                {result.isCorrect ? <CheckCircleIcon className="w-6 h-6 text-emerald-500"/> : <XIcon className="w-6 h-6 text-red-500"/>}
-                                <p className="font-semibold">Question {index + 1}</p>
-                            </div>
-                            <span className="font-bold text-sm">{result.marksAwarded} / {result.question.marks} Marks</span>
-                        </summary>
-                        <div className="mt-4 pt-4 border-t text-sm space-y-3">
-                            <p><strong>Question:</strong> {result.question.question}</p>
-                            <div className={`p-2 rounded border ${result.isCorrect ? 'bg-emerald-50 border-emerald-200' : 'bg-red-50 border-red-200'}`}>
-                                <p><strong>Your Answer:</strong> {result.studentAnswer || '(Not answered)'}</p>
-                            </div>
-                            {!result.isCorrect && (
-                                <div className="p-2 rounded border bg-emerald-50 border-emerald-200">
-                                    <p><strong>Correct Answer:</strong> {result.question.answer}</p>
+                {results.map((result, index) => {
+                    const isDrawnAnswer = typeof result.studentAnswer !== 'string' && result.studentAnswer?.paths;
+                    
+                    return (
+                        <details key={result.q_id} className="p-4 bg-white rounded-lg border border-slate-200">
+                            <summary className="cursor-pointer list-none flex justify-between items-center">
+                                <div className="flex items-center gap-3">
+                                    {result.isCorrect ? <CheckCircleIcon className="w-6 h-6 text-emerald-500"/> : <XIcon className="w-6 h-6 text-red-500"/>}
+                                    <p className="font-semibold">Question {index + 1}</p>
                                 </div>
-                            )}
-                            {result.aiFeedback && (
-                                 <div className="p-2 rounded border bg-indigo-50 border-indigo-200">
-                                    <p><strong>AI Feedback:</strong> {result.aiFeedback}</p>
+                                <span className="font-bold text-sm">{result.marksAwarded} / {result.question.marks} Marks</span>
+                            </summary>
+                            <div className="mt-4 pt-4 border-t text-sm space-y-3">
+                                <p><strong>Question:</strong> {result.question.question}</p>
+                                <div className={`p-2 rounded border ${result.isCorrect ? 'bg-emerald-50 border-emerald-200' : 'bg-red-50 border-red-200'}`}>
+                                    <p><strong>Your Answer:</strong></p>
+                                    {isDrawnAnswer ? (
+                                        <img src={pathsToDataURL(result.studentAnswer as ScratchpadState)} alt="Student's drawing" className="mt-1 border rounded-md bg-slate-50" />
+                                    ) : (
+                                        <p>{(result.studentAnswer as string) || '(Not answered)'}</p>
+                                    )}
                                 </div>
-                            )}
-                            <div className="p-2 rounded border bg-slate-100 border-slate-200">
-                                <p><strong>Marking Rubric:</strong> {result.question.rubric}</p>
+                                {!result.isCorrect && (
+                                    <div className="p-2 rounded border bg-emerald-50 border-emerald-200">
+                                        <p><strong>Correct Answer:</strong> {result.question.answer}</p>
+                                    </div>
+                                )}
+                                {result.aiFeedback && (
+                                     <div className="p-2 rounded border bg-indigo-50 border-indigo-200">
+                                        <p><strong>AI Feedback:</strong> {result.aiFeedback}</p>
+                                    </div>
+                                )}
+                                <div className="p-2 rounded border bg-slate-100 border-slate-200">
+                                    <p><strong>Marking Rubric:</strong> {result.question.rubric}</p>
+                                </div>
                             </div>
-                        </div>
-                    </details>
-                ))}
+                        </details>
+                    )
+                })}
             </div>
             
             <div className="mt-8 text-center">

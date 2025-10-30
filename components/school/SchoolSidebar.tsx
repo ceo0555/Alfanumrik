@@ -1,7 +1,6 @@
 import React from 'react';
 import { SchoolTab } from '../SchoolDashboard';
 import { useAuth } from '../../contexts/AuthContext';
-// FIX: Replace DollarSignIcon with RupeeIcon which is available.
 import { BarChartIcon, UsersIcon, ClipboardListIcon, FileTextIcon, ClipboardCheckIcon, TargetIcon, CpuIcon, CalendarDaysIcon, SpeakerIcon, RupeeIcon, TrendingUpIcon, SchoolIcon } from '../../constants/icons';
 
 interface SchoolSidebarProps {

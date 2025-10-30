@@ -6,12 +6,12 @@ import { SparklesIcon, ArrowLeftIcon, ArrowRightIcon, BookIcon, FileTextIcon, Cl
 import { useStudentData } from '../contexts/StudentDataContext';
 import { useAuth } from '../contexts/AuthContext';
 import * as ltiService from '../services/ltiService';
+import MarkdownRenderer from './MarkdownRenderer';
 
 // Import all the step components
 import TopicTitleStep from './TopicTitleStep';
 import CoreExplanationStepComponent from './CoreExplanationStep';
 import QuickCheckStepComponent from './QuickCheck';
-import ImageBriefStep from './ImageBriefStep';
 import WorkedExampleStep from './WorkedExampleStep';
 import PracticeStep from './PracticeStep';
 import HOTSStep from './HOTSStep';
@@ -133,6 +133,8 @@ const AdaptiveLessonPlayer: React.FC<AdaptiveLessonPlayerProps> = ({ lessonPack,
 
   const hasInitialized = useRef(false);
   const prevLessonPackRef = useRef<LessonPack | null>(null);
+  
+  const currentStep = steps[currentStepIndex];
 
   const isQuestionStep = (type: LessonStepType) => ['quick_check', 'fill_in_the_blanks', 'assessment_question'].includes(type);
   const isDetailsStep = (type: LessonStepType) => ['guided_practice', 'independent_practice', 'HOTS'].includes(type);
@@ -182,6 +184,52 @@ const AdaptiveLessonPlayer: React.FC<AdaptiveLessonPlayerProps> = ({ lessonPack,
     if (hasInitialized.current && !ltiContext) updateChapterStep(currentStepIndex);
     else hasInitialized.current = true;
   }, [currentStepIndex, updateChapterStep, ltiContext]);
+
+  // Effect to handle generation of adaptive follow-up plan
+  useEffect(() => {
+      const generatePlan = async () => {
+          if (currentStep?.type === 'adaptive_intro' && assessmentResults.length > 0 && !adaptivePlan && !isGeneratingPlan) {
+              const incorrectAnswers = assessmentResults.filter(r => !r.is_correct);
+              if (incorrectAnswers.length > 0) {
+                  setIsGeneratingPlan(true);
+                  try {
+                      const plan = await generateAdaptiveFollowUp(assessmentResults);
+                      setAdaptivePlan(plan);
+                      
+                      const newSteps: LessonStep[] = plan.map(item => ({
+                          type: 'adaptive_follow_up',
+                          title: `Review: ${item.concept}`,
+                          content: item,
+                          isRemediation: true,
+                          originalIndex: currentStep.originalIndex
+                      }));
+                      
+                      setSteps(prevSteps => {
+                          const introIndex = prevSteps.findIndex(s => s.type === 'adaptive_intro');
+                          if (introIndex !== -1) {
+                              const updatedSteps = [...prevSteps];
+                              // Remove the intro step and insert the new adaptive steps
+                              updatedSteps.splice(introIndex, 1, ...newSteps);
+                              return updatedSteps;
+                          }
+                          return prevSteps;
+                      });
+
+                  } catch (e) {
+                      console.error("Failed to generate adaptive plan", e);
+                      // If plan fails, just remove the intro step and let the user proceed
+                      setSteps(prev => prev.filter(s => s.type !== 'adaptive_intro'));
+                  } finally {
+                      setIsGeneratingPlan(false);
+                  }
+              } else {
+                  // No incorrect answers, just remove the intro step and move on
+                  setSteps(prev => prev.filter(s => s.type !== 'adaptive_intro'));
+              }
+          }
+      };
+      generatePlan();
+  }, [currentStep, assessmentResults, adaptivePlan, isGeneratingPlan]);
 
   const handleStepAnswer = async (stepIndex: number, answer: string | null, isCorrect: boolean, q_id?: string, question_text?: string) => {
       if (stepAnswers[stepIndex]) return;
@@ -282,7 +330,31 @@ const AdaptiveLessonPlayer: React.FC<AdaptiveLessonPlayerProps> = ({ lessonPack,
       }
   };
 
-  const handleExplainSnippet = async (event: React.MouseEvent, snippet: string) => { /* ... */ };
+  const handleExplainSnippet = async (event: React.MouseEvent, snippet: string) => {
+    event.stopPropagation();
+    const target = event.currentTarget as HTMLElement;
+    const rect = target.getBoundingClientRect();
+    const contentRect = contentRef.current?.getBoundingClientRect();
+
+    if (!contentRect) return;
+
+    // Position popup below the paragraph
+    const top = rect.top - contentRect.top + rect.height + 8;
+    // Center the popup horizontally relative to the content area
+    const left = contentRect.width / 2;
+
+    setIsExplaining(true);
+    setExplanationPopup({ content: 'Thinking...', top: top, left: left });
+    try {
+        const explanation = await explainTextSnippet(snippet);
+        setExplanationPopup(prev => prev ? { ...prev, content: explanation } : null);
+    } catch (e) {
+        console.error("Failed to explain snippet", e);
+        setExplanationPopup(prev => prev ? { ...prev, content: 'Sorry, could not generate an explanation.' } : null);
+    } finally {
+        setIsExplaining(false);
+    }
+  };
   const handleGenerateNotes = async () => { /* ... */ };
   const handleGenerateQuiz = async () => { /* ... */ };
   const handleOpenSimulation = (content: InteractiveSimulation) => setSimulationModalContent(content);
@@ -290,7 +362,6 @@ const AdaptiveLessonPlayer: React.FC<AdaptiveLessonPlayerProps> = ({ lessonPack,
   if (!lessonPack) return null;
   if (steps.length === 0) return null;
 
-  const currentStep = steps[currentStepIndex];
   const progress = ((currentStepIndex + 1) / steps.length) * 100;
   
   const isFinalStep = currentStepIndex === steps.length - 1;
@@ -311,8 +382,6 @@ const AdaptiveLessonPlayer: React.FC<AdaptiveLessonPlayerProps> = ({ lessonPack,
                         onStepAnswer={(answer, isCorrect) => handleStepAnswer(currentStepIndex, answer, isCorrect)} 
                         isGeneratingRemediation={isGeneratingRemediation === currentStepIndex}
                     />;
-        case 'image_brief':
-            return <ImageBriefStep content={currentStep.content} />;
         case 'worked_example':
             return <WorkedExampleStep content={currentStep.content} />;
         case 'guided_practice':
@@ -397,6 +466,20 @@ const AdaptiveLessonPlayer: React.FC<AdaptiveLessonPlayerProps> = ({ lessonPack,
         <div key={currentStepIndex} className="animate-fade-in min-h-[400px]">
           {renderStepContent()}
         </div>
+         {explanationPopup && (
+            <div 
+                className="absolute z-10 p-4 bg-white rounded-lg shadow-lg border w-full max-w-md text-sm text-slate-700 animate-fade-in"
+                style={{ 
+                    top: explanationPopup.top, 
+                    left: '50%',
+                    transform: 'translateX(-50%)',
+                }}
+                onClick={(e) => e.stopPropagation()}
+            >
+                <MarkdownRenderer content={explanationPopup.content} />
+                <button onClick={() => setExplanationPopup(null)} className="absolute -top-2 -right-2 p-1 text-slate-500 bg-white rounded-full shadow border hover:text-slate-800">&times;</button>
+            </div>
+        )}
       </div>
 
       <div className="flex justify-between items-center">

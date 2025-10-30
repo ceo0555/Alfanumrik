@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
-import { ChapterProgress } from '../../types';
+import { ChapterProgress, DktSkillState } from '../../types';
 import { UsersIcon, BarChartIcon, SparklesIcon, UserIcon } from '../../constants/icons';
 
 const StatCard: React.FC<{ title: string; value: string | number; icon: React.ReactNode }> = ({ title, value, icon }) => (
@@ -20,7 +20,7 @@ interface OverviewTabProps {
 }
 
 const OverviewTab: React.FC<OverviewTabProps> = ({ selectedGrade }) => {
-    const { userProfiles, allProgressData, allBktData, activeProfile, teacherAssignments } = useAuth();
+    const { userProfiles, allProgressData, allDktData, activeProfile, teacherAssignments } = useAuth();
     const schoolRole = activeProfile?.schoolRole;
 
     const studentsToDisplay = useMemo(() => {
@@ -36,10 +36,10 @@ const OverviewTab: React.FC<OverviewTabProps> = ({ selectedGrade }) => {
     }, [userProfiles, selectedGrade, schoolRole, activeProfile, teacherAssignments]);
 
     const calculateOverallMastery = (userId: number) => {
-        const userBkt = allBktData[userId];
-        if (!userBkt || Object.keys(userBkt).length === 0) return 0;
-        const totalMastery = Object.keys(userBkt).reduce((sum, skillId) => sum + userBkt[skillId].p_L, 0);
-        return Math.round((totalMastery / Object.keys(userBkt).length) * 100);
+        const userDkt = allDktData[userId];
+        if (!userDkt || Object.keys(userDkt).length === 0) return 0;
+        const totalMastery = (Object.values(userDkt) as DktSkillState[]).reduce((sum, skill) => sum + skill.mastery, 0);
+        return Math.round((totalMastery / Object.keys(userDkt).length) * 100);
     };
 
     const totalLessonsCompleted = useMemo(() => {
@@ -54,7 +54,7 @@ const OverviewTab: React.FC<OverviewTabProps> = ({ selectedGrade }) => {
         if (studentsToDisplay.length === 0) return 0;
         const total = studentsToDisplay.reduce((acc, p) => acc + calculateOverallMastery(p.id), 0);
         return Math.round(total / studentsToDisplay.length);
-    }, [studentsToDisplay, allBktData]);
+    }, [studentsToDisplay, allDktData]);
 
     return (
         <div className="space-y-6">

@@ -1,17 +1,18 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
-import { GamificationEvent, UserProgressData, UserFlashcards, UserBktData, Badge, StudyTask, Flashcard, ChapterProgress, UserFlashcardItem, UserProfile } from '../types';
+import { GamificationEvent, UserProgressData, UserFlashcards, UserDktData, Badge, StudyTask, Flashcard, ChapterProgress, UserFlashcardItem, UserProfile } from '../types';
 import { allAchievements } from '../constants/achievements';
 import { curriculum } from '../constants/curriculum';
 import * as apiService from '../services/apiService';
 import { useAuth } from './AuthContext';
 import { gradeFsrsCard, initFsrsCard } from '../services/fsrs';
-import { p_L0, updateMastery } from '../services/bkt';
+import { initDktSkill, updateDktMastery, generateTodayFocusTasks } from '../services/adaptiveEngine';
 
 interface StudentDataContextType {
   progressData: UserProgressData;
   userFlashcards: UserFlashcards;
-  userBktData: UserBktData;
+  userDktData: UserDktData;
   newAchievement: Badge | null;
+  todayTasks: StudyTask[];
 
   startChapter: () => void;
   markChapterAsCompleted: () => void;
@@ -21,7 +22,7 @@ interface StudentDataContextType {
   clearNewAchievement: () => void;
   awardXP: (event: GamificationEvent, amount?: number) => void;
   gradeFlashcard: (chapterId: string, cardIndex: number, rating: 1 | 2 | 3 | 4) => void;
-  recordAnswer: (skillId: string, isCorrect: boolean) => void;
+  recordAnswer: (skillId: string, isCorrect: boolean, errorType?: string) => void;
   updateChapterStep: (step: number) => void;
 }
 
@@ -40,24 +41,34 @@ const XP_CONFIG: { [key in GamificationEvent]: number } = {
 const calculateLevel = (xp: number) => Math.floor(Math.sqrt(xp / 100)) + 1;
 
 export const StudentDataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const { activeProfile, allProgressData, allFlashcards, allBktData, updateActiveUserProfile, handleSaveAllBktData } = useAuth();
+  const { activeProfile, allProgressData, allFlashcards, allDktData, updateActiveUserProfile, handleSaveAllDktData, allAssignments } = useAuth();
   
   const [progressData, setProgressData] = useState<UserProgressData>({});
   const [userFlashcards, setUserFlashcards] = useState<UserFlashcards>({});
-  const [userBktData, setUserBktData] = useState<UserBktData>({});
+  const [userDktData, setUserDktData] = useState<UserDktData>({});
   const [newAchievement, setNewAchievement] = useState<Badge | null>(null);
+  const [todayTasks, setTodayTasks] = useState<StudyTask[]>([]);
+
 
   useEffect(() => {
     if (activeProfile) {
         setProgressData(allProgressData[activeProfile.id] || {});
         setUserFlashcards(allFlashcards[activeProfile.id] || {});
-        setUserBktData(allBktData[activeProfile.id] || {});
+        setUserDktData(allDktData[activeProfile.id] || {});
     } else {
         setProgressData({});
         setUserFlashcards({});
-        setUserBktData({});
+        setUserDktData({});
     }
-  }, [activeProfile, allProgressData, allFlashcards, allBktData]);
+  }, [activeProfile, allProgressData, allFlashcards, allDktData]);
+  
+  useEffect(() => {
+    if (activeProfile) {
+        const tasks = generateTodayFocusTasks(userDktData, userFlashcards, allAssignments, activeProfile);
+        setTodayTasks(tasks);
+    }
+  }, [userDktData, userFlashcards, allAssignments, activeProfile]);
+
 
   const awardXP = useCallback((event: GamificationEvent, amount?: number) => {
     if (!activeProfile) return;
@@ -93,28 +104,34 @@ export const StudentDataProvider: React.FC<{ children: ReactNode }> = ({ childre
 
   }, [activeProfile, updateActiveUserProfile]);
 
-  const recordAnswer = useCallback((skillId: string, isCorrect: boolean) => {
+  const recordAnswer = useCallback((skillId: string, isCorrect: boolean, errorType?: string) => {
     if (!activeProfile) return;
 
-    // 1. Update BKT Mastery
-    const p_L_prev = userBktData[skillId]?.p_L ?? p_L0;
-    const p_L_new = updateMastery(p_L_prev, isCorrect);
+    if (errorType) {
+      console.log(`[Adaptive Engine] Recorded error type for skill ${skillId}: ${errorType}`);
+      // Future enhancement: The DKT model could be updated to use this errorType
+      // to adjust learning rates for specific misconceptions.
+    }
+
+    // 1. Update DKT Mastery
+    const prevState = userDktData[skillId] || initDktSkill();
+    const newState = updateDktMastery(prevState, isCorrect);
     
-    const updatedBktData = {
-        ...userBktData,
-        [skillId]: { p_L: p_L_new }
+    const updatedDktData = {
+        ...userDktData,
+        [skillId]: newState
     };
-    setUserBktData(updatedBktData); // Optimistic update
+    setUserDktData(updatedDktData); // Optimistic update
     
-    // Persist BKT data
-    handleSaveAllBktData({ ...allBktData, [activeProfile.id]: updatedBktData });
+    // Persist DKT data
+    handleSaveAllDktData({ ...allDktData, [activeProfile.id]: updatedDktData });
 
     // 2. Award XP if correct
     if (isCorrect) {
         awardXP('quiz_correct');
     }
     
-  }, [activeProfile, userBktData, awardXP, allBktData, handleSaveAllBktData]);
+  }, [activeProfile, userDktData, awardXP, allDktData, handleSaveAllDktData]);
   
   const startChapter = useCallback(async () => {
     if (!activeProfile) return;
@@ -159,6 +176,7 @@ export const StudentDataProvider: React.FC<{ children: ReactNode }> = ({ childre
 
   const markChapterAsCompleted = useCallback(async () => {
     if (!activeProfile) return;
+    const { id, grade, lastSubject, lastChapter } = activeProfile;
 
     awardXP('lesson_completed');
 
@@ -211,21 +229,21 @@ export const StudentDataProvider: React.FC<{ children: ReactNode }> = ({ childre
     }
     
     // Update Progress Data
-    const chapterId = `G${activeProfile.grade}-${activeProfile.lastSubject}-${activeProfile.lastChapter}`;
+    const chapterId = `G${grade}-${lastSubject}-${lastChapter}`;
     const updatedProgressData: UserProgressData = {
         ...progressData,
         [chapterId]: { ...(progressData[chapterId] || {}), status: 'completed', currentStep: 0 }
     };
 
     // Check for Subject Mastery
-    const subjectChapters = curriculum[activeProfile.grade as keyof typeof curriculum]?.[activeProfile.lastSubject] ?? [];
+    const subjectChapters = curriculum[grade as keyof typeof curriculum]?.[lastSubject] ?? [];
     const completedInSubject = subjectChapters.filter(ch => {
-        const chId = `G${activeProfile.grade}-${activeProfile.lastSubject}-${ch}`;
+        const chId = `G${grade}-${lastSubject}-${ch}`;
         return (updatedProgressData[chId]?.status === 'completed');
     }).length;
 
     if (subjectChapters.length > 0 && completedInSubject === subjectChapters.length) {
-        const masteryBadgeId = `mastery_${activeProfile.lastSubject.toLowerCase().replace(' ', '_')}`;
+        const masteryBadgeId = `mastery_${lastSubject.toLowerCase().replace(' ', '_')}`;
         if (awardAchievement(masteryBadgeId, updatedProfile)) newAchievements.push(masteryBadgeId);
     }
     
@@ -238,7 +256,7 @@ export const StudentDataProvider: React.FC<{ children: ReactNode }> = ({ childre
     
     try {
       const allData = await apiService.fetchAllData();
-      const updatedAllProgress = { ...allData.progress, [activeProfile.id]: updatedProgressData };
+      const updatedAllProgress = { ...allData.progress, [id]: updatedProgressData };
       await apiService.saveAllProgress(updatedAllProgress);
     } catch (e) {
       console.error("Failed to save completion progress:", e);
@@ -246,7 +264,7 @@ export const StudentDataProvider: React.FC<{ children: ReactNode }> = ({ childre
       setProgressData(progressData);
     }
 
-  }, [activeProfile, progressData, awardXP, updateActiveUserProfile, awardAchievement]);
+  }, [activeProfile, progressData, awardXP, updateActiveUserProfile, awardAchievement, allDktData, handleSaveAllDktData]);
 
   const handleSetDueDate = async (chapterId: string, dueDate: string | null) => {
     if (!activeProfile) return;
@@ -380,8 +398,9 @@ export const StudentDataProvider: React.FC<{ children: ReactNode }> = ({ childre
   const value = {
     progressData,
     userFlashcards,
-    userBktData,
+    userDktData,
     newAchievement,
+    todayTasks,
     startChapter,
     markChapterAsCompleted,
     handleSetDueDate,

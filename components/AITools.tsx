@@ -1,14 +1,10 @@
 import React, { useState } from 'react';
-import { WandIcon, ClipboardCheckIcon, LightbulbIcon, LayersIcon, ImageIcon, EditIcon, VideoIcon } from '../constants/icons';
-import ImageAnalyzer from './ImageAnalyzer';
+import { LightbulbIcon, LayersIcon, ClipboardCheckIcon } from '../constants/icons';
 import AdaptiveQuizGenerator from './AdaptiveQuizGenerator';
 import ConceptExplainer from './ConceptExplainer';
 import FlashcardViewer from './FlashcardViewer';
-import ImageGenerator from './ImageGenerator';
-import ImageEditor from './ImageEditor';
-import VideoScriptGenerator from './VideoScriptGenerator';
 
-type ActiveTool = 'concept-explainer' | 'image-analyze' | 'adaptive-quiz' | 'flashcards' | 'image-generator' | 'image-editor' | 'video-script';
+type ActiveTool = 'concept-explainer' | 'adaptive-quiz' | 'flashcards';
 
 const AITools: React.FC = () => {
     const [activeTool, setActiveTool] = useState<ActiveTool>('concept-explainer');
@@ -34,18 +30,10 @@ const AITools: React.FC = () => {
         switch (activeTool) {
             case 'concept-explainer':
                 return <ConceptExplainer />;
-            case 'image-analyze':
-                return <ImageAnalyzer />;
             case 'adaptive-quiz':
                 return <AdaptiveQuizGenerator />;
             case 'flashcards':
                 return <FlashcardViewer />;
-            case 'image-generator':
-                return <ImageGenerator />;
-            case 'image-editor':
-                return <ImageEditor />;
-            case 'video-script':
-                return <VideoScriptGenerator />;
             default:
                 return null;
         }
@@ -58,10 +46,6 @@ const AITools: React.FC = () => {
                     <TabButton toolName="concept-explainer" label="Explainer" icon={<LightbulbIcon className="w-5 h-5" />} />
                     <TabButton toolName="flashcards" label="Flashcards" icon={<LayersIcon className="w-5 h-5" />} />
                     <TabButton toolName="adaptive-quiz" label="Adaptive Quiz" icon={<ClipboardCheckIcon className="w-5 h-5" />} />
-                    <TabButton toolName="image-analyze" label="Image Q&A" icon={<WandIcon className="w-5 h-5" />} />
-                    <TabButton toolName="image-generator" label="Image Gen" icon={<ImageIcon className="w-5 h-5" />} />
-                    <TabButton toolName="image-editor" label="Image Editor" icon={<EditIcon className="w-5 h-5" />} />
-                    <TabButton toolName="video-script" label="Video Script" icon={<VideoIcon className="w-5 h-5" />} />
                 </div>
             </div>
 

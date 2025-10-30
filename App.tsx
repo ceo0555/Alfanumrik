@@ -1,3 +1,5 @@
+
+
 import React, { useState, useEffect, useCallback, ErrorInfo, ReactNode, Suspense, useMemo, useTransition } from 'react';
 import Header from './components/Header';
 import Loader from './components/Loader';
@@ -19,8 +21,12 @@ interface ErrorBoundaryProps {
 interface ErrorBoundaryState {
   hasError: boolean;
 }
+
 class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
-  // FIX: Replaced class property state initialization with a standard constructor to ensure `this.props` and `this.state` are correctly initialized and recognized.
+  // FIX: The previous implementation used a class property for state, which was causing a
+  // TypeScript error where `this.props` was not found. Reverting to a constructor-based
+  // initialization is a more robust way to define a class component and ensures `props`
+  // are correctly handled.
   constructor(props: ErrorBoundaryProps) {
     super(props);
     this.state = { hasError: false };
@@ -61,7 +67,7 @@ const FlashcardCreationModal = React.lazy(() => import('./components/FlashcardCr
 const AchievementToast = React.lazy(() => import('./components/AchievementToast'));
 const RoleSelectionScreen = React.lazy(() => import('./components/RoleSelectionScreen'));
 const ParentDashboard = React.lazy(() => import('./components/ParentDashboard'));
-const SchoolDashboard = React.lazy(() => import('./components/SchoolDashboard'));
+const SchoolDashboard = React.lazy(() => import('./components/school/SchoolDashboard'));
 const StudentAssignments = React.lazy(() => import('./components/StudentAssignments'));
 const QuizTaker = React.lazy(() => import('./components/QuizTaker'));
 const PracticeCentre = React.lazy(() => import('./components/PracticeCentre'));

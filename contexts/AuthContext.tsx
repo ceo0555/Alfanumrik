@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
-import { UserProfile, UserRole, AllProgressData, AllFlashcardsData, AllBktData, Assignment, Announcement, StudentSubmission, StudentFlnProgress, TeacherSchedule, AttendanceRecord, QuickFormativeAssessment, Notification, QuestionPoolItem, BusRoute, PrintQuota, FeeStatus, AfterSchoolProgram, FacilityBooking, BoardPlannerEvent, CrossCurricularProject, CodingModule, CommunicationTemplate, TeacherAssignment, StudentPortfolioProject, AllPortfolios, WidgetConfig, PaperBlueprint } from '../types';
+import { UserProfile, UserRole, AllProgressData, AllFlashcardsData, AllDktData, Assignment, Announcement, StudentSubmission, StudentFlnProgress, TeacherSchedule, AttendanceRecord, QuickFormativeAssessment, Notification, QuestionPoolItem, BusRoute, PrintQuota, FeeStatus, AfterSchoolProgram, FacilityBooking, BoardPlannerEvent, CrossCurricularProject, CodingModule, CommunicationTemplate, TeacherAssignment, StudentPortfolioProject, AllPortfolios, WidgetConfig, PaperBlueprint } from '../types';
 import * as apiService from '../services/apiService';
 
 interface AuthContextType {
@@ -12,7 +12,7 @@ interface AuthContextType {
   userRole: UserRole | null;
   allProgressData: AllProgressData;
   allFlashcards: AllFlashcardsData;
-  allBktData: AllBktData;
+  allDktData: AllDktData;
   allAssignments: Assignment[];
   allAnnouncements: Announcement[];
   allSubmissions: StudentSubmission[];
@@ -43,7 +43,7 @@ interface AuthContextType {
   updateActiveUserProfile: (updates: Partial<UserProfile>) => void;
   handleUpdateWidgets: (widgets: WidgetConfig[]) => void;
   handleUpdateScholarCoins: (newBalance: number) => void;
-  handleSaveAllBktData: (bktData: AllBktData) => void; // For StudentDataContext to persist BKT updates
+  handleSaveAllDktData: (dktData: AllDktData) => void; // For StudentDataContext to persist DKT updates
   handleCreateAssignment: (assignmentData: Omit<Assignment, 'id'>) => void;
   handleCreateAnnouncement: (announcementData: Omit<Announcement, 'id' | 'date'>) => void;
   handleSaveSubmission: (submission: Omit<StudentSubmission, 'id'>) => void;
@@ -78,7 +78,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [userRole, setUserRole] = useState<UserRole | null>(null);
   const [allProgressData, setAllProgressData] = useState<AllProgressData>({});
   const [allFlashcards, setAllFlashcards] = useState<AllFlashcardsData>({});
-  const [allBktData, setAllBktData] = useState<AllBktData>({});
+  const [allDktData, setAllDktData] = useState<AllDktData>({});
   const [allAssignments, setAllAssignments] = useState<Assignment[]>([]);
   const [allAnnouncements, setAllAnnouncements] = useState<Announcement[]>([]);
   const [allSubmissions, setAllSubmissions] = useState<StudentSubmission[]>([]);
@@ -113,7 +113,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         setActiveUserId(data.activeId);
         setAllProgressData(data.progress);
         setAllFlashcards(data.flashcards);
-        setAllBktData(data.allBktData);
+        setAllDktData(data.allDktData);
         setUserRole(data.userRole);
         setAllAssignments(data.allAssignments);
         setAllAnnouncements(data.allAnnouncements);
@@ -301,12 +301,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     updateActiveUserProfile({ tutorSessionUnlocked: isUnlocked });
   }, [activeProfile, updateActiveUserProfile]);
 
-  const handleSaveAllBktData = useCallback(async (bktData: AllBktData) => {
-    setAllBktData(bktData); // Optimistic update
+  const handleSaveAllDktData = useCallback(async (dktData: AllDktData) => {
+    setAllDktData(dktData); // Optimistic update
     try {
-      await apiService.saveAllBktData(bktData);
+      await apiService.saveAllDktData(dktData);
     } catch (e) {
-      console.error("Failed to save BKT data:", e);
+      console.error("Failed to save DKT data:", e);
       // Note: Reverting could be complex if multiple updates happened.
       // For this simulation, we'll log the error and hope for the best.
     }
@@ -438,7 +438,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     userRole,
     allProgressData,
     allFlashcards,
-    allBktData,
+    allDktData,
     allAssignments,
     allAnnouncements,
     allSubmissions,
@@ -467,7 +467,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     updateActiveUserProfile,
     handleUpdateWidgets,
     handleUpdateScholarCoins,
-    handleSaveAllBktData,
+    handleSaveAllDktData,
     handleCreateAssignment,
     handleCreateAnnouncement,
     handleSaveSubmission,

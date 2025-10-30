@@ -2,72 +2,17 @@ import { PracticeBlueprint } from '../types';
 
 export const practiceBlueprints: PracticeBlueprint[] = [
   {
-    id: 'quick-quiz-15',
-    title: 'Quick Quiz',
-    description: 'A short, 15-minute quiz to quickly test your knowledge on a topic.',
-    durationMinutes: 15,
-    totalMarks: 10,
+    id: 'cbse-board-mock-science',
+    title: 'CBSE Board Mock (Science)',
+    description: 'A full 3-hour mock exam that exactly matches the official CBSE Class 10 Science paper pattern.',
+    durationMinutes: 180,
+    totalMarks: 80,
     structure: [
-      {
-        section: 'Section A',
-        questionType: 'MCQ',
-        count: 5,
-        marksPerQuestion: 1,
-      },
-      {
-        section: 'Section B',
-        questionType: 'SA',
-        count: 1,
-        marksPerQuestion: 5,
-      },
-    ],
-  },
-  {
-    id: 'chapter-test-45',
-    title: 'Chapter Test',
-    description: 'A comprehensive 45-minute test covering a single chapter in detail.',
-    durationMinutes: 45,
-    totalMarks: 25,
-    structure: [
-      {
-        section: 'Section A',
-        questionType: 'MCQ',
-        count: 10,
-        marksPerQuestion: 1,
-      },
-      {
-        section: 'Section B',
-        questionType: 'SA',
-        count: 3,
-        marksPerQuestion: 5,
-      },
-    ],
-  },
-  {
-    id: 'mock-exam-90',
-    title: 'Full Mock Exam',
-    description: 'A 90-minute mock exam that simulates the final CBSE board paper pattern.',
-    durationMinutes: 90,
-    totalMarks: 50,
-    structure: [
-      {
-        section: 'Section A: MCQs',
-        questionType: 'MCQ',
-        count: 20,
-        marksPerQuestion: 1,
-      },
-      {
-        section: 'Section B: Short Answers',
-        questionType: 'SA',
-        count: 4,
-        marksPerQuestion: 5,
-      },
-      {
-        section: 'Section C: Long Answers',
-        questionType: 'SA', // Using SA for demo, could be LA
-        count: 2,
-        marksPerQuestion: 5,
-      },
+      { section: 'Section A', questionType: 'MCQ', count: 20, marksPerQuestion: 1 },
+      { section: 'Section B', questionType: 'SA', count: 6, marksPerQuestion: 2 },
+      { section: 'Section C', questionType: 'SA', count: 7, marksPerQuestion: 3 },
+      { section: 'Section D', questionType: 'LA', count: 3, marksPerQuestion: 5 },
+      { section: 'Section E', questionType: 'Case', count: 3, marksPerQuestion: 4 },
     ],
   },
 ];

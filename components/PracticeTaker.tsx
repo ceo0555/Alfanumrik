@@ -1,25 +1,29 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { PracticeExam, QuestionPoolItem } from '../types';
-import { ArrowLeftIcon, ArrowRightIcon, EditIcon, FlameIcon } from '../constants/icons';
+import { PracticeExam, QuestionPoolItem, ScratchpadState } from '../types';
+import { ArrowLeftIcon, ArrowRightIcon, EditIcon, FlameIcon, NotebookIcon } from '../constants/icons';
+import DigitalScratchpad from './DigitalScratchpad';
 
 interface PracticeTakerProps {
     exam: PracticeExam;
-    onFinishExam: (answers: { [q_id: string]: string }, infractions: number) => void;
+    onFinishExam: (answers: { [q_id: string]: string | ScratchpadState }, infractions: number) => void;
     onBack: () => void;
 }
 
 const PracticeTaker: React.FC<PracticeTakerProps> = ({ exam, onFinishExam, onBack }) => {
     const [currentQIndex, setCurrentQIndex] = useState(0);
-    const [answers, setAnswers] = useState<{ [q_id: string]: string }>({});
+    const [answers, setAnswers] = useState<{ [q_id: string]: string | ScratchpadState }>({});
     const [markedForReview, setMarkedForReview] = useState<Set<string>>(new Set());
     const [timeLeft, setTimeLeft] = useState(exam.blueprint.durationMinutes * 60);
     const [isPaletteOpen, setIsPaletteOpen] = useState(false);
+    
+    // Scratchpad state
+    const [isScratchpadOpen, setIsScratchpadOpen] = useState(false);
+    const scratchpadRef = useRef<{ getCanvasDataURL: () => string | null }>(null);
 
     // New states for Focus Mode
     const [infractions, setInfractions] = useState(0);
     const [isFocused, setIsFocused] = useState(true);
 
-    // FIX: Initialize useRef with null to provide an initial value, which is better practice and avoids potential environment-specific errors.
     const timerRef = useRef<number | null>(null);
     const answersRef = useRef(answers);
     const infractionsRef = useRef(infractions);
@@ -70,7 +74,6 @@ const PracticeTaker: React.FC<PracticeTakerProps> = ({ exam, onFinishExam, onBac
             timerRef.current = window.setInterval(() => {
                 setTimeLeft(prev => {
                     if (prev <= 1) {
-                        // FIX: Add a check for timerRef.current to ensure it's not null before calling clearInterval, satisfying TypeScript's strict null checks.
                         if (timerRef.current) clearInterval(timerRef.current);
                         onFinishExam(answersRef.current, infractionsRef.current);
                         return 0;
@@ -90,7 +93,7 @@ const PracticeTaker: React.FC<PracticeTakerProps> = ({ exam, onFinishExam, onBac
     
     const currentQuestion = exam.questions[currentQIndex];
 
-    const handleAnswerChange = (q_id: string, answer: string) => {
+    const handleAnswerChange = (q_id: string, answer: string | ScratchpadState) => {
         setAnswers(prev => ({ ...prev, [q_id]: answer }));
     };
 
@@ -161,6 +164,8 @@ const PracticeTaker: React.FC<PracticeTakerProps> = ({ exam, onFinishExam, onBac
         );
     }
 
+    const currentAnswer = answers[currentQuestion.q_id];
+
     return (
         <div className="flex flex-col h-full">
             <header className="flex-shrink-0 bg-white p-4 border-b flex justify-between items-center">
@@ -213,29 +218,50 @@ const PracticeTaker: React.FC<PracticeTakerProps> = ({ exam, onFinishExam, onBac
                 <div className="flex-1 p-6 overflow-y-auto flex flex-col">
                     <div className="flex-grow">
                         <div className="flex justify-between items-start mb-4">
-                            <h2 className="text-xl font-bold">Question {currentQIndex + 1}</h2>
+                            <div className="flex items-center gap-3">
+                                <h2 className="text-xl font-bold">Question {currentQIndex + 1}</h2>
+                                {currentQuestion.source && (
+                                    <span className="text-xs font-bold text-slate-500 bg-slate-200 px-2 py-1 rounded-full">{currentQuestion.source}</span>
+                                )}
+                            </div>
                             <span className="font-semibold bg-slate-100 px-3 py-1 rounded-full text-sm">{currentQuestion.marks} Marks</span>
                         </div>
-                        <p className="text-lg mb-6">{currentQuestion.question}</p>
+                        <p className="text-lg mb-4">{currentQuestion.question}</p>
+                        
+                        {currentQuestion.imageUrl && (
+                            <div className="my-4 border rounded-lg overflow-hidden">
+                                <img src={currentQuestion.imageUrl} alt="Question diagram" className="max-w-sm mx-auto" />
+                            </div>
+                        )}
 
                         {currentQuestion.type === 'MCQ' && (
                             <div className="space-y-3">
                                 {currentQuestion.options?.map((opt, i) => (
-                                    <label key={i} className={`flex items-center gap-3 p-3 rounded-lg border-2 cursor-pointer ${answers[currentQuestion.q_id] === opt ? 'border-indigo-500 bg-indigo-50' : 'border-slate-200'}`}>
-                                        <input type="radio" name={currentQuestion.q_id} value={opt} checked={answers[currentQuestion.q_id] === opt} onChange={e => handleAnswerChange(currentQuestion.q_id, e.target.value)} className="w-5 h-5" />
+                                    <label key={i} className={`flex items-center gap-3 p-3 rounded-lg border-2 cursor-pointer ${currentAnswer === opt ? 'border-indigo-500 bg-indigo-50' : 'border-slate-200'}`}>
+                                        <input type="radio" name={currentQuestion.q_id} value={opt} checked={currentAnswer === opt} onChange={e => handleAnswerChange(currentQuestion.q_id, e.target.value)} className="w-5 h-5" />
                                         <span>{opt}</span>
                                     </label>
                                 ))}
                             </div>
                         )}
-                        {currentQuestion.type === 'SA' && (
+                        {['SA', 'LA', 'Case'].includes(currentQuestion.type) && !currentQuestion.requiresDrawing && (
                              <textarea
-                                value={answers[currentQuestion.q_id] || ''}
+                                value={typeof currentAnswer === 'string' ? currentAnswer : ''}
                                 onChange={e => handleAnswerChange(currentQuestion.q_id, e.target.value)}
                                 rows={8}
                                 className="form-textarea w-full"
                                 placeholder="Type your answer here..."
                             />
+                        )}
+                        {currentQuestion.requiresDrawing && (
+                            <div className="text-center p-6 border-2 border-dashed rounded-lg">
+                                <button onClick={() => setIsScratchpadOpen(true)} className="btn btn-primary flex items-center gap-2 mx-auto">
+                                    <NotebookIcon className="w-5 h-5" /> Open Drawing Canvas
+                                </button>
+                                {currentAnswer && typeof currentAnswer !== 'string' && (
+                                    <p className="text-sm text-green-600 mt-2 font-semibold">Drawing saved.</p>
+                                )}
+                            </div>
                         )}
                     </div>
 
@@ -255,6 +281,16 @@ const PracticeTaker: React.FC<PracticeTakerProps> = ({ exam, onFinishExam, onBac
              <button onClick={() => setIsPaletteOpen(p => !p)} className="md:hidden fixed bottom-4 right-4 bg-indigo-600 text-white rounded-full p-3 shadow-lg z-10">
                 <EditIcon className="w-6 h-6" />
             </button>
+            {isScratchpadOpen && (
+                <DigitalScratchpad
+                    ref={scratchpadRef}
+                    isOpen={isScratchpadOpen}
+                    onClose={() => setIsScratchpadOpen(false)}
+                    initialState={typeof currentAnswer !== 'string' ? currentAnswer : undefined}
+                    onSave={(state) => handleAnswerChange(currentQuestion.q_id, state)}
+                    questionText={currentQuestion.question}
+                />
+            )}
         </div>
     );
 };

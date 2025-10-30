@@ -1,4 +1,3 @@
-// FIX: `useRef` was used without being imported. Added it to the import statement from 'react'.
 import { useState, useEffect, useCallback, useRef } from 'react';
 
 interface SpeechOptions {

@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { CalendarCheckIcon, BarChartIcon, BookIcon, CalendarDaysIcon, FlameIcon, AwardIcon, ScienceIcon, MathIcon, SocialStudiesIcon, PhysicsIcon, ChemistryIcon, BiologyIcon, ArrowRightIcon, TargetIcon, CheckCircleIcon, SpeakerIcon, UsersIcon, SparklesIcon, ScholarCoinIcon } from '../constants/icons';
-import { ChapterProgress, Badge, DailyChallenge, UserBktData } from '../types';
+import { ChapterProgress, Badge, DailyChallenge, UserDktData } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 import { useStudentData } from '../contexts/StudentDataContext';
 import { curriculum } from '../constants/curriculum';
 import { allAchievements } from '../constants/achievements';
-import { p_L0 } from '../services/bkt';
+import { INITIAL_MASTERY } from '../services/adaptiveEngine';
 import StudyPet from './StudyPet';
 
 const AnimatedCounter: React.FC<{ value: number; className: string }> = ({ value, className }) => {
@@ -67,14 +67,14 @@ const IconComponent: React.FC<{ iconName: Badge['icon'], className?: string }> =
 
 const RecommendationCard: React.FC<{ onContinue: () => void }> = ({ onContinue }) => {
     const { activeProfile, updateActiveUserProfile } = useAuth();
-    const { userBktData } = useStudentData();
+    const { userDktData } = useStudentData();
 
     if (!activeProfile) return null;
 
     const { grade, lastSubject } = activeProfile;
     const MASTERY_THRESHOLD = 0.95;
 
-    // --- BKT-Powered Recommendation Logic ---
+    // --- DKT-Powered Recommendation Logic ---
     let recommendation = {
         title: "You've mastered all skills!",
         subtitle: "Explore any chapter you'd like to review.",
@@ -92,7 +92,7 @@ const RecommendationCard: React.FC<{ onContinue: () => void }> = ({ onContinue }
         const chapters = curriculum[grade as keyof typeof curriculum]?.[subject] || [];
         for (const chapter of chapters) {
             const skillId = `G${grade}-${subject}-${chapter}`;
-            const mastery = userBktData[skillId]?.p_L ?? p_L0;
+            const mastery = userDktData[skillId]?.mastery ?? INITIAL_MASTERY;
 
             if (mastery < MASTERY_THRESHOLD) {
                 recommendation = {
@@ -170,7 +170,7 @@ const DailyChallengeCard: React.FC<{ challenge: DailyChallenge }> = ({ challenge
 
 const StudentDashboard: React.FC<{ onContinue: () => void; }> = ({ onContinue }) => {
     const { activeProfile, allAnnouncements, handleSetRole } = useAuth();
-    const { progressData, userBktData } = useStudentData();
+    const { progressData, userDktData } = useStudentData();
     
     if (!activeProfile || !progressData) return null;
 
@@ -186,13 +186,13 @@ const StudentDashboard: React.FC<{ onContinue: () => void; }> = ({ onContinue })
     const xpForCurrentLevel = level * level * 100;
     const currentLevelProgress = ((xp - xpForCurrentLevel) / (xpForNextLevel - xpForCurrentLevel)) * 100;
 
-    const calculateSubjectMastery = (grade: string, subject: string, bktData: UserBktData) => {
+    const calculateSubjectMastery = (grade: string, subject: string, dktData: UserDktData) => {
         const subjectChapters = curriculum[grade as keyof typeof curriculum]?.[subject] ?? [];
         if (subjectChapters.length === 0) return 0;
 
         const totalMastery = subjectChapters.reduce((sum, chapter) => {
             const skillId = `G${grade}-${subject}-${chapter}`;
-            const mastery = bktData[skillId]?.p_L ?? p_L0;
+            const mastery = dktData[skillId]?.mastery ?? INITIAL_MASTERY;
             return sum + mastery;
         }, 0);
 
@@ -287,7 +287,7 @@ const StudentDashboard: React.FC<{ onContinue: () => void; }> = ({ onContinue })
                                <SubjectMasteryBar 
                                    key={subject}
                                    subject={subject} 
-                                   percentage={calculateSubjectMastery(grade, subject, userBktData)} 
+                                   percentage={calculateSubjectMastery(grade, subject, userDktData)} 
                                    color={subjectColors[subject] || 'bg-gray-500'}
                                 />
                            ))}

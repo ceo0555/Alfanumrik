@@ -137,7 +137,8 @@ export interface StudentExplanation {
   common_errors_and_fixes: CommonErrorAndFix[];
   fill_in_the_blanks: FillInTheBlanks[];
   interactive_simulations: InteractiveSimulation[];
-  interactive_videos?: InteractiveVideo[];
+  interactive_videos: InteractiveVideo[];
+  real_world_applications: string[];
 }
 
 export interface SubQuestion {
@@ -159,6 +160,9 @@ export interface QuestionPoolItem {
   answer: string;
   rubric: string;
   tags?: string[];
+  source?: string; // e.g., "CBSE 2023"
+  imageUrl?: string; // For questions with a diagram
+  requiresDrawing?: boolean; // For questions that require drawing an answer
   // NEW FIELDS for CBE
   competency?: string; // e.g., 'Knowledge and Understanding', 'Application'
   dok?: 1 | 2 | 3 | 4; // Depth of Knowledge Level
@@ -170,19 +174,15 @@ export interface QuestionPoolItem {
 
 export interface AssessmentBlueprint {
   question_pool: QuestionPoolItem[];
-  section_breakup: { [key: string]: string };
-  total_marks: number;
-  marking_scheme_rationale: string;
+  section_breakup?: { name: string; description: string }[];
+  total_marks?: number;
+  marking_scheme_rationale?: string;
 }
 
-export interface ImageBrief {
-  purpose: string;
-  style: string;
-  content_spec: string[];
-  alt_text: string;
-  image_generation_prompt: string;
-  optional_svg_markup?: string;
-  generated_image_url?: string | null;
+export interface LabelData {
+  label: string;
+  x: number; // Percentage from left (0.0 to 1.0)
+  y: number; // Percentage from top (0.0 to 1.0)
 }
 
 export interface TeacherNotes {
@@ -197,7 +197,6 @@ export interface LessonPack {
   topic_name: string;
   student_explanation: StudentExplanation;
   assessment_blueprint: AssessmentBlueprint;
-  image_briefs: ImageBrief[];
   teacher_notes: TeacherNotes;
 }
 
@@ -206,7 +205,6 @@ export type LessonStepType =
   | 'topic_title'
   | 'core_explanation'
   | 'quick_check'
-  | 'image_brief'
   | 'worked_example'
   | 'guided_practice'
   | 'independent_practice'
@@ -245,11 +243,6 @@ export interface CoreExplanationStep extends BaseLessonStep {
 export interface QuickCheckStep extends BaseLessonStep {
   type: 'quick_check';
   content: QuickCheck;
-}
-
-export interface ImageBriefStep extends BaseLessonStep {
-  type: 'image_brief';
-  content: ImageBrief;
 }
 
 export interface WorkedExampleStep extends BaseLessonStep {
@@ -332,7 +325,6 @@ export type LessonStep =
   | TopicTitleStep
   | CoreExplanationStep
   | QuickCheckStep
-  | ImageBriefStep
   | WorkedExampleStep
   | GuidedPracticeStep
   | IndependentPracticeStep
@@ -382,6 +374,15 @@ export interface FineTuningDataPoint {
   };
 }
 
+// --- DIGITAL SCRATCHPAD TYPES ---
+export interface Path {
+  points: { x: number; y: number }[];
+  color: string;
+  strokeWidth: number;
+}
+export interface ScratchpadState {
+  paths: Path[];
+}
 
 // --- SCHOOL DASHBOARD TYPES ---
 export interface TeacherAssignment {
@@ -481,7 +482,7 @@ export interface PracticeBlueprint {
   totalMarks: number;
   structure: {
     section: string;
-    questionType: 'MCQ' | 'SA';
+    questionType: 'MCQ' | 'SA' | 'LA' | 'Case';
     count: number;
     marksPerQuestion: number;
   }[];
@@ -490,7 +491,7 @@ export interface PracticeBlueprint {
 export interface PracticeExam {
   blueprint: PracticeBlueprint;
   questions: QuestionPoolItem[];
-  answers: { [q_id: string]: string };
+  answers: { [q_id: string]: string | ScratchpadState }; // Answer can be text or a drawing state
   markedForReview: Set<string>;
   startTime: number;
   endTime?: number;
@@ -499,7 +500,7 @@ export interface PracticeExam {
 export interface PracticeResult {
   q_id: string;
   question: QuestionPoolItem;
-  studentAnswer: string;
+  studentAnswer: string | ScratchpadState;
   isCorrect: boolean;
   marksAwarded: number;
   aiFeedback: string | null;
@@ -743,17 +744,31 @@ export interface AllProgressData {
   [userId: number]: UserProgressData;
 }
 
-// --- BAYESIAN KNOWLEDGE TRACING (BKT) TYPES ---
-export interface BktSkillState {
-  p_L: number; // Probability of knowing the skill
+// --- KNOWLEDGE TRACING & SRS TYPES ---
+
+export interface SrsData {
+  // FSRS (Free Spaced Repetition Scheduler) parameters
+  due: string; // ISO date string: YYYY-MM-DD
+  s: number; // Stability (in days)
+  d: number; // Difficulty (a value from 1 to 10)
+  reps: number; // Number of repetitions
+  lapses: number; // Number of times the card was forgotten
+  last_review: string | null; // ISO date string of the last review
 }
 
-export interface UserBktData {
-  [skillId: string]: BktSkillState;
+export interface DktSkillState {
+  mastery: number; // A value from 0.0 to 1.0 representing skill mastery
+  history: (0 | 1)[]; // History of last N attempts (1 for correct, 0 for incorrect)
+  srs?: SrsData; // Integrated FSRS data for mastered skills
 }
 
-export interface AllBktData {
-  [userId: number]: UserBktData;
+
+export interface UserDktData {
+  [skillId: string]: DktSkillState;
+}
+
+export interface AllDktData {
+  [userId: number]: UserDktData;
 }
 
 // --- SMART STUDY PLAN TYPES ---
@@ -825,17 +840,6 @@ export interface Flashcard {
   term: string;
   definition: string;
 }
-
-export interface SrsData {
-  // FSRS (Free Spaced Repetition Scheduler) parameters
-  due: string; // ISO date string: YYYY-MM-DD
-  s: number; // Stability (in days)
-  d: number; // Difficulty (a value from 1 to 10)
-  reps: number; // Number of repetitions
-  lapses: number; // Number of times the card was forgotten
-  last_review: string | null; // ISO date string of the last review
-}
-
 
 export interface UserFlashcardItem {
   card: Flashcard;

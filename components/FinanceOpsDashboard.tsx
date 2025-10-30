@@ -1,5 +1,4 @@
 import React, { useState, useMemo } from 'react';
-// FIX: Replace DollarSignIcon with RupeeIcon which is available.
 import { BusIcon, ZapIcon, PrinterIcon, RupeeIcon, SparklesIcon, ClipboardCopyIcon, CheckCircleIcon, EditIcon } from '../constants/icons';
 import { transportOptimizerTips, energyOptimizerTips, feeReminderTemplate } from '../constants/financeOpsData'; // Tips can remain constants
 import { useAuth } from '../contexts/AuthContext';

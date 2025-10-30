@@ -83,6 +83,24 @@ export const CpuIcon = ({ className }: { className?: string }) => (
     </svg>
 );
 
+export const BrainCircuitIcon = ({ className }: { className?: string }) => (
+    <svg xmlns="http://www.w3.org/2000/svg" className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M12 2a5.5 5.5 0 0 0-5.5 5.5c0 1.28.44 2.47 1.19 3.44" /><path d="M12 2a5.5 5.5 0 0 1 5.5 5.5c0 1.28-.44 2.47-1.19 3.44" />
+        <path d="M12 22a5.5 5.5 0 0 1-5.5-5.5c0-1.28.44-2.47 1.19-3.44" /><path d="M12 22a5.5 5.5 0 0 0 5.5-5.5c0-1.28-.44-2.47-1.19-3.44" />
+        <path d="M2 12a5.5 5.5 0 0 1 5.5-5.5c1.28 0 2.47.44 3.44 1.19" /><path d="M2 12a5.5 5.5 0 0 0 5.5 5.5c1.28 0 2.47-.44 3.44-1.19" />
+        <path d="M22 12a5.5 5.5 0 0 0-5.5 5.5c-1.28 0-2.47-.44-3.44-1.19" /><path d="M22 12a5.5 5.5 0 0 1-5.5-5.5c-1.28 0-2.47.44-3.44-1.19" />
+        <circle cx="12" cy="12" r="2.5" fill="currentColor" opacity="0.2" />
+    </svg>
+);
+
+export const CodeIcon = ({ className }: { className?: string }) => (
+    <svg xmlns="http://www.w3.org/2000/svg" className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <polyline points="16 18 22 12 16 6"></polyline>
+        <polyline points="8 6 2 12 8 18"></polyline>
+    </svg>
+);
+
+
 // UI & NAVIGATION ICONS
 export const HomeIcon = ({ className }: { className?: string }) => (
     <svg xmlns="http://www.w3.org/2000/svg" className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -322,6 +340,40 @@ export const TriangleAlertIcon = ({ className }: { className?: string }) => (
 );
 
 // TOOL ICONS
+export const NotebookIcon = ({ className }: { className?: string }) => (
+    <svg xmlns="http://www.w3.org/2000/svg" className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M2 6h4"/><path d="M2 12h4"/><path d="M2 18h4"/>
+        <rect x="4" y="4" width="18" height="16" rx="2" fill="currentColor" opacity="0.2"/>
+        <path d="M4 4v16"/><path d="M22 4v16"/>
+    </svg>
+);
+
+export const PencilIcon = ({ className }: { className?: string }) => (
+    <svg xmlns="http://www.w3.org/2000/svg" className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z" fill="currentColor" opacity="0.2"/>
+        <path d="m15 5 4 4"/>
+    </svg>
+);
+
+export const EraserIcon = ({ className }: { className?: string }) => (
+    <svg xmlns="http://www.w3.org/2000/svg" className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="m7 21-4.3-4.3c-1-1-1-2.5 0-3.4l9.6-9.6c1-1 2.5-1 3.4 0l5.6 5.6c1 1 1 2.5 0 3.4L13 21" fill="currentColor" opacity="0.2"/>
+        <path d="m22 21-8.3-8.3"/><path d="m16 11 4 4"/>
+    </svg>
+);
+
+export const UndoIcon = ({ className }: { className?: string }) => (
+    <svg xmlns="http://www.w3.org/2000/svg" className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M3 7v6h6"/><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"/>
+    </svg>
+);
+
+export const RedoIcon = ({ className }: { className?: string }) => (
+    <svg xmlns="http://www.w3.org/2000/svg" className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M21 7v6h-6"/><path d="M3 17a9 9 0 0 1 9-9 9 9 0 0 1 6 2.3l3-2.3"/>
+    </svg>
+);
+
 export const TargetIcon = ({ className }: { className?: string }) => (
     <svg xmlns="http://www.w3.org/2000/svg" className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <circle cx="12" cy="12" r="10"/>
@@ -504,7 +556,6 @@ export const PrinterIcon = ({ className }: { className?: string }) => (
     </svg>
 );
 
-// FIX: Added BrushIcon and TicketIcon definitions for use in the wallet/marketplace.
 export const BrushIcon = ({ className }: { className?: string }) => <svg xmlns="http://www.w3.org/2000/svg" className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18.37 2.63 14 7l-1.59-1.59a2 2 0 0 0-2.82 0L8 7l9 9 1.59-1.59a2 2 0 0 0 0-2.82L17 10l4.37-4.37a2.12 2.12 0 1 0-3-3Z"/><path d="M9 8c-2 3-4 3.5-7 4l8 8c.5-3 1-5 4-7"/><path d="M14.5 17.5 4.5 8.5"/></svg>;
 export const TicketIcon = ({ className }: { className?: string }) => <svg xmlns="http://www.w3.org/2000/svg" className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 9a3 3 0 1 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 1 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2Z"/><path d="M13 5v2"/><path d="M13 17v2"/><path d="M13 11v2"/></svg>;
 

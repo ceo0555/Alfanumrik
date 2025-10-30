@@ -1,4 +1,4 @@
-import { UserProfile, AllProgressData, AllFlashcardsData, UserRole, DailyChallenge, UserFlashcards, UserFlashcardItem, SrsData, AllBktData, Assignment, Announcement, StudentSubmission, StudentFlnProgress, TeacherSchedule, AttendanceRecord, QuickFormativeAssessment, Notification, QuestionPoolItem, BusRoute, PrintQuota, FeeStatus, AfterSchoolProgram, FacilityBooking, BoardPlannerEvent, CrossCurricularProject, CodingModule, CommunicationTemplate, TeacherAssignment, StudentPortfolioProject, AllPortfolios, PaperBlueprint } from '../types';
+import { UserProfile, AllProgressData, AllFlashcardsData, UserRole, DailyChallenge, UserFlashcards, UserFlashcardItem, SrsData, AllDktData, Assignment, Announcement, StudentSubmission, StudentFlnProgress, TeacherSchedule, AttendanceRecord, QuickFormativeAssessment, Notification, QuestionPoolItem, BusRoute, PrintQuota, FeeStatus, AfterSchoolProgram, FacilityBooking, BoardPlannerEvent, CrossCurricularProject, CodingModule, CommunicationTemplate, TeacherAssignment, StudentPortfolioProject, AllPortfolios, PaperBlueprint } from '../types';
 import { curriculum } from '../constants/curriculum';
 import { mockTeacherAssignments as initialTeacherAssignments, mockTeacherSchedule as initialTeacherSchedule } from '../constants/schoolData';
 import { mockItemBank as initialItemBank } from '../constants/itemBank';
@@ -65,7 +65,7 @@ export const fetchAllData = async (): Promise<{
   progress: AllProgressData;
   flashcards: AllFlashcardsData;
   userRole: UserRole | null;
-  allBktData: AllBktData;
+  allDktData: AllDktData;
   allAssignments: Assignment[];
   allAnnouncements: Announcement[];
   allSubmissions: StudentSubmission[];
@@ -95,7 +95,7 @@ export const fetchAllData = async (): Promise<{
   const progressStr = localStorage.getItem('allProgressData') || '{}';
   const flashcardsStr = localStorage.getItem('allFlashcards') || '{}';
   const userRoleStr = localStorage.getItem('userRole');
-  const bktDataStr = localStorage.getItem('allBktData') || '{}';
+  const dktDataStr = localStorage.getItem('allDktData') || '{}';
   const assignmentsStr = localStorage.getItem('allAssignments') || '[]';
   const announcementsStr = localStorage.getItem('allAnnouncements') || '[]';
   const submissionsStr = localStorage.getItem('allSubmissions') || '[]';
@@ -125,7 +125,7 @@ export const fetchAllData = async (): Promise<{
   let flashcards: AllFlashcardsData = JSON.parse(flashcardsStr);
   let activeId: number | null = activeIdStr ? JSON.parse(activeIdStr) : null;
   const userRole: UserRole | null = userRoleStr ? JSON.parse(userRoleStr) : null;
-  const allBktData: AllBktData = JSON.parse(bktDataStr);
+  const allDktData: AllDktData = JSON.parse(dktDataStr);
   const allAssignments: Assignment[] = JSON.parse(assignmentsStr);
   const allAnnouncements: Announcement[] = JSON.parse(announcementsStr);
   const allSubmissions: StudentSubmission[] = JSON.parse(submissionsStr);
@@ -248,7 +248,7 @@ export const fetchAllData = async (): Promise<{
     localStorage.setItem('activeUserId', JSON.stringify(activeId));
   }
 
-  return simulateNetwork({ profiles, activeId, progress, flashcards, userRole, allBktData, allAssignments, allAnnouncements, allSubmissions, allFlnProgress, teacherSchedules, teacherAssignments, attendanceRecords, quickFormativeAssessments, allNotifications, itemBank, busRoutes, printQuotas, feeStatus, afterSchoolPrograms, facilityBookings, boardPlannerEvents, crossCurricularProjects, codingModules, communicationTemplates, allPortfolios, schoolName, allBlueprints });
+  return simulateNetwork({ profiles, activeId, progress, flashcards, userRole, allDktData, allAssignments, allAnnouncements, allSubmissions, allFlnProgress, teacherSchedules, teacherAssignments, attendanceRecords, quickFormativeAssessments, allNotifications, itemBank, busRoutes, printQuotas, feeStatus, afterSchoolPrograms, facilityBookings, boardPlannerEvents, crossCurricularProjects, codingModules, communicationTemplates, allPortfolios, schoolName, allBlueprints });
 };
 
 /**
@@ -352,12 +352,12 @@ export const saveAllProgress = async (progress: AllProgressData): Promise<AllPro
 };
 
 /**
- * Saves the entire BKT data object.
+ * Saves the entire DKT data object.
  */
-export const saveAllBktData = async (bktData: AllBktData): Promise<AllBktData> => {
-    console.log("API: Saving all BKT data...");
-    localStorage.setItem('allBktData', JSON.stringify(bktData));
-    return simulateNetwork(bktData);
+export const saveAllDktData = async (dktData: AllDktData): Promise<AllDktData> => {
+    console.log("API: Saving all DKT data...");
+    localStorage.setItem('allDktData', JSON.stringify(dktData));
+    return simulateNetwork(dktData);
 };
 
 
