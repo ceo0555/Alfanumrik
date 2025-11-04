@@ -86,7 +86,7 @@ export const CpuIcon = ({ className }: { className?: string }) => (
 export const BrainCircuitIcon = ({ className }: { className?: string }) => (
     <svg xmlns="http://www.w3.org/2000/svg" className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <path d="M12 2a5.5 5.5 0 0 0-5.5 5.5c0 1.28.44 2.47 1.19 3.44" /><path d="M12 2a5.5 5.5 0 0 1 5.5 5.5c0 1.28-.44 2.47-1.19 3.44" />
-        <path d="M12 22a5.5 5.5 0 0 1-5.5-5.5c0-1.28.44-2.47 1.19-3.44" /><path d="M12 22a5.5 5.5 0 0 0 5.5-5.5c0-1.28-.44-2.47-1.19-3.44" />
+        <path d="M12 22a5.5 5.5 0 0 1-5.5-5.5c0-1.28.44-2.47 1.19-3.44" /><path d="M12 22a5.5 5.5 0 0 0 5.5-5.5c0-1.28-.44 2.47-1.19-3.44" />
         <path d="M2 12a5.5 5.5 0 0 1 5.5-5.5c1.28 0 2.47.44 3.44 1.19" /><path d="M2 12a5.5 5.5 0 0 0 5.5 5.5c1.28 0 2.47-.44 3.44-1.19" />
         <path d="M22 12a5.5 5.5 0 0 0-5.5 5.5c-1.28 0-2.47-.44-3.44-1.19" /><path d="M22 12a5.5 5.5 0 0 1-5.5-5.5c-1.28 0-2.47.44-3.44-1.19" />
         <circle cx="12" cy="12" r="2.5" fill="currentColor" opacity="0.2" />
@@ -104,9 +104,8 @@ export const CodeIcon = ({ className }: { className?: string }) => (
 // UI & NAVIGATION ICONS
 export const HomeIcon = ({ className }: { className?: string }) => (
     <svg xmlns="http://www.w3.org/2000/svg" className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M3 9.5L12 4l9 5.5" fill="currentColor" opacity="0.2"></path>
-      <path d="M3 9.5V21a1 1 0 01-1 1H4a1 1 0 01-1-1v-11.5z"></path>
-      <path d="M9 21V12h6v9"></path>
+      <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" fill="currentColor" opacity="0.2"></path>
+      <polyline points="9 22 9 12 15 12 15 22"></polyline>
     </svg>
 );
 
@@ -122,14 +121,22 @@ export const GridIcon = ({ className }: { className?: string }) => (
 export const CompassIcon = ({ className }: { className?: string }) => (
     <svg xmlns="http://www.w3.org/2000/svg" className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <circle cx="12" cy="12" r="10" fill="currentColor" opacity="0.2"></circle>
-      <polygon points="12 2 15 12 12 22 9 12 12 2"></polygon>
+      <polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76" fill="currentColor"></polygon>
     </svg>
 );
 
 export const MessageSquareIcon = ({ className }: { className?: string }) => (
   <svg xmlns="http://www.w3.org/2000/svg" className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" fill="currentColor" opacity="0.2"></path>
-    <path d="M8 10h.01M12 10h.01M16 10h.01"></path>
+    <circle cx="8" cy="10" r="1" fill="currentColor">
+        <animate attributeName="r" values="0;1.5;0;0;0" dur="1.5s" repeatCount="indefinite" begin="0s" />
+    </circle>
+    <circle cx="12" cy="10" r="1" fill="currentColor">
+        <animate attributeName="r" values="0;1.5;0;0;0" dur="1.5s" repeatCount="indefinite" begin="0.2s" />
+    </circle>
+    <circle cx="16" cy="10" r="1" fill="currentColor">
+        <animate attributeName="r" values="0;1.5;0;0;0" dur="1.5s" repeatCount="indefinite" begin="0.4s" />
+    </circle>
   </svg>
 );
 
@@ -166,6 +173,10 @@ export const SparklesIcon = ({ className }: { className?: string }) => (
     <svg xmlns="http://www.w3.org/2000/svg" className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <path d="M12 3L9.27 9.27L3 12l6.27 2.73L12 21l2.73-6.27L21 12l-6.27-2.73z" fill="currentColor" opacity="0.2" />
       <path d="M5 3v4" /><path d="M19 17v4" /><path d="M3 5h4" /><path d="M17 19h4" />
+      <path d="M19 3l1.5 1.5" />
+      <path d="M3.5 19.5l1.5 1.5" />
+      <path d="M22 10h-2" />
+      <path d="M4 14H2" />
     </svg>
 );
 
@@ -339,7 +350,38 @@ export const TriangleAlertIcon = ({ className }: { className?: string }) => (
     </svg>
 );
 
+export const CameraIcon = ({ className }: { className?: string }) => (
+    <svg xmlns="http://www.w3.org/2000/svg" className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" fill="currentColor" opacity="0.2"></path>
+        <circle cx="12" cy="13" r="4"></circle>
+    </svg>
+);
+
+export const ShieldCheckIcon = ({ className }: { className?: string }) => (
+    <svg xmlns="http://www.w3.org/2000/svg" className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" fill="currentColor" opacity="0.2"></path>
+        <path d="m9 12 2 2 4-4"></path>
+    </svg>
+);
+
 // TOOL ICONS
+export const ArchitectIcon = ({ className }: { className?: string }) => (
+    <svg xmlns="http://www.w3.org/2000/svg" className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M12 2L2 7l10 5 10-5-10-5z" fill="currentColor" opacity="0.2"></path>
+        <path d="M2 17l10 5 10-5"></path>
+        <path d="M2 12l10 5 10-5"></path>
+    </svg>
+);
+
+export const SitemapIcon = ({ className }: { className?: string }) => (
+    <svg xmlns="http://www.w3.org/2000/svg" className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="3" y="3" width="18" height="18" rx="2" ry="2" fill="currentColor" opacity="0.2"></rect>
+        <path d="M10 14H3v-4h7v4z"></path>
+        <path d="M21 14h-7v-4h7v4z"></path>
+        <path d="M12 21V3"></path>
+    </svg>
+);
+
 export const NotebookIcon = ({ className }: { className?: string }) => (
     <svg xmlns="http://www.w3.org/2000/svg" className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <path d="M2 6h4"/><path d="M2 12h4"/><path d="M2 18h4"/>
@@ -413,6 +455,15 @@ export const FileTextIcon = ({ className }: { className?: string }) => (
     </svg>
 );
 
+export const GraderIcon = ({ className }: { className?: string }) => (
+    <svg xmlns="http://www.w3.org/2000/svg" className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" fill="currentColor" opacity="0.2"></path>
+        <polyline points="14 2 14 8 20 8"></polyline>
+        <circle cx="12" cy="15" r="3"></circle>
+        <line x1="16.5" y1="19.5" x2="14" y2="17"></line>
+    </svg>
+);
+
 export const ClipboardCopyIcon = ({ className }: { className?: string }) => (
     <svg xmlns="http://www.w3.org/2000/svg" className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <rect x="9" y="9" width="13" height="13" rx="2" ry="2" fill="currentColor" opacity="0.2"></rect>
@@ -438,10 +489,23 @@ export const ClipboardListIcon = ({ className }: { className?: string }) => (
 
 export const VideoIcon = ({ className }: { className?: string }) => (
     <svg xmlns="http://www.w3.org/2000/svg" className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M22 5.52H2a.5.5 0 0 0-.5.5v12a.5.5 0 0 0 .5.5h20a.5.5 0 0 0 .5-.5v-12a.5.5 0 0 0-.5-.52z" fill="currentColor" opacity="0.2"></path>
+        <path d="M22 5.52H2a.5.5 0 0 0-.5.5v12a.5.5 0 0 0 .5.5h20a.5.5 0 0 0-.5-.5v-12a.5.5 0 0 0-.5-.52z" fill="currentColor" opacity="0.2"></path>
         <path d="M12 12l-4-3v6l4-3z"></path>
         <path d="M2 5.52h20v2H2z"></path>
     </svg>
+);
+
+export const CommandIcon = ({ className }: { className?: string }) => (
+    <svg xmlns="http://www.w3.org/2000/svg" className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M18 3a3 3 0 0 0-3 3v12a3 3 0 0 0 3 3 3 3 0 0 0 3-3 3 3 0 0 0-3-3H6a3 3 0 0 0-3 3 3 3 0 0 0 3 3 3 3 0 0 0 3-3V6a3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3h12a3 3 0 0 0 3-3 3 3 0 0 0-3-3z"/>
+    </svg>
+);
+
+export const ClockIcon = ({ className }: { className?: string }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="12" cy="12" r="10" fill="currentColor" opacity="0.2"></circle>
+    <polyline points="12 6 12 12 16 14"></polyline>
+  </svg>
 );
 
 
@@ -475,15 +539,17 @@ export const AwardIcon = ({ className }: { className?: string }) => (
   </svg>
 );
 
-export const TrendingUpIcon = ({ className }: { className?: string }) => (
+export const TrendingUpIcon = ({ className, title }: { className?: string; title?: string }) => (
     <svg xmlns="http://www.w3.org/2000/svg" className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        {title && <title>{title}</title>}
         <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline>
         <polyline points="17 6 23 6 23 12"></polyline>
     </svg>
 );
 
-export const TrendingDownIcon = ({ className }: { className?: string }) => (
+export const TrendingDownIcon = ({ className, title }: { className?: string; title?: string }) => (
     <svg xmlns="http://www.w3.org/2000/svg" className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        {title && <title>{title}</title>}
         <polyline points="23 18 13.5 8.5 8.5 13.5 1 6"></polyline>
         <polyline points="17 18 23 18 23 12"></polyline>
     </svg>
@@ -524,9 +590,22 @@ export const RupeeIcon = ({ className }: { className?: string }) => (
 );
 
 export const ScholarCoinIcon = ({ className }: { className?: string }) => (
-    <svg xmlns="http://www.w3.org/2000/svg" className={className} viewBox="0 0 24 24" fill="currentColor">
-      <path d="M12,2C6.486,2,2,6.486,2,12s4.486,10,10,10s10-4.486,10-10S17.514,2,12,2z M12,20c-4.411,0-8-3.589-8-8s3.589-8,8-8 s8,3.589,8,8S16.411,20,12,20z"></path>
-      <path d="M12,6.343l1.829,3.707l4.092,0.595l-2.96,2.885l0.7,4.075L12,15.343l-3.661,1.922l0.7-4.075l-2.96-2.885l4.092-0.595 L12,6.343z"></path>
+    <svg xmlns="http://www.w3.org/2000/svg" className={className} viewBox="0 0 24 24" fill="none">
+      <defs>
+          <linearGradient id="coin-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="#fcd34d" />
+              <stop offset="100%" stopColor="#fbbf24" />
+          </linearGradient>
+          <filter id="glow">
+            <feGaussianBlur stdDeviation="0.5" result="coloredBlur"/>
+            <feMerge>
+                <feMergeNode in="coloredBlur"/>
+                <feMergeNode in="SourceGraphic"/>
+            </feMerge>
+          </filter>
+      </defs>
+      <circle cx="12" cy="12" r="10" fill="url(#coin-grad)" stroke="#d97706" strokeWidth="1.5"/>
+      <path d="M12 5 L13.65 8.3 L17.25 8.8 L14.65 11.3 L15.3 14.9 L12 13.2 L8.7 14.9 L9.35 11.3 L6.75 8.8 L10.35 8.3 Z" fill="#fff" stroke="#fefce8" strokeWidth="0.5" filter="url(#glow)" />
     </svg>
 );
 

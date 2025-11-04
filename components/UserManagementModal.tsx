@@ -53,13 +53,13 @@ const UserManagementModal: React.FC<UserManagementModalProps> = ({
 
   return (
     <div 
-        className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+        className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 animate-fade-in"
         onClick={onClose}
         aria-modal="true"
         role="dialog"
     >
       <div 
-        className="bg-slate-50 rounded-2xl shadow-xl w-full max-w-md flex flex-col max-h-[90vh]"
+        className="bg-slate-50 rounded-2xl shadow-xl w-full max-w-md flex flex-col max-h-[90vh] animate-scale-in"
         onClick={e => e.stopPropagation()}
       >
         <header className="flex items-center justify-between p-4 border-b border-[var(--border-color)] flex-shrink-0">

@@ -7,11 +7,6 @@ export const mockBusRoutes: BusRoute[] = [
     { id: 'route4', routeName: 'Route D - West', status: 'Idle', occupancy: 0, eta: 'N/A' },
 ];
 
-export const transportOptimizerTips: string[] = [
-    "Consider merging Route C and D during off-peak hours to save fuel, based on low occupancy data.",
-    "Route B is frequently delayed. Analyze traffic patterns between 3 PM - 4 PM to identify bottlenecks.",
-];
-
 export const mockEnergyData: EnergyDataPoint[] = [
     { day: 'Mon', consumption: 250, solarGeneration: 150 },
     { day: 'Tue', consumption: 270, solarGeneration: 180 },

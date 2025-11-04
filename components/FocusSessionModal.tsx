@@ -22,6 +22,7 @@ const FocusSessionModal: React.FC<FocusSessionModalProps> = ({ isOpen, onClose, 
   const [isActive, setIsActive] = useState(false);
   const [secondsLeft, setSecondsLeft] = useState(STUDY_MINUTES * 60);
   const intervalRef = useRef<number | null>(null);
+  const [xpAwarded, setXpAwarded] = useState(false);
 
   useEffect(() => {
     if (!isOpen) {
@@ -44,7 +45,10 @@ const FocusSessionModal: React.FC<FocusSessionModalProps> = ({ isOpen, onClose, 
   useEffect(() => {
     if (secondsLeft < 0) {
       if (mode === 'study') {
-        awardXP('focus_session_completed');
+        if (!xpAwarded) {
+            awardXP('focus_session_completed');
+            setXpAwarded(true);
+        }
         onSessionComplete(task.id);
         setMode('break');
         setSecondsLeft(BREAK_MINUTES * 60);
@@ -54,7 +58,13 @@ const FocusSessionModal: React.FC<FocusSessionModalProps> = ({ isOpen, onClose, 
         setIsActive(false); // Pause after break
       }
     }
-  }, [secondsLeft, mode, awardXP, onSessionComplete, task.id]);
+  }, [secondsLeft, mode, awardXP, onSessionComplete, task.id, xpAwarded]);
+
+  // Reset xp awarded status when task changes
+  useEffect(() => {
+    setXpAwarded(false);
+    handleResetTimer();
+  }, [task.id]);
   
   const handleToggleTimer = () => setIsActive(!isActive);
   const handleResetTimer = () => {
@@ -70,8 +80,8 @@ const FocusSessionModal: React.FC<FocusSessionModalProps> = ({ isOpen, onClose, 
   const progress = ((totalSeconds - secondsLeft) / totalSeconds) * 100;
 
   return (
-    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={onClose}>
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm" onClick={e => e.stopPropagation()}>
+    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 animate-fade-in" onClick={onClose}>
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm animate-scale-in" onClick={e => e.stopPropagation()}>
         <header className="flex items-center justify-between p-4 border-b border-slate-200">
           <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">
             <FlameIcon className="w-6 h-6 text-orange-500" />

@@ -230,7 +230,7 @@ const AttendanceModal: React.FC<{
     const handleSave = () => {
         onSave(schedule.id, attendance);
         onClose();
-        alert('Attendance saved. Catch-up assignments have been automatically created for absent students.');
+        alert('Attendance saved. Catch-up assignments and parent notifications have been automatically created for absent students.');
     };
 
     if (!isOpen) return null;

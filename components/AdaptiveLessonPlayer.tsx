@@ -36,6 +36,7 @@ interface AdaptiveLessonPlayerProps {
   ltiContext?: LtiContext | null;
   isTransitioning?: boolean;
   onFinish: () => void;
+  setAiContext: (context: string | null) => void;
 }
 
 const getTextForTTS = (step: LessonStep | undefined): string => {
@@ -103,7 +104,7 @@ const getTextForTTS = (step: LessonStep | undefined): string => {
 };
 
 
-const AdaptiveLessonPlayer: React.FC<AdaptiveLessonPlayerProps> = ({ lessonPack, ltiContext, isTransitioning, onFinish }) => {
+const AdaptiveLessonPlayer: React.FC<AdaptiveLessonPlayerProps> = ({ lessonPack, ltiContext, isTransitioning, onFinish, setAiContext }) => {
   const { activeProfile } = useAuth();
   const { progressData, markChapterAsCompleted, awardXP, recordAnswer, updateChapterStep } = useStudentData();
   
@@ -135,6 +136,15 @@ const AdaptiveLessonPlayer: React.FC<AdaptiveLessonPlayerProps> = ({ lessonPack,
   const prevLessonPackRef = useRef<LessonPack | null>(null);
   
   const currentStep = steps[currentStepIndex];
+
+  useEffect(() => {
+    if (currentStep) {
+        const contextText = getTextForTTS(currentStep);
+        setAiContext(`Currently viewing a '${currentStep.type}' step titled '${currentStep.title}'. The content is about: ${contextText.substring(0, 500)}...`);
+    } else {
+        setAiContext(null);
+    }
+  }, [currentStep, setAiContext]);
 
   const isQuestionStep = (type: LessonStepType) => ['quick_check', 'fill_in_the_blanks', 'assessment_question'].includes(type);
   const isDetailsStep = (type: LessonStepType) => ['guided_practice', 'independent_practice', 'HOTS'].includes(type);
@@ -440,7 +450,7 @@ const AdaptiveLessonPlayer: React.FC<AdaptiveLessonPlayerProps> = ({ lessonPack,
   };
 
   return (
-    <div className="flex flex-col relative">
+    <div className="flex flex-col relative max-w-4xl mx-auto">
       {isTransitioning && (
         <div className="absolute inset-0 bg-white/70 z-20 transition-opacity duration-300">
             <div className="absolute top-0 left-0 h-1 w-full bg-slate-200 overflow-hidden">
@@ -459,7 +469,7 @@ const AdaptiveLessonPlayer: React.FC<AdaptiveLessonPlayerProps> = ({ lessonPack,
         </div>
       </div>
 
-      <div ref={contentRef} className="relative flex-grow p-6 bg-white rounded-xl shadow-lg border border-[var(--border-color)] mb-6">
+      <div ref={contentRef} className="relative flex-grow p-4 sm:p-6 bg-white rounded-xl shadow-lg border border-[var(--border-color)] mb-6">
          <div className="mb-4 pb-4 border-b border-slate-200">
             <TTSPlayer textToSpeak={getTextForTTS(currentStep)} />
          </div>

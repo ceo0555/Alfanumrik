@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { FlashcardReviewItem } from '../types';
 import { useStudentData } from '../contexts/StudentDataContext';
 import { LayersIcon } from '../constants/icons';
 
 interface ReviewQueueProps {
     reviewItems: FlashcardReviewItem[];
+    onSessionComplete: (completedTaskIds: string[]) => void;
 }
 
 // Map UI buttons to FSRS/Anki quality ratings (1-4)
@@ -15,7 +16,7 @@ const ratingMap: { [key: string]: 1 | 2 | 3 | 4 } = {
     easy: 4,
 };
 
-const ReviewQueue: React.FC<ReviewQueueProps> = ({ reviewItems }) => {
+const ReviewQueue: React.FC<ReviewQueueProps> = ({ reviewItems, onSessionComplete }) => {
     const { gradeFlashcard } = useStudentData();
     const [currentIndex, setCurrentIndex] = useState(0);
     const [isFlipped, setIsFlipped] = useState(false);
@@ -41,6 +42,14 @@ const ReviewQueue: React.FC<ReviewQueueProps> = ({ reviewItems }) => {
             setCurrentIndex(currentIndex + 1);
         }
     };
+
+    useEffect(() => {
+        if (currentIndex >= reviewItems.length && reviewItems.length > 0) {
+            // Session is complete, notify the context
+            const completedTaskIds = Array.from(new Set(reviewItems.map(item => item.id)));
+            onSessionComplete(completedTaskIds);
+        }
+    }, [currentIndex, reviewItems, onSessionComplete]);
     
     if (reviewItems.length === 0) {
         return (

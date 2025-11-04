@@ -16,7 +16,7 @@ const Header: React.FC<HeaderProps> = ({ showBackButton, onBack, title, onOpenUs
   const { activeProfile } = useAuth();
 
   return (
-    <header className="flex-shrink-0 bg-[var(--bg-app)] md:bg-white border-b border-[var(--border-color)] z-10">
+    <header className="flex-shrink-0 bg-white border-b border-[var(--border-color)] z-10">
       <div className="flex items-center h-16 px-4 md:px-6 gap-2">
         {showBackButton && (
           <button
@@ -43,7 +43,7 @@ const Header: React.FC<HeaderProps> = ({ showBackButton, onBack, title, onOpenUs
                     </div>
                     <button 
                         onClick={onOpenUserModal}
-                        className="h-10 w-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 text-white flex items-center justify-center font-bold text-lg ring-2 ring-offset-2 ring-indigo-200 shadow-md transition-transform transform hover:scale-110"
+                        className="h-10 w-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 text-white flex items-center justify-center font-bold text-lg ring-2 ring-offset-2 ring-indigo-200 shadow-md transition-transform transform hover:scale-110 focus:outline-none focus:ring-4 focus:ring-indigo-300"
                         aria-label={`Switch from ${activeProfile.name} profile`}
                     >
                         {activeProfile.name.charAt(0).toUpperCase()}

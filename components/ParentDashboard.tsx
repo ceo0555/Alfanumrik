@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import { ParentalReport, ChapterProgress } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 import { generateParentalReport } from '../services/geminiService';
@@ -13,6 +13,7 @@ import {
     WandIcon,
     BellIcon
 } from '../constants/icons';
+import ParentAIAssistant from './ParentAIAssistant';
 
 const IconComponent: React.FC<{ iconName: ParentalReport['actionableTips'][0]['icon'], className?: string }> = ({ iconName, className }) => {
     switch (iconName) {
@@ -26,12 +27,16 @@ const IconComponent: React.FC<{ iconName: ParentalReport['actionableTips'][0]['i
 
 
 const ParentDashboard: React.FC = () => {
-    const { activeProfile, allProgressData, allNotifications } = useAuth();
+    const { activeProfile, allProgressData, allNotifications, allDktData, allAssignments, allSubmissions } = useAuth();
     const [report, setReport] = useState<ParentalReport | null>(null);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
     const progressData = activeProfile ? allProgressData[activeProfile.id] || {} : {};
+    const dktData = activeProfile ? allDktData[activeProfile.id] || {} : {};
+    const studentAssignments = activeProfile ? allAssignments.filter(a => a.classGrade === activeProfile.grade) : [];
+    const studentSubmissions = activeProfile ? allSubmissions.filter(s => s.studentId === activeProfile.id) : [];
+    
     const lessonsCompleted = Object.values(progressData).filter((p: ChapterProgress) => p.status === 'completed').length;
     
     const notificationsForStudent = activeProfile 
@@ -161,6 +166,15 @@ const ParentDashboard: React.FC = () => {
                 <h2 className="text-xl font-semibold text-[var(--brand-primary)]">Viewing Progress for {studentName}</h2>
             </div>
             
+            <Suspense fallback={<div>Loading AI Assistant...</div>}>
+                <ParentAIAssistant studentData={{
+                    profile: activeProfile,
+                    dktData,
+                    assignments: studentAssignments,
+                    submissions: studentSubmissions,
+                }} />
+            </Suspense>
+
             {/* Notifications Section */}
             {notificationsForStudent.length > 0 && (
                  <div className="bg-white p-5 rounded-xl shadow-sm border border-[var(--border-color)]">

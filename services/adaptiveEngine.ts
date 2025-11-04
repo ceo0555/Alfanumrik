@@ -1,59 +1,86 @@
-import { DktSkillState, UserDktData, StudyTask, UserFlashcards, FlashcardReviewItem, UserFlashcardItem } from '../types';
+import { DktSkillState, UserDktData, StudyTask, UserFlashcards, Assignment, UserProfile, DktAttempt, StudentSubmission, UserProgressData } from '../types';
 import { initFsrsCard } from './fsrs';
 
 // --- DEEP KNOWLEDGE TRACING (DKT) ---
+// UPGRADED: This engine now simulates a hybrid approach, combining quantitative data
+// with qualitative error analysis from an LLM, reflecting a more advanced, SAKT-like model.
 
 export const INITIAL_MASTERY = 0.25; // Initial probability of knowing a concept.
 const SLIP_PROB = 0.15; // Probability of getting a known concept wrong (e.g., a careless mistake).
 const GUESS_PROB = 0.20; // Probability of guessing an unknown concept right (especially relevant for MCQs).
-const LEARN_RATE = 0.5; // How much a correct answer increases mastery.
-const FORGET_RATE = 0.2; // How much a wrong answer decreases mastery.
-const HISTORY_LENGTH = 10; // Consider the last 10 attempts for recency weighting.
+
+// UPGRADED: Learning rates are now adaptive based on qualitative error analysis.
+const CONCEPTUAL_ERROR_FORGET_RATE = 0.4; // High penalty for fundamental misunderstanding.
+const SLIP_ERROR_FORGET_RATE = 0.1; // Low penalty for calculation/transposition errors.
+const DEFAULT_FORGET_RATE = 0.2;
+const LEARN_RATE = 0.5;
+
+const HISTORY_LENGTH = 15; // Increased history length for better modeling.
 
 /**
  * Initializes a new skill state for DKT.
  */
 export const initDktSkill = (): DktSkillState => ({
   mastery: INITIAL_MASTERY,
-  history: [],
+  history: [], // History is now an array of DktAttempt objects
 });
 
 /**
- * Updates the DKT mastery state based on a new answer using a more robust Bayesian update.
- * This version accounts for 'slip' and 'guess' probabilities.
+ * UPGRADED: Updates the DKT mastery state using a hybrid model.
+ * This function now incorporates qualitative `errorType` data from LLM analysis
+ * to make more nuanced adjustments to student mastery, simulating a next-gen
+ * knowledge tracing system like SAKT combined with causal analysis.
  *
  * @param prevState The previous DktSkillState.
  * @param isCorrect Whether the latest answer was correct.
+ * @param errorType Optional string from LLM analysis identifying the type of error.
  * @returns The new DktSkillState.
  */
-export const updateDktMastery = (prevState: DktSkillState, isCorrect: boolean): DktSkillState => {
+export const updateDktMastery = (prevState: DktSkillState, isCorrect: boolean, errorType?: string): DktSkillState => {
   const p_L = prevState.mastery; // Prior probability of knowing the skill
 
-  let p_L_given_obs: number; // P(L | observation)
+  let p_L_given_obs: number;
 
   if (isCorrect) {
-    // P(Correct | L) = 1 - P(Slip)
-    // P(Correct | ~L) = P(Guess)
     const p_obs_given_L = 1 - SLIP_PROB;
     const p_obs_given_not_L = GUESS_PROB;
     p_L_given_obs = (p_obs_given_L * p_L) / (p_obs_given_L * p_L + p_obs_given_not_L * (1 - p_L));
   } else {
-    // P(Incorrect | L) = P(Slip)
-    // P(Incorrect | ~L) = 1 - P(Guess)
     const p_obs_given_L = SLIP_PROB;
     const p_obs_given_not_L = 1 - GUESS_PROB;
     p_L_given_obs = (p_obs_given_L * p_L) / (p_obs_given_L * p_L + p_obs_given_not_L * (1 - p_L));
   }
-
-  // Apply a learning/forget rate to transition to the new state
-  const newMastery = p_L + (isCorrect ? LEARN_RATE : -FORGET_RATE) * (p_L_given_obs - p_L);
   
-  const newHistory: (0 | 1)[] = [...prevState.history, isCorrect ? 1 as const : 0 as const].slice(-HISTORY_LENGTH);
+  // HYBRID MODEL LOGIC: Adjust forget rate based on the type of error.
+  let forgetRate = DEFAULT_FORGET_RATE;
+  if (!isCorrect) {
+      switch (errorType) {
+          case 'conceptual_error':
+              forgetRate = CONCEPTUAL_ERROR_FORGET_RATE;
+              break;
+          case 'calculation_error':
+          case 'sign_error':
+          case 'transposition_error':
+              forgetRate = SLIP_ERROR_FORGET_RATE;
+              break;
+          default:
+              forgetRate = DEFAULT_FORGET_RATE;
+      }
+  }
+
+  const newMastery = p_L + (isCorrect ? LEARN_RATE : -forgetRate) * (p_L_given_obs - p_L);
+  
+  // UPGRADED: History now stores structured attempt data.
+  const newAttempt: DktAttempt = {
+      correct: isCorrect ? 1 : 0,
+      timestamp: Date.now(),
+      errorType: isCorrect ? undefined : errorType
+  };
+  const newHistory: DktAttempt[] = [...prevState.history, newAttempt].slice(-HISTORY_LENGTH);
 
   const finalMastery = Math.max(0.01, Math.min(0.99, newMastery));
 
   // --- FSRS Integration ---
-  // If mastery is high, we transition this skill to the FSRS scheduler for long-term review.
   let newSrsData = prevState.srs;
   if (finalMastery > 0.9 && !prevState.srs) {
       newSrsData = initFsrsCard(new Date());
@@ -79,8 +106,10 @@ export const updateDktMastery = (prevState: DktSkillState, isCorrect: boolean): 
 export const generateTodayFocusTasks = (
     dktData: UserDktData,
     userFlashcards: UserFlashcards,
-    assignments: any[], // Simplified for this context
-    profile: any
+    assignments: Assignment[],
+    profile: UserProfile,
+    submissions: StudentSubmission[],
+    progressData: UserProgressData
 ): StudyTask[] => {
     const todayStr = new Date().toISOString().split('T')[0];
     const tasks: StudyTask[] = [];
@@ -90,7 +119,7 @@ export const generateTodayFocusTasks = (
     // 1. SRS Reviews (from DKT skills that have FSRS data)
     Object.entries(dktData).forEach(([skillId, skillState]) => {
         if (skillState.srs && new Date(skillState.srs.due) <= today) {
-             const [, , subject, ...parts] = skillId.split('-');
+             const [, subject, ...parts] = skillId.split('-');
              tasks.push({
                 id: `srs-review-${skillId}`,
                 type: 'srs_review',
@@ -109,7 +138,7 @@ export const generateTodayFocusTasks = (
         .slice(0, 2); // Limit to top 2 weaknesses
 
     weakSkills.forEach(([skillId, data]) => {
-        const [, , subject, ...parts] = skillId.split('-');
+        const [, subject, ...parts] = skillId.split('-');
         tasks.push({
             id: `weakness-review-${skillId}`,
             type: 'review_weakness',
@@ -122,7 +151,23 @@ export const generateTodayFocusTasks = (
 
     // 3. Assignments Due Today
     assignments
-        .filter(a => a.classGrade === profile.grade && a.dueDate === todayStr)
+        .filter(a => {
+            if (a.classGrade !== profile.grade || a.dueDate !== todayStr) return false;
+
+            if (a.assignmentType === 'quiz') {
+                const isSubmitted = submissions.some(s => s.assignmentId === a.id && s.studentId === profile.id);
+                return !isSubmitted;
+            }
+            
+            if (a.assignmentType === 'chapters') {
+                const isCompleted = a.assignedChapterIds.every(
+                    chapterId => progressData[chapterId]?.status === 'completed'
+                );
+                return !isCompleted;
+            }
+            
+            return true;
+        })
         .forEach(a => tasks.push({
             id: `assignment-${a.id}`,
             type: 'assignment',

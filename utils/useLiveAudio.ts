@@ -8,6 +8,7 @@ export const useLiveAudio = (
 ) => {
     const [isSessionActive, setIsSessionActive] = useState(false);
     const [status, setStatus] = useState('Idle');
+    const [stream, setStream] = useState<MediaStream | null>(null);
     
     const sessionPromiseRef = useRef<Promise<LiveSession> | null>(null);
     const streamRef = useRef<MediaStream | null>(null);
@@ -23,6 +24,7 @@ export const useLiveAudio = (
         if (streamRef.current) {
             streamRef.current.getTracks().forEach(track => track.stop());
             streamRef.current = null;
+            setStream(null);
         }
         if (scriptProcessorRef.current) {
             scriptProcessorRef.current.disconnect();
@@ -40,7 +42,7 @@ export const useLiveAudio = (
         setStatus('Disconnected');
     }, []);
 
-    const startConversation = useCallback(async () => {
+    const startConversation = useCallback(async (constraints: MediaStreamConstraints) => {
         if (!process.env.API_KEY) {
             setStatus("Error: API_KEY is not configured.");
             return;
@@ -50,7 +52,8 @@ export const useLiveAudio = (
         setStatus('Connecting...');
 
         try {
-            streamRef.current = await navigator.mediaDevices.getUserMedia({ audio: true });
+            streamRef.current = await navigator.mediaDevices.getUserMedia(constraints);
+            setStream(streamRef.current);
             
             const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
             
@@ -64,27 +67,29 @@ export const useLiveAudio = (
 
                     if (!streamRef.current || !inputAudioContextRef.current) return;
                         
-                    mediaStreamSourceRef.current = inputAudioContextRef.current.createMediaStreamSource(streamRef.current);
-                    scriptProcessorRef.current = inputAudioContextRef.current.createScriptProcessor(4096, 1, 1);
-                    
-                    scriptProcessorRef.current.onaudioprocess = (audioProcessingEvent) => {
-                        const inputData = audioProcessingEvent.inputBuffer.getChannelData(0);
-                        const l = inputData.length;
-                        const int16 = new Int16Array(l);
-                        for (let i = 0; i < l; i++) {
-                            int16[i] = inputData[i] * 32768;
-                        }
-                        const pcmBlob: Blob = {
-                            data: encode(new Uint8Array(int16.buffer)),
-                            mimeType: 'audio/pcm;rate=16000',
-                        };
+                    if (constraints.audio) {
+                        mediaStreamSourceRef.current = inputAudioContextRef.current.createMediaStreamSource(streamRef.current);
+                        scriptProcessorRef.current = inputAudioContextRef.current.createScriptProcessor(4096, 1, 1);
                         
-                        sessionPromiseRef.current?.then((session) => {
-                            session.sendRealtimeInput({ media: pcmBlob });
-                        });
-                    };
-                    mediaStreamSourceRef.current.connect(scriptProcessorRef.current);
-                    scriptProcessorRef.current.connect(inputAudioContextRef.current.destination);
+                        scriptProcessorRef.current.onaudioprocess = (audioProcessingEvent) => {
+                            const inputData = audioProcessingEvent.inputBuffer.getChannelData(0);
+                            const l = inputData.length;
+                            const int16 = new Int16Array(l);
+                            for (let i = 0; i < l; i++) {
+                                int16[i] = inputData[i] * 32768;
+                            }
+                            const pcmBlob: Blob = {
+                                data: encode(new Uint8Array(int16.buffer)),
+                                mimeType: 'audio/pcm;rate=16000',
+                            };
+                            
+                            sessionPromiseRef.current?.then((session) => {
+                                session.sendRealtimeInput({ media: pcmBlob });
+                            });
+                        };
+                        mediaStreamSourceRef.current.connect(scriptProcessorRef.current);
+                        scriptProcessorRef.current.connect(inputAudioContextRef.current.destination);
+                    }
                 },
                 onerror: (e: ErrorEvent) => {
                     console.error('Live API Error:', e);
@@ -100,12 +105,20 @@ export const useLiveAudio = (
             };
             
             sessionPromiseRef.current = ai.live.connect({ ...config, callbacks: fullCallbacks });
+            
+            // Add robust error handling for the connection promise itself
+            sessionPromiseRef.current.catch(error => {
+                console.error('Live session connection failed:', error);
+                setStatus(`Error: ${error.message}`);
+                stopConversation();
+            });
+
         } catch (error) {
             console.error('Failed to start conversation:', error);
-            setStatus('Error: Could not access microphone.');
+            setStatus('Error: Could not access microphone or camera.');
             setIsSessionActive(false);
         }
     }, [config, callbacks, stopConversation]);
 
-    return { isSessionActive, status, startConversation, stopConversation };
+    return { isSessionActive, status, startConversation, stopConversation, stream, sessionPromise: sessionPromiseRef.current };
 };

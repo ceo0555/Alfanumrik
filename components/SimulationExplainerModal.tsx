@@ -32,7 +32,7 @@ const SimulationExplainerModal: React.FC<SimulationExplainerModalProps> = ({ sim
   }, [simulationContent]);
 
   return (
-    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={onClose} aria-modal="true">
+    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 animate-fade-in" onClick={onClose} aria-modal="true">
       <div className="bg-slate-50 rounded-2xl shadow-xl w-full max-w-2xl overflow-hidden animate-scale-in" onClick={e => e.stopPropagation()}>
         <header className="flex items-center justify-between p-4 border-b border-[var(--border-color)]">
           <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">

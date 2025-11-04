@@ -1,16 +1,15 @@
 import React, { useState } from 'react';
-import { useStudentData } from '../contexts/StudentDataContext';
+import { StudyTask } from '../types';
 import { XIcon } from '../constants/icons';
 
 interface AddTaskModalProps {
   isOpen: boolean;
   onClose: () => void;
   initialDate: Date;
+  onAddTask: (taskData: Omit<StudyTask, 'id' | 'type' | 'isCompleted'>) => void;
 }
 
-const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, initialDate }) => {
-  const { handleSaveManualTask } = useStudentData();
-
+const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, initialDate, onAddTask }) => {
   const [title, setTitle] = useState('');
   const [notes, setNotes] = useState('');
   const [dueDate, setDueDate] = useState(initialDate.toISOString().split('T')[0]);
@@ -22,7 +21,7 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, initialDat
       alert("Please add a title and a due date.");
       return;
     }
-    handleSaveManualTask({
+    onAddTask({
       title,
       notes,
       subtitle: 'Manual Task',

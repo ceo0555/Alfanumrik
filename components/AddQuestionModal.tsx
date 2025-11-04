@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { XIcon, PlusIcon, ChevronDownIcon } from '../constants/icons';
 import { QuestionPoolItem } from '../types';
 import { curriculum } from '../constants/curriculum';
-import { mockItemBank } from '../constants/itemBank';
+import { useAuth } from '../contexts/AuthContext';
 
 
 interface AddQuestionModalProps {
@@ -13,6 +13,7 @@ interface AddQuestionModalProps {
 }
 
 const AddQuestionModal: React.FC<AddQuestionModalProps> = ({ isOpen, onClose, grade, onAddQuestions }) => {
+  const { itemBank } = useAuth();
   const [activeTab, setActiveTab] = useState<'bank' | 'author'>('bank');
   
   // Bank state
@@ -47,7 +48,7 @@ const AddQuestionModal: React.FC<AddQuestionModalProps> = ({ isOpen, onClose, gr
   const handleAdd = () => {
     let questionsToAdd: QuestionPoolItem[] = [];
     if (activeTab === 'bank') {
-        mockItemBank.forEach(q => {
+        itemBank.forEach(q => {
             if (selectedBankQuestions.has(q.q_id)) {
                 questionsToAdd.push(q);
             }
@@ -67,6 +68,8 @@ const AddQuestionModal: React.FC<AddQuestionModalProps> = ({ isOpen, onClose, gr
             options: qType === 'MCQ' ? qOptions.filter(o => o.trim()) : undefined,
             answer: qAnswer,
             rubric: qRubric || 'Marks awarded for correct answer.',
+            competency: 'Application of Knowledge/Concepts', // Default
+            dok: 2, // Default
         };
         questionsToAdd.push(newQuestion);
     }
@@ -86,11 +89,14 @@ const AddQuestionModal: React.FC<AddQuestionModalProps> = ({ isOpen, onClose, gr
                 </summary>
                 <div className="pl-4 pt-2 space-y-2">
                     {chapters.map(chapter => {
-                        const chapterIdPrefix = `G${grade}-${subject.substring(0,1)}-${chapter.substring(0,3)}`;
-                        const questions = mockItemBank.filter(q => q.q_id.startsWith(chapterIdPrefix.toUpperCase().replace(/\s/g, '')));
+                        const questions = itemBank.filter(q => {
+                           const chapterId = `G${grade}-${subject}-${chapter}`;
+                           // A simple check if q_id contains parts of the chapter name
+                           return q.tags?.includes(chapterId) || q.question.toLowerCase().includes(chapter.toLowerCase().substring(0,5));
+                        });
                         if (questions.length === 0) return null;
                         return (
-                            <div key={chapterIdPrefix} className="pl-2 border-l-2">
+                            <div key={chapter} className="pl-2 border-l-2">
                                 <p className="font-semibold text-sm mb-1">{chapter}</p>
                                 {questions.map(q => (
                                     <label key={q.q_id} className="flex items-start gap-2 p-2 rounded-md hover:bg-slate-100 cursor-pointer">

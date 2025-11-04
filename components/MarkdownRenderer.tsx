@@ -1,4 +1,5 @@
 import React from 'react';
+import { cleanText } from '../utils/textHelpers';
 
 interface MarkdownRendererProps {
     content: string;
@@ -7,11 +8,10 @@ interface MarkdownRendererProps {
 const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) => {
     // The 'pre-wrap' value for white-space is crucial for preserving
     // the line breaks from the AI's plain-text, step-by-step answers.
-    // By simply rendering the content as is, we avoid stripping important formatting
-    // like newlines or code blocks, which a simple regex was doing before.
+    // We also use cleanText to remove any unwanted markdown characters like * or #.
     return (
         <div style={{ whiteSpace: 'pre-wrap' }}>
-            {content}
+            {cleanText(content)}
         </div>
     );
 };

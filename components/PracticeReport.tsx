@@ -1,5 +1,3 @@
-
-
 import React from 'react';
 import { PracticeExam, PracticeResult, ScratchpadState } from '../types';
 import { SparklesIcon, CheckCircleIcon, XIcon, TriangleAlertIcon } from '../constants/icons';

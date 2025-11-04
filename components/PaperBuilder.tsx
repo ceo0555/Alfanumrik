@@ -10,13 +10,12 @@ import { useAuth } from '../contexts/AuthContext';
 type View = 'blueprints' | 'item_bank' | 'generator' | 'paper_viewer';
 
 const PaperBuilder: React.FC<{ grade: string | null }> = ({ grade }) => {
-    const { itemBank, handleUpdateItemBank } = useAuth();
+    const { itemBank, handleUpdateItemBank, allBlueprints, handleUpdateBlueprints } = useAuth();
     const [activeView, setActiveView] = useState<View>('blueprints');
-    const [blueprints, setBlueprints] = useState<PaperBlueprint[]>([]);
     const [generatedPaper, setGeneratedPaper] = useState<GeneratedPaper | null>(null);
 
     const handleSaveBlueprint = (blueprint: PaperBlueprint) => {
-        setBlueprints(prev => [...prev.filter(b => b.id !== blueprint.id), blueprint]);
+        handleUpdateBlueprints([...allBlueprints.filter(b => b.id !== blueprint.id), blueprint]);
     };
 
     const handleAssemblePaper = (blueprint: PaperBlueprint) => {
@@ -48,7 +47,7 @@ const PaperBuilder: React.FC<{ grade: string | null }> = ({ grade }) => {
                     availableQuestions.splice(questionIndex, 1); // Remove question to avoid reuse
                 } else {
                     // Could not find a suitable question, add a placeholder
-                    paperQuestions.push({ q_id: `placeholder-${i}`, question: `Placeholder for ${section.questionType}, ${section.marksPerQuestion} marks.`, type: section.questionType, marks: section.marksPerQuestion, answer: '', rubric: '', bloom: '', difficulty: 'M' });
+                    paperQuestions.push({ q_id: `placeholder-${i}`, question: `Placeholder for ${section.questionType}, ${section.marksPerQuestion} marks.`, type: section.questionType, marks: section.marksPerQuestion, answer: '', rubric: '', bloom: 'Remember', difficulty: 'M', competency: 'Demonstrate Knowledge and Understanding', dok: 1 });
                 }
             }
         }
@@ -59,7 +58,7 @@ const PaperBuilder: React.FC<{ grade: string | null }> = ({ grade }) => {
         let totalCompetencyQuestions = 0;
 
         paperQuestions.forEach(q => {
-            if (q.competency) {
+            if (q.competency && q.competency !== 'N/A') {
                 totalCompetencyQuestions++;
                 competencyCoverage[q.competency] = (competencyCoverage[q.competency] || 0) + 1;
             }
@@ -106,7 +105,7 @@ const PaperBuilder: React.FC<{ grade: string | null }> = ({ grade }) => {
             {activeView === 'blueprints' && (
                 <BlueprintEditor
                     grade={grade}
-                    blueprints={blueprints}
+                    blueprints={allBlueprints}
                     onSaveBlueprint={handleSaveBlueprint}
                     onAssemblePaper={handleAssemblePaper}
                 />

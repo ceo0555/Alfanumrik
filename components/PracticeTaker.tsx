@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { PracticeExam, QuestionPoolItem, ScratchpadState } from '../types';
-import { ArrowLeftIcon, ArrowRightIcon, EditIcon, FlameIcon, NotebookIcon } from '../constants/icons';
+import { ArrowLeftIcon, ArrowRightIcon, EditIcon, FlameIcon, NotebookIcon, ClockIcon } from '../constants/icons';
 import DigitalScratchpad from './DigitalScratchpad';
 
 interface PracticeTakerProps {
@@ -148,6 +148,8 @@ const PracticeTaker: React.FC<PracticeTakerProps> = ({ exam, onFinishExam, onBac
         const s = (seconds % 60).toString().padStart(2, '0');
         return `${h}:${m}:${s}`;
     };
+
+    const isTimeLow = timeLeft < 300; // 5 minutes
     
     if (!isFocused) {
         return (
@@ -179,7 +181,12 @@ const PracticeTaker: React.FC<PracticeTakerProps> = ({ exam, onFinishExam, onBac
                     </div>
                 </div>
                 <div className="flex items-center gap-4">
-                    <div className="font-mono text-xl font-bold bg-slate-100 px-3 py-1 rounded-lg">{formatTime(timeLeft)}</div>
+                    <div className={`flex items-center gap-2 font-mono text-xl font-bold px-3 py-1 rounded-lg transition-colors ${
+                        isTimeLow ? 'bg-red-100 text-red-700 animate-pulse' : 'bg-slate-100 text-slate-800'
+                    }`}>
+                        <ClockIcon className="w-5 h-5" />
+                        <span>{formatTime(timeLeft)}</span>
+                    </div>
                     <button onClick={handleFinish} className="btn bg-red-500 hover:bg-red-600 text-white">Finish Exam</button>
                 </div>
             </header>
@@ -267,7 +274,7 @@ const PracticeTaker: React.FC<PracticeTakerProps> = ({ exam, onFinishExam, onBac
 
                     <footer className="flex-shrink-0 pt-6 border-t mt-6 flex justify-between items-center">
                         <button onClick={handlePrev} disabled={currentQIndex === 0} className="btn bg-white border border-slate-300 flex items-center gap-2 disabled:opacity-50">
-                            <ArrowLeftIcon className="w-5 h-5"/> Previous
+                            <ArrowLeftIcon className="w-5 h-5" /> Previous
                         </button>
                         <button onClick={handleToggleReview} className={`btn flex items-center gap-2 ${markedForReview.has(currentQuestion.q_id) ? 'bg-purple-100 text-purple-700' : 'bg-white border'}`}>
                             <FlameIcon className="w-5 h-5"/> Mark for Review

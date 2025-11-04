@@ -1,7 +1,7 @@
 import React from 'react';
-import { SchoolTab } from '../SchoolDashboard';
+import { SchoolTab } from './SchoolDashboard';
 import { useAuth } from '../../contexts/AuthContext';
-import { BarChartIcon, UsersIcon, ClipboardListIcon, FileTextIcon, ClipboardCheckIcon, TargetIcon, CpuIcon, CalendarDaysIcon, SpeakerIcon, RupeeIcon, TrendingUpIcon, SchoolIcon } from '../../constants/icons';
+import { BarChartIcon, UsersIcon, ClipboardListIcon, FileTextIcon, ClipboardCheckIcon, TargetIcon, CpuIcon, CalendarDaysIcon, SpeakerIcon, RupeeIcon, TrendingUpIcon, SchoolIcon, SitemapIcon, ShieldCheckIcon, BookIcon } from '../../constants/icons';
 
 interface SchoolSidebarProps {
     activeTab: SchoolTab;
@@ -47,6 +47,7 @@ const SchoolSidebar: React.FC<SchoolSidebarProps> = ({ activeTab, setActiveTab }
                 <NavGroup title="Academics">
                     <NavLink tab="overview" label="Overview" icon={<BarChartIcon className="w-5 h-5"/>} />
                     <NavLink tab="classroom" label="Classroom Core" icon={<ClipboardCheckIcon className="w-5 h-5"/>} />
+                    <NavLink tab="courses" label="Courses" icon={<BookIcon className="w-5 h-5"/>} />
                     <NavLink tab="students" label="Students" icon={<UsersIcon className="w-5 h-5"/>} />
                     <NavLink tab="assignments" label="Assignments" icon={<ClipboardListIcon className="w-5 h-5"/>} />
                     <NavLink tab="reports" label="Reports" icon={<FileTextIcon className="w-5 h-5"/>} />
@@ -54,6 +55,7 @@ const SchoolSidebar: React.FC<SchoolSidebarProps> = ({ activeTab, setActiveTab }
 
                 <NavGroup title="Assessment">
                      <NavLink tab="exam_suite" label="Exam Suite" icon={<FileTextIcon className="w-5 h-5"/>} />
+                     <NavLink tab="exams" label="Exams" icon={<ShieldCheckIcon className="w-5 h-5"/>} />
                      <NavLink tab="diagnostics" label="Diagnostics" icon={<TargetIcon className="w-5 h-5"/>} />
                 </NavGroup>
                 
@@ -64,6 +66,7 @@ const SchoolSidebar: React.FC<SchoolSidebarProps> = ({ activeTab, setActiveTab }
                 {schoolRole === 'principal' && (
                     <NavGroup title="Administration">
                         <NavLink tab="board_planner" label="Board Planner" icon={<CalendarDaysIcon className="w-5 h-5"/>} />
+                        <NavLink tab="curriculum_planner" label="Curriculum Planner" icon={<SitemapIcon className="w-5 h-5"/>} />
                         <NavLink tab="announcements" label="Announcements" icon={<SpeakerIcon className="w-5 h-5"/>} />
                     </NavGroup>
                 )}

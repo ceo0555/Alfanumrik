@@ -1,4 +1,3 @@
-// FIX: Add useEffect to the import from 'react'.
 import React, { useState, useMemo, Suspense, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { EditIcon, SchoolIcon } from '../../constants/icons';
@@ -17,6 +16,10 @@ const BoardPlanner = React.lazy(() => import('../BoardPlanner'));
 const ClassroomCore = React.lazy(() => import('../ClassroomCore'));
 const FinanceOpsDashboard = React.lazy(() => import('../FinanceOpsDashboard'));
 const GrowthDashboard = React.lazy(() => import('../GrowthDashboard'));
+const CurriculumPlanner = React.lazy(() => import('./CurriculumPlanner'));
+const ExamsTab = React.lazy(() => import('./ExamsTab'));
+const LmsDashboard = React.lazy(() => import('../lms/LmsDashboard'));
+
 
 // Lazy load modals
 const BrandingModal = React.lazy(() => import('./BrandingModal'));
@@ -32,19 +35,22 @@ const SchoolLogo = ({ className }: { className?: string }) => (
     </div>
 );
 
-export type SchoolTab = 'overview' | 'students' | 'assignments' | 'reports' | 'announcements' | 'exam_suite' | 'diagnostics' | 'ai_coding' | 'board_planner' | 'classroom' | 'finance_ops' | 'growth';
+export type SchoolTab = 'overview' | 'students' | 'assignments' | 'reports' | 'announcements' | 'exam_suite' | 'diagnostics' | 'ai_coding' | 'board_planner' | 'classroom' | 'finance_ops' | 'growth' | 'curriculum_planner' | 'exams' | 'courses';
 
 const MobileNav: React.FC<{ activeTab: SchoolTab, setActiveTab: (tab: SchoolTab) => void, schoolRole?: 'principal' | 'teacher' }> = ({ activeTab, setActiveTab, schoolRole }) => {
     const allTabs: { tab: SchoolTab, label: string, principalOnly?: boolean }[] = [
         { tab: 'overview', label: 'Overview' },
         { tab: 'classroom', label: 'Classroom' },
+        { tab: 'courses', label: 'Courses' },
         { tab: 'students', label: 'Students' },
         { tab: 'assignments', label: 'Assignments' },
         { tab: 'reports', label: 'Reports' },
         { tab: 'exam_suite', label: 'Exam Suite' },
+        { tab: 'exams', label: 'Exams'},
         { tab: 'diagnostics', label: 'Diagnostics' },
         { tab: 'ai_coding', label: 'AI & Coding' },
         { tab: 'board_planner', label: 'Board Planner', principalOnly: true },
+        { tab: 'curriculum_planner', label: 'Curriculum', principalOnly: true},
         { tab: 'announcements', label: 'Announcements', principalOnly: true },
         { tab: 'finance_ops', label: 'Finance & Ops', principalOnly: true },
         { tab: 'growth', label: 'Growth', principalOnly: true },
@@ -134,11 +140,14 @@ const SchoolDashboard: React.FC = () => {
             case 'announcements': return <AnnouncementsTab {...commonProps} />;
             case 'classroom': return <ClassroomCore grade={selectedGrade} />;
             case 'exam_suite': return <PaperBuilder grade={selectedGrade} />;
+            case 'exams': return <ExamsTab />;
             case 'diagnostics': return <DiagnosticsDashboard grade={selectedGrade} onOpenRemediationAssignment={handleOpenRemediationAssignment} />;
             case 'ai_coding': return <CodingModuleDashboard />;
             case 'board_planner': return <BoardPlanner />;
+            case 'curriculum_planner': return <CurriculumPlanner />;
             case 'finance_ops': return <FinanceOpsDashboard />;
             case 'growth': return <GrowthDashboard />;
+            case 'courses': return <LmsDashboard />;
             default: return null;
         }
     };

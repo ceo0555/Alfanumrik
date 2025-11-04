@@ -93,42 +93,42 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLaunch }) => {
                     <svg height="40" viewBox="0 0 120 40"><text x="60" y="25" textAnchor="middle" fontFamily="Poppins" fontSize="12" fontWeight="600" fill="#475569">ACADEMY INC.</text></svg>
                 </div></div></section>
 
-                <section id="about" className="py-20 bg-white">
+                <section id="about" className="py-16 md:py-20 bg-white">
                     <div className="container mx-auto px-6 max-w-4xl text-center">
                         <div className="reveal">
                             <h2 className="text-3xl md:text-4xl font-bold">Every Brain Deserves Its Own Teacher.</h2>
-                            <p className="mt-4 text-slate-600 text-lg">For over a century, the educational paradigm has remained largely unchanged: a one-to-many broadcast model designed for industrial-era scale, not individual cognitive development. This 'factory model' inevitably leaves students behind and places an unsustainable burden on educators. Alfanumrik was founded on a simple, first-principles question: what if we could build an educational ecosystem engineered around the individual learner?</p>
-                            <p className="mt-4 text-slate-600 text-lg"><strong>Alfanumrik, a product of Briusha Associates,</strong> is the result of years of rigorous R&amp;D at the intersection of machine learning, cognitive psychology, and pedagogical science. Our mission is to provide every student with a personal cognitive tutor that creates a unique <strong>personalized learning path</strong>, every teacher with an intelligent co-pilot, and every institution with a unified data plane to drive academic excellence.</p>
+                            <p className="mt-4 text-slate-600 md:text-lg">For over a century, the educational paradigm has remained largely unchanged: a one-to-many broadcast model designed for industrial-era scale, not individual cognitive development. This 'factory model' inevitably leaves students behind and places an unsustainable burden on educators. Alfanumrik was founded on a simple, first-principles question: what if we could build an educational ecosystem engineered around the individual learner?</p>
+                            <p className="mt-4 text-slate-600 md:text-lg"><strong>Alfanumrik, a product of Briusha Associates,</strong> is the result of years of rigorous R&amp;D at the intersection of machine learning, cognitive psychology, and pedagogical science. Our mission is to provide every student with a personal cognitive tutor that creates a unique <strong>personalized learning path</strong>, every teacher with an intelligent co-pilot, and every institution with a unified data plane to drive academic excellence.</p>
                         </div>
                     </div>
                 </section>
 
-                <section id="features-in-action" className="py-20 bg-slate-50">
+                <section id="features-in-action" className="py-16 md:py-20 bg-slate-50">
                     <div className="container mx-auto px-6">
                         <div className="text-center mb-12 reveal"><h2 className="text-3xl md:text-4xl font-bold">Features in Action</h2><p className="mt-2 text-slate-600">See how Alfanumrik transforms the educational experience.</p></div>
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 items-center">
                             <div className="reveal"><h3 className="text-2xl font-bold">Adaptive Lesson Player</h3><p className="mt-2 text-slate-600">Our player is more than a content delivery system; it's a real-time diagnostic tool. Each interaction refines our DKT model of the student's knowledge state, dynamically inserting micro-remediation loops or accelerating content to ensure optimal cognitive load and engagement.</p></div>
                             <div className="reveal browser-mockup"><div className="browser-mockup-header"><div className="bg-red-400"></div><div className="bg-yellow-400"></div><div className="bg-green-400"></div></div><AdaptiveLessonPlayerMockup /></div>
                         </div>
-                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center mt-16">
+                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 items-center mt-12 md:mt-16">
                             <div className="reveal browser-mockup lg:order-last"><div className="browser-mockup-header"><div className="bg-red-400"></div><div className="bg-yellow-400"></div><div className="bg-green-400"></div></div><SchoolOSDashboardMockup /></div>
                             <div className="reveal lg:order-first"><h3 className="text-2xl font-bold">School Operating System</h3><p className="mt-2 text-slate-600">Unify disparate data streams into a single, actionable intelligence layer. Our ERP provides principals with predictive analytics on student performance, operational efficiency metrics for resource management, and strategic planning tools aligned with NCF guidelines.</p></div>
                         </div>
                     </div>
                 </section>
                 
-                <section id="platform" className="py-20 bg-white">
+                <section id="platform" className="py-16 md:py-20 bg-white">
                     <div className="container mx-auto px-6">
                         <div className="text-center mb-12 reveal"><h2 className="text-3xl md:text-4xl font-bold">A Vertically Integrated Solution</h2></div>
-                        <div className="flex justify-center mb-8 border-b">
+                        <div className="flex justify-center mb-8 border-b flex-wrap">
                             {Object.keys(roleContent).map(role => (<button key={role} onClick={() => handleRoleChange(role as Role)} className={`px-4 py-2 text-sm md:text-base font-semibold capitalize border-b-2 transition-colors ${activeRole === role ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-slate-500 hover:text-slate-800'}`}>{role}s</button>))}
                         </div>
-                        <div className={`grid grid-cols-1 md:grid-cols-2 gap-12 items-center transition-opacity duration-300 ease-in-out ${isFading ? 'opacity-0' : 'opacity-100'}`}>
+                        <div className={`grid grid-cols-1 md:grid-cols-2 gap-8 lg:gap-12 items-center transition-opacity duration-300 ease-in-out ${isFading ? 'opacity-0' : 'opacity-100'}`}>
                              <div>
                                 <h3 className="text-2xl md:text-3xl font-bold text-slate-800">{selectedRoleContent.title}</h3>
                                 <p className="mt-4 text-slate-600">{selectedRoleContent.description}</p>
                                 <ul className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                    {selectedRoleContent.features.map(feature => (<li key={feature} className="flex items-center"><div className="w-5 h-5 flex items-center justify-center bg-green-100 rounded-full mr-2"><span className="text-green-600 text-xs font-bold">✓</span></div><span className="text-slate-700 text-sm">{feature}</span></li>))}
+                                    {selectedRoleContent.features.map(feature => (<li key={feature} className="flex items-center"><div className="w-5 h-5 flex items-center justify-center bg-green-100 rounded-full mr-2 flex-shrink-0"><span className="text-green-600 text-xs font-bold">✓</span></div><span className="text-slate-700 text-sm">{feature}</span></li>))}
                                 </ul>
                             </div>
                             <div className="rounded-xl shadow-lg overflow-hidden border">
@@ -138,18 +138,18 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLaunch }) => {
                     </div>
                 </section>
 
-                <section id="research" className="py-20 bg-slate-50">
+                <section id="research" className="py-16 md:py-20 bg-slate-50">
                     <div className="container mx-auto px-6">
                         <div className="text-center mb-12 reveal"><h2 className="text-3xl md:text-4xl font-bold">Adaptive Learning. Actual Results.</h2><p className="mt-2 text-slate-600 max-w-2xl mx-auto">Our platform isn't just technology; it's applied pedagogy. We build upon established, peer-reviewed research in cognitive science and education.</p></div>
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                            <a href="#" onClick={(e) => e.preventDefault()} className="block p-6 bg-white rounded-xl shadow-sm border research-card reveal" style={{transitionDelay: '100ms'}}><h3 className="font-bold text-indigo-600">Deep Knowledge Tracing (DKT)</h3><p className="text-sm text-slate-600 mt-2">At the core of our adaptive engine is a recurrent neural network that analyzes the entire sequence of a student's answers. This allows us to model their knowledge state with high fidelity, predicting performance and identifying conceptual gaps before they become critical.</p></a>
-                            <a href="#" onClick={(e) => e.preventDefault()} className="block p-6 bg-white rounded-xl shadow-sm border research-card reveal" style={{transitionDelay: '300ms'}}><h3 className="font-bold text-indigo-600">Free Spaced Repetition Scheduler (FSRS)</h3><p className="text-sm text-slate-600 mt-2">Combatting the 'forgetting curve' is critical. We've implemented a state-of-the-art spaced repetition algorithm based on a three-component model of memory (stability, retrievability, difficulty) to schedule reviews at the scientifically optimal moment.</p></a>
-                            <a href="#" onClick={(e) => e.preventDefault()} className="block p-6 bg-white rounded-xl shadow-sm border research-card reveal" style={{transitionDelay: '500ms'}}><h3 className="font-bold text-indigo-600">Generative Models in Pedagogy</h3><p className="text-sm text-slate-600 mt-2">We utilize state-of-the-art Large Language Models, including <strong>Google's Gemini 2.5 Pro</strong>, not just for content, but as pedagogical tools. They power our Socratic dialogue engine, generate nuanced feedback for our <strong>AI tutor</strong>, and create diverse, <strong>CBSE-aligned</strong> assessment items.</p></a>
+                            <div className="p-6 bg-white rounded-xl shadow-sm border research-card reveal" style={{transitionDelay: '100ms'}}><h3 className="font-bold text-indigo-600">Deep Knowledge Tracing (DKT)</h3><p className="text-sm text-slate-600 mt-2">At the core of our adaptive engine is a recurrent neural network that analyzes the entire sequence of a student's answers. This allows us to model their knowledge state with high fidelity, predicting performance and identifying conceptual gaps before they become critical.</p></div>
+                            <div className="p-6 bg-white rounded-xl shadow-sm border research-card reveal" style={{transitionDelay: '300ms'}}><h3 className="font-bold text-indigo-600">Free Spaced Repetition Scheduler (FSRS)</h3><p className="text-sm text-slate-600 mt-2">Combatting the 'forgetting curve' is critical. We've implemented a state-of-the-art spaced repetition algorithm based on a three-component model of memory (stability, retrievability, difficulty) to schedule reviews at the scientifically optimal moment.</p></div>
+                            <div className="p-6 bg-white rounded-xl shadow-sm border research-card reveal" style={{transitionDelay: '500ms'}}><h3 className="font-bold text-indigo-600">Generative Models in Pedagogy</h3><p className="text-sm text-slate-600 mt-2">We utilize state-of-the-art Large Language Models, including <strong>Google's Gemini 2.5 Pro</strong>, not just for content, but as pedagogical tools. They power our Socratic dialogue engine, generate nuanced feedback for our <strong>AI tutor</strong>, and create diverse, <strong>CBSE-aligned</strong> assessment items.</p></div>
                         </div>
                     </div>
                 </section>
                 
-                <section id="technology" className="py-20 bg-white">
+                <section id="technology" className="py-16 md:py-20 bg-white">
                     <div className="container mx-auto px-6">
                         <div className="text-center mb-12 reveal">
                             <h2 className="text-3xl md:text-4xl font-bold">Engineered for Excellence: Our Technology Stack</h2>
@@ -160,28 +160,28 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLaunch }) => {
                                 <div className="inline-flex items-center justify-center w-16 h-16 mb-4 rounded-full bg-indigo-100 text-indigo-500">
                                     <CpuIcon className="w-8 h-8"/>
                                 </div>
-                                <h3 className="font-bold text-lg">AI & Machine Learning</h3>
-                                <p className="text-sm text-slate-500 mt-2">Our platform's intelligence is powered by <strong>Google's Gemini 2.5 Pro</strong>, enabling advanced reasoning, content generation, and the AI-powered features that make learning truly interactive and personalized.</p>
+                                <h3 className="font-bold text-lg">Multimodal Generative AI</h3>
+                                <p className="text-sm text-slate-500 mt-2">We leverage Google's flagship AI, including <strong>Gemini 2.5 Pro</strong> with its massive context window and advanced reasoning, <strong>Veo</strong> for educational video generation, and <strong>Imagen</strong> for rich visual aids. This enables powerful multimodal features like our live AI Tutor and automated handwritten paper grader.</p>
                             </div>
                             <div className="text-center p-6 reveal" style={{transitionDelay: '200ms'}}>
                                 <div className="inline-flex items-center justify-center w-16 h-16 mb-4 rounded-full bg-indigo-100 text-indigo-500">
                                     <BrainCircuitIcon className="w-8 h-8"/>
                                 </div>
-                                <h3 className="font-bold text-lg">Cognitive Science Engine</h3>
-                                <p className="text-sm text-slate-500 mt-2">We go beyond standard AI by implementing proven cognitive models like <strong>Deep Knowledge Tracing (DKT)</strong> and <strong>FSRS</strong> to accurately model student knowledge and memory, ensuring our adaptive learning paths are scientifically optimized.</p>
+                                <h3 className="font-bold text-lg">Next-Gen Cognitive Modeling</h3>
+                                <p className="text-sm text-slate-500 mt-2">Our platform is built on a <strong>hybrid DKT engine</strong>. It combines quantitative performance data with qualitative, AI-driven error analysis (e.g., 'conceptual' vs. 'calculation' error) for unparalleled precision in mastery tracking, all integrated with a state-of-the-art <strong>FSRS</strong> scheduler.</p>
                             </div>
                             <div className="text-center p-6 reveal" style={{transitionDelay: '400ms'}}>
                                 <div className="inline-flex items-center justify-center w-16 h-16 mb-4 rounded-full bg-indigo-100 text-indigo-500">
                                     <CodeIcon className="w-8 h-8"/>
                                 </div>
-                                <h3 className="font-bold text-lg">Modern & Secure Platform</h3>
-                                <p className="text-sm text-slate-500 mt-2">Built on a reliable stack including <strong>React and TypeScript</strong>, our application is designed to be fast, responsive, and secure. We are also <strong>LTI 1.3 compliant</strong>, allowing for seamless integration with your school's existing Learning Management System (LMS).</p>
+                                <h3 className="font-bold text-lg">Scalable & Secure Architecture</h3>
+                                <p className="text-sm text-slate-500 mt-2">Built with <strong>React and TypeScript</strong>, our app uses modern features like Suspense for concurrent data fetching. A robust <strong>local-first architecture using IndexedDB</strong> ensures offline functionality, while full <strong>LTI 1.3 compliance</strong> enables seamless integration with your school's LMS.</p>
                             </div>
                         </div>
                     </div>
                 </section>
                 
-                <section id="compliance" className="py-20 bg-slate-50">
+                <section id="compliance" className="py-16 md:py-20 bg-slate-50">
                     <div className="container mx-auto px-6">
                         <div className="text-center mb-12 reveal"><h2 className="text-3xl md:text-4xl font-bold">Our Commitment & Compliance</h2><p className="mt-2 text-slate-600 max-w-2xl mx-auto">We are committed to the highest standards of data security, privacy, and pedagogical accuracy.</p></div>
                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-8 max-w-4xl mx-auto">
@@ -192,7 +192,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLaunch }) => {
                     </div>
                 </section>
                 
-                <section id="testimonials" className="py-20 bg-white">
+                <section id="testimonials" className="py-16 md:py-20 bg-white">
                     <div className="container mx-auto px-6 reveal">
                         <div className="text-center mb-12">
                             <h2 className="text-3xl md:text-4xl font-bold">What People Are Saying</h2>
@@ -206,7 +206,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLaunch }) => {
                     </div>
                 </section>
                 
-                <section id="faq" className="py-20 bg-slate-50">
+                <section id="faq" className="py-16 md:py-20 bg-slate-50">
                     <div className="container mx-auto px-6 max-w-3xl">
                         <div className="text-center mb-12 reveal"><h2 className="text-3xl md:text-4xl font-bold">Frequently Asked Questions</h2></div>
                         <div className="faq space-y-4 reveal">
@@ -218,7 +218,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLaunch }) => {
                     </div>
                 </section>
 
-                <section id="privacy" className="py-20 bg-white">
+                <section id="privacy" className="py-16 md:py-20 bg-white">
                     <div className="container mx-auto px-6 max-w-4xl legal-doc">
                         <div className="text-center mb-12 reveal"><h2 className="text-3xl md:text-4xl font-bold">Privacy Policy</h2><p className="mt-2 text-slate-500">Last Updated: {new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p></div>
                         <div className="reveal">
@@ -249,7 +249,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLaunch }) => {
                     </div>
                 </section>
 
-                <section id="terms" className="py-20 bg-slate-50">
+                <section id="terms" className="py-16 md:py-20 bg-slate-50">
                     <div className="container mx-auto px-6 max-w-4xl legal-doc">
                         <div className="text-center mb-12 reveal"><h2 className="text-3xl md:text-4xl font-bold">Terms of Service</h2></div>
                         <div className="reveal">
@@ -267,9 +267,9 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLaunch }) => {
                     </div>
                 </section>
                 
-                <section id="contact" className="py-20 bg-white">
+                <section id="contact" className="py-16 md:py-20 bg-white">
                     <div className="container mx-auto px-6 max-w-4xl"><div className="text-center mb-12 reveal"><h2 className="text-3xl md:text-4xl font-bold">Partner with Us</h2><p className="mt-2 text-slate-600 max-w-2xl mx-auto">Join us in deploying a new paradigm of learning. Whether you're an institution ready for systemic transformation or a teacher seeking to pilot our platform, we're ready to collaborate.</p></div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12">
                             <div className="reveal"><form onSubmit={e => { e.preventDefault(); alert("Thank you for your message!"); }}><div className="grid grid-cols-1 sm:grid-cols-2 gap-4"><div><input type="text" placeholder="Your Name" className="contact-input w-full" required/></div><div><input type="email" placeholder="Your Email" className="contact-input w-full" required/></div></div><div className="mt-4"><input type="text" placeholder="Subject" className="contact-input w-full" required/></div><div className="mt-4"><textarea placeholder="Your Message" rows={5} className="contact-input w-full" required></textarea></div><button type="submit" className="btn btn-primary w-full mt-4 py-3">Send Message</button></form></div>
                             <div className="reveal"><h3 className="font-bold text-lg mb-4">Contact Information</h3><div className="space-y-4 text-slate-600">
                                 <div className="flex items-start gap-3"><MailIcon className="w-5 h-5 mt-1 text-indigo-500"/><a href="mailto:Sales@alfanumrik.com" className="hover:text-indigo-600">Sales@alfanumrik.com</a></div>

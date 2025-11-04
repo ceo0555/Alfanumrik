@@ -8,9 +8,10 @@ interface LessonViewProps {
   isTransitioning: boolean;
   ltiContext: LtiContext | null;
   onFinish: () => void;
+  setAiContext: (context: string | null) => void;
 }
 
-const LessonView: React.FC<LessonViewProps> = ({ isTransitioning, ltiContext, onFinish }) => {
+const LessonView: React.FC<LessonViewProps> = ({ isTransitioning, ltiContext, onFinish, setAiContext }) => {
   const { activeProfile } = useAuth();
 
   if (!activeProfile) {
@@ -29,6 +30,7 @@ const LessonView: React.FC<LessonViewProps> = ({ isTransitioning, ltiContext, on
       ltiContext={ltiContext}
       isTransitioning={isTransitioning}
       onFinish={onFinish}
+      setAiContext={setAiContext}
     />
   );
 };

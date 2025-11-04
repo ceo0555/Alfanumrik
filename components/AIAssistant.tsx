@@ -1,77 +1,196 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { LiveServerMessage, Modality } from '@google/genai';
-import { MicrophoneIcon, StopIcon, SparklesIcon } from '../constants/icons';
+import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
+import { GoogleGenAI, LiveServerMessage, Modality, Blob, Chat, GenerateContentResponse, GroundingChunk } from '@google/genai';
+import { MicrophoneIcon, StopIcon, SparklesIcon, XIcon, MessageSquareIcon } from '../constants/icons';
 import { useAuth } from '../contexts/AuthContext';
 import { useLiveAudio } from '../utils/useLiveAudio';
 import { decode, decodeAudioData } from '../utils/audio';
+import { ChatMessage } from '../types';
+import MarkdownRenderer from './MarkdownRenderer';
 
-const AIAssistant: React.FC = () => {
+
+// --- Text Chat Component (adapted from TutorCore) ---
+
+const TextTutorView: React.FC<{ systemInstruction: string }> = ({ systemInstruction }) => {
     const { activeProfile } = useAuth();
+    const [chat, setChat] = useState<Chat | null>(null);
+    const [messages, setMessages] = useState<ChatMessage[]>([]);
+    const [input, setInput] = useState('');
+    const [isLoading, setIsLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+    
+    const messagesEndRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        if (process.env.API_KEY && activeProfile) {
+            const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+            const chatInstance = ai.chats.create({
+                model: 'gemini-2.5-pro',
+                config: {
+                    systemInstruction,
+                    tools: [{ googleSearch: {} }],
+                    thinkingConfig: { thinkingBudget: 32768 }
+                },
+            });
+            setChat(chatInstance);
+            setMessages([]);
+        } else if (!process.env.API_KEY) {
+            setError("API_KEY not found. This feature is disabled.");
+        }
+    }, [activeProfile, systemInstruction]);
+
+    useEffect(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }, [messages]);
+
+    const handleSendMessage = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!input.trim() || !chat || isLoading) return;
+
+        const userMessage: ChatMessage = { role: 'user', content: input };
+        setMessages(prev => [...prev, userMessage]);
+        setInput('');
+        setIsLoading(true);
+        setError(null);
+
+        try {
+            const responseStream = await chat.sendMessageStream({ message: input });
+            
+            setMessages(prev => [...prev, { role: 'model', content: '', status: 'generating' }]);
+            
+            let modelResponse = '';
+            const sourceMap = new Map<string, GroundingChunk>();
+
+            for await (const chunk of responseStream) {
+                modelResponse += chunk.text;
+                
+                const groundingChunks = chunk.candidates?.[0]?.groundingMetadata?.groundingChunks;
+                if (groundingChunks) {
+                    for (const gc of groundingChunks) {
+                        if (gc.web?.uri && !sourceMap.has(gc.web.uri)) {
+                            sourceMap.set(gc.web.uri, gc);
+                        }
+                    }
+                }
+                
+                setMessages(prev => {
+                    const newMessages = [...prev];
+                    const lastMessage = newMessages[newMessages.length - 1];
+                    if (lastMessage && lastMessage.role === 'model') {
+                      lastMessage.content = modelResponse;
+                    }
+                    return newMessages;
+                });
+            }
+
+             setMessages(prev => {
+                const newMessages = [...prev];
+                const lastMessage = newMessages[newMessages.length - 1];
+                if (lastMessage && lastMessage.role === 'model') {
+                    lastMessage.status = 'done';
+                    lastMessage.sources = Array.from(sourceMap.values());
+                }
+                return newMessages;
+            });
+
+        } catch (err) {
+            console.error(err);
+            const errorMessage = "Sorry, I encountered an error. Please try again.";
+            setError(errorMessage);
+            setMessages(prev => {
+                const updatedMessages = [...prev];
+                const lastMessage = updatedMessages[updatedMessages.length - 1];
+                 if (lastMessage && lastMessage.role === 'model') {
+                    lastMessage.content = errorMessage;
+                    lastMessage.status = 'done';
+                } else {
+                    updatedMessages.push({ role: 'model', content: errorMessage, status: 'done' });
+                }
+                return updatedMessages;
+            });
+        } finally {
+            setIsLoading(false);
+        }
+    };
+    
+    return (
+        <div className="flex-grow flex flex-col overflow-hidden">
+            <div className="flex-grow p-4 overflow-y-auto">
+                {messages.length === 0 && (
+                    <div className="flex flex-col items-center justify-center h-full text-slate-400 text-center">
+                        <SparklesIcon className="w-16 h-16 mb-4"/>
+                        <p>Ask me anything about your subjects! For example, "Can you explain photosynthesis?"</p>
+                    </div>
+                )}
+                <div className="space-y-4">
+                    {messages.map((msg, index) => (
+                         <div key={index} className={`flex items-start gap-3 ${msg.role === 'user' ? 'justify-end' : ''}`}>
+                            {msg.role === 'model' && <div className="w-8 h-8 rounded-full bg-indigo-600 flex items-center justify-center text-white font-bold flex-shrink-0">A</div>}
+                            <div className={`max-w-lg p-3 rounded-lg ${msg.role === 'user' ? 'bg-slate-100 text-slate-800' : 'bg-indigo-50 text-slate-700'}`}>
+                                <div className="prose prose-sm max-w-none prose-indigo"><MarkdownRenderer content={msg.content} /></div>
+                            </div>
+                            {msg.role === 'user' && <div className="w-8 h-8 rounded-full bg-slate-400 flex items-center justify-center text-white font-bold flex-shrink-0">{activeProfile?.name.charAt(0)}</div>}
+                        </div>
+                    ))}
+                    <div ref={messagesEndRef} />
+                </div>
+            </div>
+            {error && <div className="p-2 text-center text-sm text-red-600 bg-red-50">{error}</div>}
+            <div className="p-4 border-t border-[var(--border-color)]">
+                <form onSubmit={handleSendMessage} className="flex items-center gap-3">
+                    <input
+                        type="text"
+                        value={input}
+                        onChange={(e) => setInput(e.target.value)}
+                        placeholder="Type your question here..."
+                        disabled={isLoading || !chat}
+                        className="form-input w-full px-4 py-2 text-base"
+                    />
+                    <button
+                        type="submit"
+                        disabled={isLoading || !input.trim() || !chat}
+                        className="btn btn-primary px-6 py-2"
+                    >
+                        {isLoading ? ( <div className="w-5 h-5 border-2 border-dashed rounded-full animate-spin border-white"></div> ) : ( "Ask" )}
+                    </button>
+                </form>
+            </div>
+        </div>
+    );
+};
+
+
+// --- Live Tutor Component (adapted from original AIAssistant) ---
+
+const LiveTutorView: React.FC<{ systemInstruction: string; studentName: string; }> = ({ systemInstruction, studentName }) => {
     const [transcriptionHistory, setTranscriptionHistory] = useState<{ speaker: 'user' | 'model', text: string }[]>([]);
     
     const currentInputTranscriptionRef = useRef('');
     const currentOutputTranscriptionRef = useRef('');
     
-    // Refs for audio playback management
     const outputAudioContextRef = useRef<AudioContext | null>(null);
     const nextStartTimeRef = useRef(0);
     const audioSourcesRef = useRef<Set<AudioBufferSourceNode>>(new Set());
-
-    const studentName = activeProfile?.name || 'Student';
-    const currentGrade = activeProfile?.grade || 'your grade';
-
-    const systemInstruction = `You are MIGA, a friendly and encouraging AI tutor for a K-12 student named ${studentName}. Your primary goal is to help them understand concepts from any of their school subjects, not just give answers.
-
-        **Student's Context**:
-        - Grade: ${currentGrade}
-        - Curriculum: CBSE (India)
-
-        **Key instructions**:
-        1.  **Multilingual Support**: You MUST detect the language ${studentName} is speaking (e.g., English, Hindi, Hinglish). You MUST respond in the exact same language. Do not translate unless explicitly asked.
-        2.  **Personalization**: Always address the student as ${studentName}.
-        3.  **General Expert**: Act as an expert across all of the student's subjects (like Science, Maths, Social Studies, etc.) for their grade level.
-        4.  **Pedagogical Approach & Mathematical Accuracy**:
-            - For subjective/theory questions: Explain concepts step-by-step using simple language, analogies, and real-world examples. Your spoken response and the transcription should be plain text without any special formatting characters.
-            - For numerical/problem-solving questions: You must be 100% accurate. Before responding, think step-by-step to deconstruct the problem, identify correct formulas, perform calculations carefully, and double-check your work. Guide ${studentName} through these verified steps. Do not give the final answer away, but ensure every step you provide is mathematically sound.
-        5.  **Tone**: Be patient, positive, and encouraging. Keep your answers concise and easy to follow.
-        6.  **Educational Focus**: Your purpose is to help with educational topics. If the query is unrelated to academics, school subjects, or learning, you must politely decline to answer and explain that your role is to assist with educational questions.`;
+    const visualizerCanvasRef = useRef<HTMLCanvasElement>(null);
 
     const handleMessage = useCallback(async (message: LiveServerMessage) => {
-        // --- Transcription Logic ---
-        if (message.serverContent?.outputTranscription) {
-            currentOutputTranscriptionRef.current += message.serverContent.outputTranscription.text;
-        } else if (message.serverContent?.inputTranscription) {
-            currentInputTranscriptionRef.current += message.serverContent.inputTranscription.text;
-        }
+        if (message.serverContent?.outputTranscription) currentOutputTranscriptionRef.current += message.serverContent.outputTranscription.text;
+        else if (message.serverContent?.inputTranscription) currentInputTranscriptionRef.current += message.serverContent.inputTranscription.text;
 
-        // --- Audio Playback Logic ---
         const base64EncodedAudioString = message.serverContent?.modelTurn?.parts[0]?.inlineData?.data;
         if (base64EncodedAudioString && outputAudioContextRef.current) {
             const context = outputAudioContextRef.current;
             nextStartTimeRef.current = Math.max(nextStartTimeRef.current, context.currentTime);
-
-            const audioBuffer = await decodeAudioData(
-                decode(base64EncodedAudioString),
-                context,
-                24000, // Sample rate for Gemini Live audio output
-                1      // Mono channel
-            );
-
+            const audioBuffer = await decodeAudioData(decode(base64EncodedAudioString), context, 24000, 1);
             const source = context.createBufferSource();
             source.buffer = audioBuffer;
             source.connect(context.destination);
-            
             const sources = audioSourcesRef.current;
-            source.addEventListener('ended', () => {
-                sources.delete(source);
-            });
-
+            source.addEventListener('ended', () => { sources.delete(source); });
             source.start(nextStartTimeRef.current);
             nextStartTimeRef.current += audioBuffer.duration;
             sources.add(source);
         }
 
-        // --- Interruption Handling ---
         if (message.serverContent?.interrupted) {
             for (const source of audioSourcesRef.current.values()) {
                 source.stop();
@@ -80,7 +199,6 @@ const AIAssistant: React.FC = () => {
             nextStartTimeRef.current = 0;
         }
 
-        // --- Turn Completion Logic ---
         if (message.serverContent?.turnComplete) {
             const fullInput = currentInputTranscriptionRef.current.trim();
             const fullOutput = currentOutputTranscriptionRef.current.trim();
@@ -95,77 +213,102 @@ const AIAssistant: React.FC = () => {
         }
     }, []);
 
-    const { isSessionActive, status, startConversation, stopConversation } = useLiveAudio({
+    const { isSessionActive, status, startConversation, stopConversation, stream } = useLiveAudio({
         model: 'gemini-2.5-flash-native-audio-preview-09-2025',
         config: {
             responseModalities: [Modality.AUDIO],
             outputAudioTranscription: {},
             inputAudioTranscription: {},
             systemInstruction: systemInstruction,
-            thinkingConfig: { thinkingBudget: 24576 } // Max budget for deep reasoning on Flash models
+            thinkingConfig: { thinkingBudget: 24576 }
         },
     }, { onmessage: handleMessage });
 
     const handleStart = () => {
         setTranscriptionHistory([]);
-        currentInputTranscriptionRef.current = '';
-        currentOutputTranscriptionRef.current = '';
-        
-        // Initialize audio context for playback
-        if (outputAudioContextRef.current && outputAudioContextRef.current.state !== 'closed') {
-            outputAudioContextRef.current.close();
-        }
+        if (outputAudioContextRef.current && outputAudioContextRef.current.state !== 'closed') outputAudioContextRef.current.close();
         outputAudioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 });
         nextStartTimeRef.current = 0;
         audioSourcesRef.current.clear();
-
-        startConversation();
+        startConversation({ audio: true });
     };
 
     const handleStop = useCallback(() => {
         stopConversation();
-        // Cleanup audio resources
-        if (outputAudioContextRef.current && outputAudioContextRef.current.state !== 'closed') {
-            outputAudioContextRef.current.close().catch(console.error);
-        }
-        for (const source of audioSourcesRef.current.values()) {
-            try { source.stop(); } catch(e) {/* ignore errors if already stopped */}
-        }
+        if (outputAudioContextRef.current && outputAudioContextRef.current.state !== 'closed') outputAudioContextRef.current.close().catch(console.error);
+        for (const source of audioSourcesRef.current.values()) { try { source.stop(); } catch(e) {} }
         audioSourcesRef.current.clear();
     }, [stopConversation]);
 
-    const handleToggleConversation = () => {
-        if (isSessionActive) {
-            handleStop();
-        } else {
-            handleStart();
-        }
-    };
+    useEffect(() => () => handleStop(), [handleStop]);
     
-    // Cleanup on unmount
     useEffect(() => {
-        return () => {
-            handleStop();
+        let animationFrameId: number;
+        if (!stream || !isSessionActive || !visualizerCanvasRef.current) {
+            return;
+        }
+
+        const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+        const analyser = audioContext.createAnalyser();
+        const source = audioContext.createMediaStreamSource(stream);
+        source.connect(analyser);
+
+        analyser.fftSize = 128;
+        const bufferLength = analyser.frequencyBinCount;
+        const dataArray = new Uint8Array(bufferLength);
+        
+        const canvas = visualizerCanvasRef.current;
+        const canvasCtx = canvas.getContext('2d');
+        if (!canvasCtx) return;
+
+        const draw = () => {
+            animationFrameId = requestAnimationFrame(draw);
+            analyser.getByteFrequencyData(dataArray);
+
+            canvasCtx.fillStyle = 'rgb(30 41 59)'; // slate-800
+            canvasCtx.fillRect(0, 0, canvas.width, canvas.height);
+
+            const barWidth = (canvas.width / bufferLength);
+            let x = 0;
+
+            for (let i = 0; i < bufferLength; i++) {
+                const barHeight = dataArray[i] * 0.7;
+                const hue = i * 2;
+                canvasCtx.fillStyle = `hsl(${225 + hue}, 73%, 60%)`;
+                canvasCtx.fillRect(x, (canvas.height - barHeight) / 2, barWidth, barHeight);
+                x += barWidth;
+            }
         };
-    }, [handleStop]);
+        draw();
+
+        return () => {
+            cancelAnimationFrame(animationFrameId);
+            source.disconnect();
+            analyser.disconnect();
+            audioContext.close().catch(console.error);
+        };
+    }, [stream, isSessionActive]);
 
     return (
-        <div className="max-w-4xl mx-auto flex flex-col h-full animate-slide-in-up">
-            <div className="flex-grow bg-white border border-[var(--border-color)] rounded-xl shadow-sm p-4 overflow-y-auto mb-6">
-                {transcriptionHistory.length === 0 && (
-                    <div className="flex flex-col items-center justify-center h-full text-slate-400 text-center">
-                        <SparklesIcon className="w-16 h-16 mb-4"/>
-                        <p className="font-semibold text-slate-600">MIGA is ready to help.</p>
-                        <p className="text-sm">The conversation transcript will appear here.</p>
+         <div className="flex-grow flex flex-col overflow-hidden">
+            <div className="relative mb-4 bg-slate-800 rounded-lg overflow-hidden flex items-center justify-center h-48 md:flex-grow">
+                {isSessionActive && stream ? (
+                    <canvas ref={visualizerCanvasRef} className="w-full h-full" />
+                ) : (
+                    <div className="text-center text-slate-400">
+                        <MicrophoneIcon className="w-16 h-16 mx-auto mb-2" />
+                        <p className="font-semibold">MIGA is ready to listen</p>
                     </div>
                 )}
+            </div>
+
+             <div className="flex-grow bg-slate-50 border border-[var(--border-color)] rounded-xl p-4 overflow-y-auto mb-4">
+                {transcriptionHistory.length === 0 && <div className="flex flex-col items-center justify-center h-full text-slate-400 text-center"><p>Conversation transcript will appear here.</p></div>}
                 <div className="space-y-4">
                     {transcriptionHistory.map((entry, index) => (
                         <div key={index} className={`flex items-start gap-3 ${entry.speaker === 'user' ? 'justify-end' : ''}`}>
-                            {entry.speaker === 'model' && <div className="w-8 h-8 rounded-full bg-[var(--brand-primary)] flex items-center justify-center text-white font-bold flex-shrink-0">M</div>}
-                            <div className={`max-w-lg p-3 rounded-lg ${entry.speaker === 'user' ? 'bg-slate-100 text-slate-800' : 'bg-indigo-50 text-slate-700'}`}>
-                                <p>{entry.text}</p>
-                            </div>
+                            {entry.speaker === 'model' && <div className="w-8 h-8 rounded-full bg-[var(--brand-primary)] flex items-center justify-center text-white font-bold flex-shrink-0">A</div>}
+                            <div className={`max-w-lg p-3 rounded-lg ${entry.speaker === 'user' ? 'bg-slate-200' : 'bg-indigo-100'}`}><p>{entry.text}</p></div>
                             {entry.speaker === 'user' && <div className="w-8 h-8 rounded-full bg-slate-400 flex items-center justify-center text-white font-bold flex-shrink-0">{studentName.charAt(0)}</div>}
                         </div>
                     ))}
@@ -173,15 +316,78 @@ const AIAssistant: React.FC = () => {
             </div>
 
             <div className="flex-shrink-0 text-center">
-                <p className="text-slate-600 font-semibold mb-3">Hi, {studentName}! Ask me anything about your subjects.</p>
-                <button
-                    onClick={handleToggleConversation}
-                    className={`p-4 rounded-full transition-all duration-300 text-white shadow-lg transform hover:scale-110 ${isSessionActive ? 'bg-red-500 hover:bg-red-600' : 'bg-[var(--brand-primary)] hover:bg-[var(--brand-primary-hover)]'} disabled:bg-slate-300 disabled:cursor-not-allowed`}
-                    aria-label={isSessionActive ? 'Stop conversation' : 'Start conversation'}
-                >
+                <button onClick={() => isSessionActive ? handleStop() : handleStart()} className={`p-4 rounded-full transition-all duration-300 text-white shadow-lg transform hover:scale-110 ${isSessionActive ? 'bg-red-500 hover:bg-red-600' : 'btn-primary'}`}>
                     {isSessionActive ? <StopIcon className="w-8 h-8" /> : <MicrophoneIcon className="w-8 h-8" />}
                 </button>
-                <p className="text-slate-500 mt-3 text-sm h-5">{status}</p>
+                <p className="text-slate-500 mt-2 text-sm h-5">{status}</p>
+            </div>
+        </div>
+    );
+};
+
+
+// --- Main Unified Component ---
+
+interface AIAssistantProps {
+  isOpen: boolean;
+  onClose: () => void;
+  context: string | null;
+}
+
+const AIAssistant: React.FC<AIAssistantProps> = ({ isOpen, onClose, context }) => {
+    const { activeProfile } = useAuth();
+    const [mode, setMode] = useState<'live' | 'text'>('live');
+
+    const studentName = activeProfile?.name || 'Student';
+    const currentGrade = activeProfile?.grade || 'your grade';
+    
+    const baseSystemInstruction = `You are MIGA, a friendly and encouraging AI tutor for a K-12 student named ${studentName}. Your primary goal is to help them understand concepts from any of their school subjects, not just give answers.
+
+        **Student's Context**:
+        - Grade: ${currentGrade}
+        - Curriculum: CBSE (India)
+
+        **Key instructions**:
+        1.  **Audio & Multilingual Support**: You are in an audio-only conversation. You MUST detect the language ${studentName} is speaking (e.g., English, Hindi, Hinglish) and respond in the exact same language.
+        2.  **Personalization**: Always address the student as ${studentName}.
+        3.  **Socratic Method & Mathematical Accuracy**: Do not just give away answers. For numerical/problem-solving questions, you must be 100% accurate. Before responding, think step-by-step to deconstruct the problem, identify correct formulas, perform calculations carefully, and double-check your work. Guide ${studentName} through these verified steps.
+        4.  **Tone**: Be patient, positive, and encouraging. Keep your answers concise and easy to follow.
+        5.  **Educational Focus**: If the query is unrelated to academics, you must politely decline and explain your role is to assist with educational questions.`;
+
+    const finalSystemInstruction = useMemo(() => {
+        if (context) {
+            return `${baseSystemInstruction}\n\n**Current Student Context**: The student is currently viewing a lesson step. Use this context to inform your response:\n"${context}"`;
+        }
+        return baseSystemInstruction;
+    }, [context, baseSystemInstruction]);
+
+    if (!isOpen) return null;
+
+    return (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 animate-fade-in" onClick={onClose}>
+            <div className="bg-slate-50 rounded-2xl shadow-xl w-full max-w-4xl flex flex-col h-[90vh] max-h-[800px] animate-scale-in" onClick={e => e.stopPropagation()}>
+                <header className="flex items-center justify-between p-2 sm:p-4 border-b border-[var(--border-color)] flex-shrink-0">
+                    <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+                        <SparklesIcon className="w-6 h-6 text-indigo-500" />
+                        MIGA AI Tutor
+                    </h2>
+                    <div className="flex items-center gap-2">
+                         <div className="p-1 bg-slate-200 rounded-lg flex gap-1">
+                            <button onClick={() => setMode('live')} className={`px-2 py-1 text-sm font-semibold rounded-md flex items-center gap-1.5 ${mode === 'live' ? 'bg-white shadow-sm' : 'text-slate-500'}`}><MicrophoneIcon className="w-4 h-4"/> Live</button>
+                            <button onClick={() => setMode('text')} className={`px-2 py-1 text-sm font-semibold rounded-md flex items-center gap-1.5 ${mode === 'text' ? 'bg-white shadow-sm' : 'text-slate-500'}`}><MessageSquareIcon className="w-4 h-4"/> Text</button>
+                        </div>
+                        <button onClick={onClose} className="p-2 rounded-full hover:bg-slate-200">
+                            <XIcon className="w-5 h-5 text-slate-500" />
+                        </button>
+                    </div>
+                </header>
+                <div className="flex-grow flex flex-col p-2 sm:p-4 overflow-hidden min-h-0">
+                    {mode === 'live' ? (
+                        <LiveTutorView systemInstruction={finalSystemInstruction} studentName={studentName} />
+                    ) : (
+                        <TextTutorView systemInstruction={finalSystemInstruction} />
+                    )}
+                </div>
             </div>
         </div>
     );

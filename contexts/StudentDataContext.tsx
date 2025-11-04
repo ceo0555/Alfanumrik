@@ -16,6 +16,7 @@ interface StudentDataContextType {
 
   startChapter: () => void;
   markChapterAsCompleted: () => void;
+  handleSrsSessionCompleted: (completedTaskIds: string[]) => void;
   handleSetDueDate: (chapterId: string, dueDate: string | null) => void;
   handleSaveManualTask: (taskData: Omit<StudyTask, 'id' | 'type' | 'isCompleted'>) => void;
   handleSaveFlashcards: (chapterId: string, flashcards: Flashcard[]) => void;
@@ -41,7 +42,7 @@ const XP_CONFIG: { [key in GamificationEvent]: number } = {
 const calculateLevel = (xp: number) => Math.floor(Math.sqrt(xp / 100)) + 1;
 
 export const StudentDataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const { activeProfile, allProgressData, allFlashcards, allDktData, updateActiveUserProfile, handleSaveAllDktData, allAssignments } = useAuth();
+  const { activeProfile, allProgressData, allFlashcards, allDktData, updateActiveUserProfile, handleSaveAllDktData, allAssignments, handleUpdateSingleTask, allSubmissions } = useAuth();
   
   const [progressData, setProgressData] = useState<UserProgressData>({});
   const [userFlashcards, setUserFlashcards] = useState<UserFlashcards>({});
@@ -64,10 +65,10 @@ export const StudentDataProvider: React.FC<{ children: ReactNode }> = ({ childre
   
   useEffect(() => {
     if (activeProfile) {
-        const tasks = generateTodayFocusTasks(userDktData, userFlashcards, allAssignments, activeProfile);
+        const tasks = generateTodayFocusTasks(userDktData, userFlashcards, allAssignments, activeProfile, allSubmissions, progressData);
         setTodayTasks(tasks);
     }
-  }, [userDktData, userFlashcards, allAssignments, activeProfile]);
+  }, [userDktData, userFlashcards, allAssignments, activeProfile, allSubmissions, progressData]);
 
 
   const awardXP = useCallback((event: GamificationEvent, amount?: number) => {
@@ -109,13 +110,12 @@ export const StudentDataProvider: React.FC<{ children: ReactNode }> = ({ childre
 
     if (errorType) {
       console.log(`[Adaptive Engine] Recorded error type for skill ${skillId}: ${errorType}`);
-      // Future enhancement: The DKT model could be updated to use this errorType
-      // to adjust learning rates for specific misconceptions.
     }
 
     // 1. Update DKT Mastery
     const prevState = userDktData[skillId] || initDktSkill();
-    const newState = updateDktMastery(prevState, isCorrect);
+    // UPGRADED: Pass the qualitative errorType to the DKT model.
+    const newState = updateDktMastery(prevState, isCorrect, errorType);
     
     const updatedDktData = {
         ...userDktData,
@@ -213,6 +213,12 @@ export const StudentDataProvider: React.FC<{ children: ReactNode }> = ({ childre
         profileUpdates.level = calculateLevel(newXp);
     }
 
+    // Automatically complete related study task
+    const chapterId = `G${grade}-${lastSubject}-${lastChapter}`;
+    const relatedTask = activeProfile.studyPlan?.find(task => task.data?.chapterId === chapterId && (task.type === 'review_weakness' || task.type === 'next_lesson'));
+    if (relatedTask && !relatedTask.isCompleted) {
+        handleUpdateSingleTask(relatedTask.id, { isCompleted: true });
+    }
 
     // Achievement Logic
     const completedChaptersBefore = Object.values(progressData).filter((p: ChapterProgress) => p.status === 'completed').length;
@@ -229,7 +235,6 @@ export const StudentDataProvider: React.FC<{ children: ReactNode }> = ({ childre
     }
     
     // Update Progress Data
-    const chapterId = `G${grade}-${lastSubject}-${lastChapter}`;
     const updatedProgressData: UserProgressData = {
         ...progressData,
         [chapterId]: { ...(progressData[chapterId] || {}), status: 'completed', currentStep: 0 }
@@ -264,7 +269,13 @@ export const StudentDataProvider: React.FC<{ children: ReactNode }> = ({ childre
       setProgressData(progressData);
     }
 
-  }, [activeProfile, progressData, awardXP, updateActiveUserProfile, awardAchievement, allDktData, handleSaveAllDktData]);
+  }, [activeProfile, progressData, awardXP, updateActiveUserProfile, awardAchievement, handleUpdateSingleTask]);
+  
+  const handleSrsSessionCompleted = useCallback((completedTaskIds: string[]) => {
+      completedTaskIds.forEach(taskId => {
+          handleUpdateSingleTask(taskId, { isCompleted: true });
+      });
+  }, [handleUpdateSingleTask]);
 
   const handleSetDueDate = async (chapterId: string, dueDate: string | null) => {
     if (!activeProfile) return;
@@ -403,6 +414,7 @@ export const StudentDataProvider: React.FC<{ children: ReactNode }> = ({ childre
     todayTasks,
     startChapter,
     markChapterAsCompleted,
+    handleSrsSessionCompleted,
     handleSetDueDate,
     handleSaveManualTask,
     handleSaveFlashcards,

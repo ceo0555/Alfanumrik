@@ -3,6 +3,8 @@ import { QuestionPoolItem } from '../types';
 import { CBSE_COMPETENCIES, DOK_LEVELS } from '../constants/competencies';
 import { curriculum } from '../constants/curriculum';
 import { useAuth } from '../contexts/AuthContext';
+import { FixedSizeList as List } from 'react-window';
+import AutoSizer from 'react-virtualized-auto-sizer';
 
 interface ItemBankExplorerProps {
     grade: string;
@@ -56,6 +58,40 @@ const ItemBankExplorer: React.FC<ItemBankExplorerProps> = ({ grade }) => {
             </select>
         </div>
     );
+
+    const Row = ({ index, style }: { index: number, style: React.CSSProperties }) => {
+        const item = filteredItems[index];
+        if (!item) return null;
+        
+        return (
+            <div style={style}>
+                <div className="p-4 bg-white rounded-lg border h-full flex flex-col" style={{ marginRight: '8px', marginBottom: '12px', height: 'calc(100% - 12px)' }}>
+                    <p className="font-semibold text-slate-800 flex-grow">{item.question}</p>
+                    {item.type === 'MCQ' && item.options && (
+                        <ul className="list-disc list-inside text-sm text-slate-600 mt-2">
+                            {item.options.map((opt, i) => <li key={i} className={opt === item.answer ? 'font-bold text-emerald-700' : ''}>{opt}</li>)}
+                        </ul>
+                    )}
+                    {item.type !== 'MCQ' && <p className="text-sm mt-2 text-emerald-700 font-bold">Answer: {item.answer}</p>}
+                    
+                    <div className="flex flex-wrap gap-2 text-xs mt-3 pt-3 border-t">
+                        <span className="font-bold bg-slate-100 px-2 py-1 rounded">Type: {item.type}</span>
+                        <span className="font-bold bg-slate-100 px-2 py-1 rounded">Marks: {item.marks}</span>
+                        <span className="font-bold bg-slate-100 px-2 py-1 rounded">Difficulty: {item.difficulty}</span>
+                        {item.competency && <span className="font-bold bg-indigo-100 text-indigo-800 px-2 py-1 rounded">{item.competency}</span>}
+                        {item.dok && <span className="font-bold bg-purple-100 text-purple-800 px-2 py-1 rounded">DOK: {item.dok}</span>}
+                    </div>
+
+                    {activeTab === 'pending' && (
+                        <div className="flex gap-2 mt-3 pt-3 border-t">
+                            <button onClick={() => handleUpdateStatus(item.q_id, 'approved')} className="btn text-xs bg-emerald-100 text-emerald-700 hover:bg-emerald-200">Approve</button>
+                            <button onClick={() => handleUpdateStatus(item.q_id, 'rejected')} className="btn text-xs bg-red-100 text-red-700 hover:bg-red-200">Reject</button>
+                        </div>
+                    )}
+                </div>
+            </div>
+        );
+    };
     
     return (
         <div className="grid grid-cols-1 md:grid-cols-[280px_1fr] gap-6">
@@ -71,39 +107,25 @@ const ItemBankExplorer: React.FC<ItemBankExplorerProps> = ({ grade }) => {
                 </div>
             </div>
 
-            <div>
-                 <div className="border-b mb-4">
+            <div className="flex flex-col h-[75vh]">
+                 <div className="border-b mb-4 flex-shrink-0">
                     <button onClick={() => setActiveTab('approved')} className={`py-2 px-4 text-sm font-semibold border-b-2 ${activeTab === 'approved' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-slate-500'}`}>Approved Questions</button>
                     <button onClick={() => setActiveTab('pending')} className={`py-2 px-4 text-sm font-semibold border-b-2 ${activeTab === 'pending' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-slate-500'}`}>Pending Review ({itemBank.filter(i => i.status === 'pending').length})</button>
                 </div>
-                <div className="space-y-3 max-h-[70vh] overflow-y-auto pr-2">
-                    <p className="text-sm font-semibold text-slate-600">Showing {filteredItems.length} questions</p>
-                    {filteredItems.map(item => (
-                        <div key={item.q_id} className="p-4 bg-white rounded-lg border">
-                            <p className="font-semibold text-slate-800">{item.question}</p>
-                            {item.type === 'MCQ' && item.options && (
-                                <ul className="list-disc list-inside text-sm text-slate-600 mt-2">
-                                    {item.options.map((opt, i) => <li key={i} className={opt === item.answer ? 'font-bold text-emerald-700' : ''}>{opt}</li>)}
-                                </ul>
-                            )}
-                            {item.type !== 'MCQ' && <p className="text-sm mt-2 text-emerald-700 font-bold">Answer: {item.answer}</p>}
-                            
-                            <div className="flex flex-wrap gap-2 text-xs mt-3 pt-3 border-t">
-                                <span className="font-bold bg-slate-100 px-2 py-1 rounded">Type: {item.type}</span>
-                                <span className="font-bold bg-slate-100 px-2 py-1 rounded">Marks: {item.marks}</span>
-                                <span className="font-bold bg-slate-100 px-2 py-1 rounded">Difficulty: {item.difficulty}</span>
-                                {item.competency && <span className="font-bold bg-indigo-100 text-indigo-800 px-2 py-1 rounded">{item.competency}</span>}
-                                {item.dok && <span className="font-bold bg-purple-100 text-purple-800 px-2 py-1 rounded">DOK: {item.dok}</span>}
-                            </div>
-
-                            {activeTab === 'pending' && (
-                                <div className="flex gap-2 mt-3 pt-3 border-t">
-                                    <button onClick={() => handleUpdateStatus(item.q_id, 'approved')} className="btn text-xs bg-emerald-100 text-emerald-700 hover:bg-emerald-200">Approve</button>
-                                    <button onClick={() => handleUpdateStatus(item.q_id, 'rejected')} className="btn text-xs bg-red-100 text-red-700 hover:bg-red-200">Reject</button>
-                                </div>
-                            )}
-                        </div>
-                    ))}
+                <p className="text-sm font-semibold text-slate-600 mb-2 flex-shrink-0">Showing {filteredItems.length} questions</p>
+                <div className="flex-grow">
+                    <AutoSizer>
+                        {({ height, width }) => (
+                            <List
+                                height={height}
+                                itemCount={filteredItems.length}
+                                itemSize={250} // Estimated average item height
+                                width={width}
+                            >
+                                {Row}
+                            </List>
+                        )}
+                    </AutoSizer>
                 </div>
             </div>
         </div>

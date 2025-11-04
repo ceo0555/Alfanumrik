@@ -76,12 +76,11 @@ export const AdaptiveLessonPlayerMockup: React.FC = () => (
                 <line x1="125" y1="150" x2="200" y2="50" stroke="#4ade80" strokeWidth="2" />
                 <path d="M 165 97 l 8 5 l -2 -9 z" fill="#4ade80" />
                 
-                {/* FIX: Add angle arcs and reposition labels to prevent overlap and improve clarity */}
-                <path d="M 125 130 A 20 20 0 0 0 113 134" fill="none" stroke="#64748b" strokeWidth="1"/>
-                <path d="M 125 130 A 20 20 0 0 1 137 134" fill="none" stroke="#64748b" strokeWidth="1"/>
+                <path d="M 113.4 134.1 A 20 20 0 0 1 125 130" fill="none" stroke="#64748b" strokeWidth="1"/>
+                <path d="M 125 130 A 20 20 0 0 1 136.6 134.1" fill="none" stroke="#64748b" strokeWidth="1"/>
                 
-                <text x="115" y="125" className="text-2xs font-bold text-slate-600" textAnchor="middle">i</text>
-                <text x="135" y="125" className="text-2xs font-bold text-slate-600" textAnchor="middle">r</text>
+                <text x="110" y="128" className="text-2xs font-bold text-slate-600">i</text>
+                <text x="138" y="128" className="text-2xs font-bold text-slate-600">r</text>
                 
                 <text x="35" y="45" className="text-xs text-slate-500">Incident Ray</text>
                 <text x="215" y="45" className="text-xs text-slate-500" textAnchor="end">Reflected Ray</text>
@@ -243,19 +242,4 @@ export const ParentUIMockup: React.FC = () => (
                     </p>
                 </foreignObject>
             </g>
-            <g transform="translate(20, 190)">
-                <rect width="220" height="190" rx="12" className="fill-white stroke-slate-200" />
-                <text x="15" y="28" className="text-sm font-bold text-slate-800">Strengths</text>
-                <text x="30" y="55" className="text-xs text-slate-600">● Chemical Reactions</text>
-                <text x="30" y="75" className="text-xs text-slate-600">● Light - Reflection</text>
-                <text x="30" y="95" className="text-xs text-slate-600">● Real Numbers</text>
-            </g>
-            <g transform="translate(260, 190)">
-                <rect width="220" height="190" rx="12" className="fill-white stroke-slate-200" />
-                <text x="15" y="28" className="text-sm font-bold text-slate-800">Areas for Focus</text>
-                <text x="30" y="55" className="text-xs text-slate-600">● Acids, Bases and Salts</text>
-                <text x="30" y="75" className="text-xs text-slate-600">● Polynomials</text>
-            </g>
-        </g>
-    </svg>
-);
+            <g transform="translate(20, 1

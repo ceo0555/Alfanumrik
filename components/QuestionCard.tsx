@@ -1,8 +1,9 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { QuestionPoolItem, ScratchpadState } from '../types';
-import { ThumbsDownIcon, ThumbsUpIcon, SparklesIcon, NotebookIcon } from '../constants/icons';
-import { gradeShortAnswer, analyzeScratchpadForErrorAnalysis } from '../services/geminiService';
+import { ThumbsDownIcon, ThumbsUpIcon, SparklesIcon, NotebookIcon, MicrophoneIcon, StopCircleIcon } from '../constants/icons';
+import { gradeShortAnswer, analyzeScratchpadForErrorAnalysis, gradeVerbalExplanation } from '../services/geminiService';
 import DigitalScratchpad from './DigitalScratchpad';
+import { useAudioRecorder } from '../hooks/useAudioRecorder';
 
 interface QuestionCardProps {
   questionData: QuestionPoolItem;
@@ -37,8 +38,41 @@ const QuestionCard: React.FC<QuestionCardProps> = ({ questionData, questionNumbe
   const [scratchpadState, setScratchpadState] = useState<ScratchpadState>({ paths: [] });
   const scratchpadRef = useRef<{ getCanvasDataURL: () => string | null }>(null);
 
+  // Verbal Explanation State
+  const { status: recorderStatus, audioBlob, startRecording, stopRecording, reset: resetRecorder } = useAudioRecorder();
+  const [verbalAnswerResult, setVerbalAnswerResult] = useState<{ transcript: string, awardedMarks: number, feedback: string } | null>(null);
+
+
   const isAnswered = !!stepAnswer;
   const submittedAnswer = stepAnswer?.answer;
+
+  useEffect(() => {
+    setCurrentMcqSelection(null);
+    setCurrentShortAnswer('');
+    setIsAiGrading(false);
+    setVerbalAnswerResult(null);
+    resetRecorder();
+  }, [questionData, resetRecorder]);
+
+  useEffect(() => {
+    if (recorderStatus === 'stopped' && audioBlob) {
+        const gradeAnswer = async () => {
+            setIsAiGrading(true);
+            try {
+                const result = await gradeVerbalExplanation(questionData, audioBlob);
+                setVerbalAnswerResult(result);
+                const isCorrect = result.awardedMarks === questionData.marks;
+                onStepAnswer(result.transcript, isCorrect); // Use transcript as the "answer" for logging
+            } catch (e) {
+                console.error("Verbal grading failed", e);
+                onStepAnswer("Error during AI grading.", false);
+            } finally {
+                setIsAiGrading(false);
+            }
+        };
+        gradeAnswer();
+    }
+  }, [recorderStatus, audioBlob, questionData, onStepAnswer]);
 
   const handleMcqSelect = (option: string) => {
     if (isAnswered) return;
@@ -63,19 +97,19 @@ const QuestionCard: React.FC<QuestionCardProps> = ({ questionData, questionNumbe
             const result = await gradeShortAnswer(questionData.question, questionData.rubric, questionData.marks, userAnswer);
             isCorrect = result.awardedMarks === questionData.marks;
 
-            // NEW: If incorrect, analyze scratchpad for error type
             if (!isCorrect) {
                 const imageData = scratchpadRef.current?.getCanvasDataURL();
                 if (imageData) {
                     errorType = await analyzeScratchpadForErrorAnalysis(imageData, questionData.question);
                 }
             }
+            onStepAnswer(userAnswer, isCorrect, errorType);
           } catch (e) {
             console.error("AI grading failed, falling back to simple check.", e);
             isCorrect = userAnswer.trim().toLowerCase() === questionData.answer.trim().toLowerCase();
+            onStepAnswer(userAnswer, isCorrect);
           } finally {
             setIsAiGrading(false);
-            onStepAnswer(userAnswer, isCorrect, errorType);
           }
       }
   };
@@ -84,19 +118,19 @@ const QuestionCard: React.FC<QuestionCardProps> = ({ questionData, questionNumbe
     const selectedOption = isAnswered ? submittedAnswer : currentMcqSelection;
     if (!isAnswered) {
       return selectedOption === option
-        ? 'ring-2 ring-indigo-500 bg-indigo-50'
-        : 'hover:bg-slate-100';
+        ? 'ring-2 ring-indigo-500 bg-indigo-50 border-indigo-500'
+        : 'hover:bg-slate-100 hover:border-slate-300 border-slate-200';
     }
     if (option === questionData.answer) {
-      return 'bg-emerald-100 text-emerald-800 ring-2 ring-emerald-500';
+      return 'bg-emerald-100 text-emerald-900 ring-2 ring-emerald-500 border-emerald-500';
     }
     if (option === selectedOption && option !== questionData.answer) {
-      return 'bg-red-100 text-red-800 ring-2 ring-red-500';
+      return 'bg-red-100 text-red-900 ring-2 ring-red-500 border-red-500';
     }
-    return 'bg-slate-50';
+    return 'bg-slate-50 border-slate-200 text-slate-600';
   };
   
-  const showScratchpad = questionData.type !== 'MCQ'; // Only for non-MCQ for now
+  const showScratchpad = questionData.type !== 'MCQ' && questionData.type !== 'VerbalExplanation';
 
   return (
     <>
@@ -123,16 +157,16 @@ const QuestionCard: React.FC<QuestionCardProps> = ({ questionData, questionNumbe
                 key={index}
                 onClick={() => handleMcqSelect(option)}
                 disabled={isAnswered}
-                className={`w-full text-left p-3 rounded-lg border border-slate-200 transition-all ${getOptionClasses(option)}`}
+                className={`w-full text-left p-3 rounded-lg border transition-all duration-200 ${getOptionClasses(option)}`}
               >
                 <span className="font-mono mr-3 text-indigo-600">{String.fromCharCode(65 + index)}.</span>
-                {option}
+                <span className="font-semibold">{option}</span>
               </button>
             ))}
           </div>
         )}
         
-        {questionData.type !== 'MCQ' && (
+        {['SA', 'LA', 'Case', 'Competency'].includes(questionData.type) && (
           <textarea
               className="form-textarea w-full p-3 rounded-lg"
               rows={4}
@@ -143,7 +177,23 @@ const QuestionCard: React.FC<QuestionCardProps> = ({ questionData, questionNumbe
           />
         )}
 
-        {!isAnswered && (
+        {questionData.type === 'VerbalExplanation' && !isAnswered && (
+            <div className="text-center p-4 border-2 border-dashed rounded-lg">
+                <p className="text-slate-500 mb-4">Explain your answer out loud. Click the microphone to start recording.</p>
+                {recorderStatus === 'idle' && (
+                    <button onClick={startRecording} className="btn btn-primary"><MicrophoneIcon className="w-5 h-5 mr-2" /> Record Answer</button>
+                )}
+                {recorderStatus === 'recording' && (
+                     <button onClick={stopRecording} className="btn bg-red-500 hover:bg-red-600 text-white"><StopCircleIcon className="w-5 h-5 mr-2 animate-pulse" /> Stop Recording</button>
+                )}
+                {recorderStatus === 'stopped' && (
+                    <p className="font-semibold text-indigo-600">Processing audio...</p>
+                )}
+            </div>
+        )}
+
+
+        {!isAnswered && questionData.type !== 'VerbalExplanation' && (
           <div className="mt-4 text-right">
             <button
               onClick={checkAnswer}
@@ -170,8 +220,26 @@ const QuestionCard: React.FC<QuestionCardProps> = ({ questionData, questionNumbe
                       <ThumbsDownIcon className="w-5 h-5"/> Incorrect
                   </div>
               )}
+
+              {verbalAnswerResult && (
+                <div className="p-4 rounded-lg bg-slate-50 border border-slate-200 space-y-3">
+                    <div>
+                        <h4 className="font-bold text-sm text-slate-500">Your Answer (Transcript):</h4>
+                        <p className="text-slate-700 italic">"{verbalAnswerResult.transcript}"</p>
+                    </div>
+                     <div>
+                        <h4 className="font-bold text-sm text-slate-500">AI Feedback:</h4>
+                        <p className="text-slate-700">{verbalAnswerResult.feedback}</p>
+                    </div>
+                     <div>
+                        <h4 className="font-bold text-sm text-slate-500">Score:</h4>
+                        <p className="font-bold text-indigo-600">{verbalAnswerResult.awardedMarks} / {questionData.marks}</p>
+                    </div>
+                </div>
+              )}
+
               <div className="p-4 rounded-lg bg-slate-50 border border-slate-200">
-                  <h4 className="font-bold text-slate-800">Correct Answer & Rubric</h4>
+                  <h4 className="font-bold text-slate-800">Exemplar Answer & Rubric</h4>
                   <p className="mt-1 font-semibold text-slate-700">{questionData.answer}</p>
                   <p className="mt-2 text-sm text-slate-600">{questionData.rubric}</p>
               </div>

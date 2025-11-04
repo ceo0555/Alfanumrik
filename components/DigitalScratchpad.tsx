@@ -88,12 +88,37 @@ const DigitalScratchpad = forwardRef(({ isOpen, onClose, onSave, initialState, q
             return null;
         }
     }));
+    
+    const getCoords = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>): { x: number; y: number } | null => {
+        const canvas = canvasRef.current;
+        if (!canvas) return null;
+        const rect = canvas.getBoundingClientRect();
+        
+        let clientX, clientY;
 
-    const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
-        const { offsetX, offsetY } = e.nativeEvent;
+        if ('touches' in e.nativeEvent) {
+            if (e.nativeEvent.touches.length === 0) return null;
+            clientX = e.nativeEvent.touches[0].clientX;
+            clientY = e.nativeEvent.touches[0].clientY;
+        } else {
+            clientX = e.nativeEvent.clientX;
+            clientY = e.nativeEvent.clientY;
+        }
+        
+        return {
+            x: clientX - rect.left,
+            y: clientY - rect.top,
+        };
+    };
+
+    const handleDrawStart = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
+        if ('touches' in e.nativeEvent) e.preventDefault();
+        const coords = getCoords(e);
+        if (!coords) return;
+        
         setIsDrawing(true);
         const newPath: Path = {
-            points: [{ x: offsetX, y: offsetY }],
+            points: [coords],
             color: tool === 'eraser' ? '#FFFFFF' : color,
             strokeWidth: tool === 'eraser' ? 20 : strokeWidth
         };
@@ -101,19 +126,22 @@ const DigitalScratchpad = forwardRef(({ isOpen, onClose, onSave, initialState, q
         setUndonePaths([]); // Clear redo history on new drawing
     };
 
-    const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    const handleDrawMove = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
         if (!isDrawing) return;
-        const { offsetX, offsetY } = e.nativeEvent;
+        if ('touches' in e.nativeEvent) e.preventDefault();
+        const coords = getCoords(e);
+        if (!coords) return;
+        
         setPaths(prev => {
             const newPaths = [...prev];
             const lastPath = newPaths[newPaths.length - 1];
-            lastPath.points.push({ x: offsetX, y: offsetY });
+            lastPath.points.push(coords);
             return newPaths;
         });
         drawPaths(); // Redraw for responsiveness
     };
 
-    const handleMouseUp = () => setIsDrawing(false);
+    const handleDrawEnd = () => setIsDrawing(false);
     
     const handleUndo = () => {
         if (paths.length === 0) return;
@@ -209,10 +237,13 @@ const DigitalScratchpad = forwardRef(({ isOpen, onClose, onSave, initialState, q
                         width="800"
                         height="450" // A bit larger for better resolution
                         className="w-full h-full"
-                        onMouseDown={handleMouseDown}
-                        onMouseMove={handleMouseMove}
-                        onMouseUp={handleMouseUp}
-                        onMouseLeave={handleMouseUp}
+                        onMouseDown={handleDrawStart}
+                        onMouseMove={handleDrawMove}
+                        onMouseUp={handleDrawEnd}
+                        onMouseLeave={handleDrawEnd}
+                        onTouchStart={handleDrawStart}
+                        onTouchMove={handleDrawMove}
+                        onTouchEnd={handleDrawEnd}
                     />
                     {hint && (
                         <div className="absolute bottom-2 left-2 right-2 p-3 bg-yellow-50 border-l-4 border-yellow-400 rounded-r-lg shadow-md animate-fade-in">

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { generateGroundedAnswer, analyzeQueryComplexity } from '../services/geminiService';
+import { analyzeQueryComplexity } from '../services/geminiService';
 import { GroundingChunk } from '../types';
 import { SearchIcon, SparklesIcon } from '../constants/icons';
 import { GoogleGenAI } from '@google/genai';
@@ -18,19 +18,25 @@ const GroundedSearch: React.FC = () => {
 
     setIsLoading(true);
     setError(null);
-    setResult(null);
+    setResult({ answer: '', sources: [] }); // Initialize for streaming
     setAnalysis(null);
 
     try {
       const complexity = await analyzeQueryComplexity(query);
       setAnalysis(complexity);
 
+      if (!process.env.API_KEY) {
+        throw new Error("API_KEY not found.");
+      }
+      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+      
+      let prompt: string;
+      let model: string;
+      let config: any;
+
       if (complexity === 'complex') {
-        if (!process.env.API_KEY) {
-          throw new Error("API_KEY not found.");
-        }
-        const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-        const prompt = `
+        model = 'gemini-2.5-pro';
+        prompt = `
           You are MIGA, an expert academic AI specializing in the Indian K-12 CBSE curriculum. Your task is to perform a deep analysis and provide a comprehensive, step-by-step explanation for the following student's query. The query is complex and requires deep reasoning.
 
           **Query**: "${query}"
@@ -42,25 +48,56 @@ const GroundedSearch: React.FC = () => {
           4.  **Clean Text Output**: Provide the final answer as clean plain text ONLY. Do not use any markdown or special formatting. Use line breaks to create paragraphs and structure.
           5.  **Educational Focus**: If the query is unrelated to academic subjects, politely decline to answer.
         `;
-
-        const response = await ai.models.generateContent({
-            model: 'gemini-2.5-pro',
-            contents: prompt,
-            config: {
-                thinkingConfig: { thinkingBudget: 32768 }
-            }
-        });
-        setResult({ answer: response.text, sources: [] });
-
+        config = {
+            thinkingConfig: { thinkingBudget: 32768 }
+        };
       } else {
-        const textResponse = await generateGroundedAnswer(query);
-        setResult(textResponse);
+        model = 'gemini-2.5-flash';
+        prompt = `
+          You are MIGA, an expert academic tutor specializing in the Indian K-12 CBSE curriculum. Your task is to answer the following student's query using up-to-date information from your search tool.
+
+          **CRITICAL INSTRUCTIONS (MUST be followed)**:
+          1.  **Pedagogical Soundness & Accuracy**: Your answer must be 100% factually accurate and pedagogically sound for a K-12 student. Simplify complex concepts and use relatable Indian contexts where possible.
+          2.  **CBSE Alignment**: Ensure the answer is strictly aligned with the CBSE curriculum, standards, and marking schemes.
+          3.  **Clean, Direct Answer**: Provide the final answer as clean, plain text ONLY. Do not use any Markdown, headings, or lists. Do not mention your sources or that you performed a search.
+          4.  **Educational Focus**: If the query is unrelated to academics, politely decline to answer.
+
+          **Student Query**: "${query}"
+        `;
+        config = {
+            tools: [{googleSearch: {}}],
+        };
       }
+
+      const responseStream = await ai.models.generateContentStream({ model, contents: prompt, config });
+
+      setIsLoading(false); // Stop main loader, start showing streaming text
+
+      let fullAnswer = '';
+      const sourceMap = new Map<string, GroundingChunk>();
+
+      for await (const chunk of responseStream) {
+          fullAnswer += chunk.text;
+          
+          const groundingChunks = chunk.candidates?.[0]?.groundingMetadata?.groundingChunks;
+          if (groundingChunks) {
+              for (const gc of groundingChunks) {
+                  if (gc.web?.uri && !sourceMap.has(gc.web.uri)) {
+                      sourceMap.set(gc.web.uri, gc);
+                  }
+              }
+          }
+          
+          setResult({
+              answer: fullAnswer,
+              sources: Array.from(sourceMap.values())
+          });
+      }
+
     } catch (err) {
       setError('Failed to get an answer. Please check the API key and try again.');
       console.error(err);
-    } finally {
-      setIsLoading(false);
+      setIsLoading(false); // Ensure loading is off on error
     }
   };
 
@@ -102,6 +139,13 @@ const GroundedSearch: React.FC = () => {
         </form>
       </div>
       
+      {isLoading && (
+          <div className="text-center p-8">
+            <div className="w-12 h-12 border-4 border-dashed rounded-full animate-spin border-indigo-600 mx-auto"></div>
+            <p className="mt-4 text-slate-500">Analyzing query...</p>
+          </div>
+      )}
+
       {error && <div className="text-center text-red-500 bg-red-50 p-4 rounded-lg">{error}</div>}
 
       {result && (
@@ -120,6 +164,9 @@ const GroundedSearch: React.FC = () => {
 
           <div className="prose prose-base max-w-none prose-indigo">
             <MarkdownRenderer content={result.answer} />
+            {result.answer.length === 0 && !isLoading && (
+              <div className="w-6 h-6 border-2 border-dashed rounded-full animate-spin border-indigo-600"></div>
+            )}
           </div>
           
         </div>

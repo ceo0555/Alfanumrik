@@ -1,4 +1,4 @@
-import { UserProfile, AllProgressData, AllFlashcardsData, UserRole, DailyChallenge, UserFlashcards, UserFlashcardItem, SrsData, AllDktData, Assignment, Announcement, StudentSubmission, StudentFlnProgress, TeacherSchedule, AttendanceRecord, QuickFormativeAssessment, Notification, QuestionPoolItem, BusRoute, PrintQuota, FeeStatus, AfterSchoolProgram, FacilityBooking, BoardPlannerEvent, CrossCurricularProject, CodingModule, CommunicationTemplate, TeacherAssignment, StudentPortfolioProject, AllPortfolios, PaperBlueprint } from '../types';
+import { UserProfile, AllProgressData, AllFlashcardsData, UserRole, DailyChallenge, UserFlashcards, UserFlashcardItem, SrsData, AllDktData, Assignment, Announcement, StudentSubmission, StudentFlnProgress, TeacherSchedule, AttendanceRecord, QuickFormativeAssessment, Notification, QuestionPoolItem, BusRoute, PrintQuota, FeeStatus, AfterSchoolProgram, FacilityBooking, BoardPlannerEvent, CrossCurricularProject, CodingModule, CommunicationTemplate, TeacherAssignment, StudentPortfolioProject, AllPortfolios, PaperBlueprint, ExamSession, ExamSubmission, Course, Grade } from '../types';
 import { curriculum } from '../constants/curriculum';
 import { mockTeacherAssignments as initialTeacherAssignments, mockTeacherSchedule as initialTeacherSchedule } from '../constants/schoolData';
 import { mockItemBank as initialItemBank } from '../constants/itemBank';
@@ -88,6 +88,10 @@ export const fetchAllData = async (): Promise<{
   allPortfolios: AllPortfolios;
   schoolName: string;
   allBlueprints: PaperBlueprint[];
+  allExamSessions: ExamSession[];
+  allExamSubmissions: ExamSubmission[];
+  allCourses: Course[];
+  allGrades: Grade[];
 }> => {
   console.log("API: Fetching all user data...");
   const profilesStr = localStorage.getItem('userProfiles') || '[]';
@@ -118,6 +122,10 @@ export const fetchAllData = async (): Promise<{
   const portfoliosStr = localStorage.getItem('allPortfolios');
   const schoolNameStr = localStorage.getItem('schoolName');
   const allBlueprintsStr = localStorage.getItem('allBlueprints') || '[]';
+  const allExamSessionsStr = localStorage.getItem('allExamSessions') || '[]';
+  const allExamSubmissionsStr = localStorage.getItem('allExamSubmissions') || '[]';
+  const allCoursesStr = localStorage.getItem('allCourses') || '[]';
+  const allGradesStr = localStorage.getItem('allGrades') || '[]';
 
 
   let profiles: UserProfile[] = JSON.parse(profilesStr);
@@ -149,6 +157,10 @@ export const fetchAllData = async (): Promise<{
   const allPortfolios: AllPortfolios = portfoliosStr ? JSON.parse(portfoliosStr) : mockPortfolios;
   const schoolName: string = schoolNameStr ? JSON.parse(schoolNameStr) : "Alfanumrik Model School";
   const allBlueprints: PaperBlueprint[] = JSON.parse(allBlueprintsStr);
+  const allExamSessions: ExamSession[] = JSON.parse(allExamSessionsStr);
+  const allExamSubmissions: ExamSubmission[] = JSON.parse(allExamSubmissionsStr);
+  const allCourses: Course[] = JSON.parse(allCoursesStr);
+  const allGrades: Grade[] = JSON.parse(allGradesStr);
 
   // If no profiles exist, create default demo users for RBAC
   if (profiles.length === 0) {
@@ -248,7 +260,7 @@ export const fetchAllData = async (): Promise<{
     localStorage.setItem('activeUserId', JSON.stringify(activeId));
   }
 
-  return simulateNetwork({ profiles, activeId, progress, flashcards, userRole, allDktData, allAssignments, allAnnouncements, allSubmissions, allFlnProgress, teacherSchedules, teacherAssignments, attendanceRecords, quickFormativeAssessments, allNotifications, itemBank, busRoutes, printQuotas, feeStatus, afterSchoolPrograms, facilityBookings, boardPlannerEvents, crossCurricularProjects, codingModules, communicationTemplates, allPortfolios, schoolName, allBlueprints });
+  return simulateNetwork({ profiles, activeId, progress, flashcards, userRole, allDktData, allAssignments, allAnnouncements, allSubmissions, allFlnProgress, teacherSchedules, teacherAssignments, attendanceRecords, quickFormativeAssessments, allNotifications, itemBank, busRoutes, printQuotas, feeStatus, afterSchoolPrograms, facilityBookings, boardPlannerEvents, crossCurricularProjects, codingModules, communicationTemplates, allPortfolios, schoolName, allBlueprints, allExamSessions, allExamSubmissions, allCourses, allGrades });
 };
 
 /**
@@ -471,6 +483,18 @@ export const saveItemBank = async (itemBank: QuestionPoolItem[]): Promise<Questi
     return simulateNetwork(itemBank);
 };
 
+export const saveAllExamSessions = async (sessions: ExamSession[]): Promise<ExamSession[]> => {
+    console.log("API: Saving all exam sessions...");
+    localStorage.setItem('allExamSessions', JSON.stringify(sessions));
+    return simulateNetwork(sessions);
+};
+
+export const saveAllExamSubmissions = async (submissions: ExamSubmission[]): Promise<ExamSubmission[]> => {
+    console.log("API: Saving all exam submissions...");
+    localStorage.setItem('allExamSubmissions', JSON.stringify(submissions));
+    return simulateNetwork(submissions);
+};
+
 // --- NOTIFICATIONS ---
 export const saveAllNotifications = async (notifications: Notification[]): Promise<Notification[]> => {
     console.log("API: Saving all notifications...");
@@ -539,3 +563,16 @@ export const saveAllBlueprints = async (blueprints: PaperBlueprint[]): Promise<P
     localStorage.setItem('allBlueprints', JSON.stringify(blueprints));
     return simulateNetwork(blueprints);
 }
+
+// --- NEW LMS PERSISTENCE ---
+export const saveAllCourses = async (courses: Course[]): Promise<Course[]> => {
+    console.log("API: Saving all courses...");
+    localStorage.setItem('allCourses', JSON.stringify(courses));
+    return simulateNetwork(courses);
+};
+
+export const saveAllGrades = async (grades: Grade[]): Promise<Grade[]> => {
+    console.log("API: Saving all grades...");
+    localStorage.setItem('allGrades', JSON.stringify(grades));
+    return simulateNetwork(grades);
+};

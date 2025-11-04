@@ -75,6 +75,8 @@ export const mockItemBank: QuestionPoolItem[] = [
         answer: 'A diagram of the human eye with the specified parts correctly labeled.',
         rubric: '1 mark for a neat diagram, 0.5 marks for each correct label (total 2 marks).',
         requiresDrawing: true,
+        competency: 'Demonstrate Knowledge and Understanding',
+        dok: 1,
     },
     {
         q_id: 'G10-SMAG-SA1',
@@ -86,6 +88,21 @@ export const mockItemBank: QuestionPoolItem[] = [
         imageUrl: 'https://i.ibb.co/9vV3JgV/circuit-diagram-mock.png', // Placeholder URL for a circuit diagram image
         answer: 'The magnetic field strength will increase.',
         rubric: '2 marks for correctly stating that the magnetic field strength is directly proportional to the current.',
+        competency: 'Application of Knowledge/Concepts',
+        dok: 2,
+    },
+    {
+        q_id: 'G10-SLIP-VE1',
+        type: 'VerbalExplanation',
+        marks: 3,
+        difficulty: 'M',
+        bloom: 'Understand',
+        question: 'Explain the process of respiration in human beings in your own words.',
+        answer: 'Respiration involves inhalation of oxygen, which is transported to cells for breaking down glucose to release energy, and exhalation of carbon dioxide.',
+        rubric: '1 mark for explaining inhalation/gas exchange in lungs. 1 mark for explaining cellular respiration (glucose breakdown). 1 mark for explaining exhalation.',
+        source: 'Alfanumrik Viva Bank',
+        competency: 'Demonstrate Knowledge and Understanding',
+        dok: 2,
     },
 
     // Class 10 Maths

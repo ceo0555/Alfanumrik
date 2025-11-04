@@ -1,9 +1,10 @@
 import React, { useState, useMemo } from 'react';
 import { BusIcon, ZapIcon, PrinterIcon, RupeeIcon, SparklesIcon, ClipboardCopyIcon, CheckCircleIcon, EditIcon } from '../constants/icons';
-import { transportOptimizerTips, energyOptimizerTips, feeReminderTemplate } from '../constants/financeOpsData'; // Tips can remain constants
+import { energyOptimizerTips, feeReminderTemplate } from '../constants/financeOpsData';
 import { useAuth } from '../contexts/AuthContext';
 import { FeeStatus, PrintQuota, BusRoute } from '../types';
 import ManageFinanceItemModal from './school/ManageFinanceItemModal';
+import { generateTransportOptimizationTips } from '../services/geminiService';
 
 type ItemToEdit = 
     | { type: 'print', data: PrintQuota }
@@ -13,6 +14,8 @@ const FinanceOpsDashboard: React.FC = () => {
     const { busRoutes, printQuotas, feeStatus, handleUpdateBusRoutes } = useAuth();
     const [copiedStudent, setCopiedStudent] = useState<number | null>(null);
     const [itemToEdit, setItemToEdit] = useState<ItemToEdit | null>(null);
+    const [transportTips, setTransportTips] = useState<string[] | null>(null);
+    const [isGeneratingTips, setIsGeneratingTips] = useState(false);
 
     const handleCopyReminder = (studentName: string, amount: number, studentId: number) => {
         const reminderText = feeReminderTemplate(studentName, amount);
@@ -27,12 +30,31 @@ const FinanceOpsDashboard: React.FC = () => {
         handleUpdateBusRoutes(updatedRoutes);
     };
 
+    const handleGenerateTransportTips = async () => {
+        setIsGeneratingTips(true);
+        setTransportTips(null);
+        try {
+            const tips = await generateTransportOptimizationTips(busRoutes);
+            setTransportTips(tips);
+        } catch (e) {
+            console.error(e);
+            alert("Failed to generate AI tips for transport optimization.");
+        } finally {
+            setIsGeneratingTips(false);
+        }
+    };
+
     return (
         <div className="space-y-6 animate-fade-in">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* Transport Optimizer Card */}
                 <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200">
-                    <h3 className="font-bold text-lg mb-3 flex items-center gap-2"><BusIcon className="w-6 h-6 text-blue-600" /> Transport Optimizer</h3>
+                    <div className="flex justify-between items-center mb-3">
+                        <h3 className="font-bold text-lg flex items-center gap-2"><BusIcon className="w-6 h-6 text-blue-600" /> Transport Optimizer</h3>
+                        <button onClick={handleGenerateTransportTips} disabled={isGeneratingTips} className="btn text-xs bg-indigo-100 text-indigo-700 hover:bg-indigo-200 flex items-center gap-1">
+                            <SparklesIcon className="w-4 h-4" /> {isGeneratingTips ? 'Analyzing...' : 'AI Analyze'}
+                        </button>
+                    </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         {busRoutes.map(route => (
                             <div key={route.id} className="p-3 bg-slate-50 rounded-lg border">
@@ -53,11 +75,17 @@ const FinanceOpsDashboard: React.FC = () => {
                             </div>
                         ))}
                     </div>
-                    <div className="mt-4 p-3 bg-indigo-50 border-l-4 border-indigo-400 rounded-r-lg">
+                    <div className="mt-4 p-3 bg-indigo-50 border-l-4 border-indigo-400 rounded-r-lg min-h-[90px]">
                         <h4 className="font-semibold text-sm text-indigo-800 flex items-center gap-1"><SparklesIcon className="w-4 h-4" /> AI Suggestions</h4>
-                        <ul className="list-disc list-inside text-xs text-indigo-700 mt-1 space-y-1">
-                            {transportOptimizerTips.map((tip, i) => <li key={i}>{tip}</li>)}
-                        </ul>
+                        {isGeneratingTips ? (
+                            <p className="text-xs text-indigo-700 mt-1">Generating optimization tips...</p>
+                        ) : transportTips ? (
+                            <ul className="list-disc list-inside text-xs text-indigo-700 mt-1 space-y-1">
+                                {transportTips.map((tip, i) => <li key={i}>{tip}</li>)}
+                            </ul>
+                        ) : (
+                            <p className="text-xs text-indigo-700 mt-1">Click "AI Analyze" to get optimization suggestions based on current data.</p>
+                        )}
                     </div>
                 </div>
 

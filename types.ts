@@ -151,7 +151,7 @@ export interface SubQuestion {
 
 export interface QuestionPoolItem {
   q_id: string;
-  type: 'MCQ' | 'SA' | 'LA' | 'Case' | 'Competency';
+  type: 'MCQ' | 'SA' | 'LA' | 'Case' | 'Competency' | 'VerbalExplanation';
   marks: number;
   difficulty: 'E' | 'M' | 'H';
   bloom: string;
@@ -164,8 +164,8 @@ export interface QuestionPoolItem {
   imageUrl?: string; // For questions with a diagram
   requiresDrawing?: boolean; // For questions that require drawing an answer
   // NEW FIELDS for CBE
-  competency?: string; // e.g., 'Knowledge and Understanding', 'Application'
-  dok?: 1 | 2 | 3 | 4; // Depth of Knowledge Level
+  competency: string; // e.g., 'Demonstrate Knowledge and Understanding'
+  dok: 1 | 2 | 3 | 4; // Webb's Depth of Knowledge Level
   source_passage?: string; // For Case-based questions
   sub_questions?: SubQuestion[]; // For Case-based questions
   distractor_rationale?: string; // For MCQ distractor analysis
@@ -199,6 +199,35 @@ export interface LessonPack {
   assessment_blueprint: AssessmentBlueprint;
   teacher_notes: TeacherNotes;
 }
+
+// --- AI CURRICULUM SYNTHESIZER TYPES ---
+export interface SyllabusBlueprintChapter extends SyllabusChapterTopic {
+  allocated_hours: number;
+  data_driven_rationale: string;
+}
+
+export interface SyllabusBlueprintUnit {
+  unit_no: number;
+  unit_name: string;
+  weightage_marks: number;
+  allocated_hours: number;
+  chapters_or_topics: SyllabusBlueprintChapter[];
+}
+
+export interface PacingCalendarEvent {
+  week: number;
+  start_date: string;
+  activity_type: 'Teaching' | 'Assessment' | 'Remediation' | 'Buffer' | 'Exam';
+  details: string;
+}
+
+export interface RemediationPack {
+  concept: string;
+  re_explanation: StructuredContent[];
+  worked_example: WorkedExample;
+  scaffolded_practice: QuestionPoolItem[];
+}
+
 
 // --- LESSON PLAYER TYPES ---
 export type LessonStepType = 
@@ -444,6 +473,15 @@ export interface StudentSubmission {
     score?: number; // Set by teacher during grading
 }
 
+export interface PtmBrief {
+  summary: string;
+  strengths: string[];
+  focusAreas: string[];
+  behavioralObservations: string[];
+  suggestedTalkingPoints: string[];
+  closingRemark: string;
+}
+
 // --- EXAM SUITE TYPES ---
 export interface BlueprintSection {
     id: string;
@@ -472,6 +510,38 @@ export interface GeneratedPaper {
         actualCompetencyPercentage: number;
     };
 }
+
+export interface ExamSession {
+    id: string;
+    blueprintId: string;
+    code: string;
+    startTime: number;
+    endTime?: number;
+    isActive: boolean;
+}
+
+export interface ExamSubmission {
+    id: string;
+    sessionId: string;
+    studentId: number;
+    answers: { [q_id: string]: string | ScratchpadState };
+    submittedAt: number;
+    infractions: number;
+}
+
+export interface AIProctoringReport {
+    summary: string;
+    suspiciousClusters: {
+        studentIds: number[];
+        reason: string;
+        questions: string[];
+    }[];
+    highInfractionStudents: {
+        studentId: number;
+        count: number;
+    }[];
+}
+
 
 // --- PRACTICE CENTRE TYPES ---
 export interface PracticeBlueprint {
@@ -683,6 +753,33 @@ export interface Notification {
     isRead: boolean;
 }
 
+// --- NEW LMS TYPES ---
+export interface CourseContent {
+    type: 'lesson' | 'quiz';
+    contentId: string; // Corresponds to chapterId or assignmentId
+    title: string;
+}
+
+export interface Course {
+    id: string;
+    title: string;
+    description: string;
+    teacherId: number;
+    grade: string;
+    content: CourseContent[];
+    enrolledStudentIds: number[];
+}
+
+export interface Grade {
+    id: string;
+    studentId: number;
+    courseId: string;
+    assignmentId: string;
+    score: number;
+    totalMarks: number;
+}
+
+
 // LTI 1.3 Context
 export interface LtiContext {
   isLtiLaunch: true;
@@ -756,9 +853,16 @@ export interface SrsData {
   last_review: string | null; // ISO date string of the last review
 }
 
+// NEW: Represents a single attempt on a skill for advanced knowledge tracing.
+export interface DktAttempt {
+  correct: 0 | 1;
+  timestamp: number;
+  errorType?: string; // Qualitative analysis from LLM (e.g., 'conceptual_error', 'calculation_error')
+}
+
 export interface DktSkillState {
   mastery: number; // A value from 0.0 to 1.0 representing skill mastery
-  history: (0 | 1)[]; // History of last N attempts (1 for correct, 0 for incorrect)
+  history: DktAttempt[]; // History of last N attempts
   srs?: SrsData; // Integrated FSRS data for mastered skills
 }
 
@@ -785,6 +889,7 @@ export interface StudyTask {
   data?: {
       chapterId?: string;
       assignmentId?: string;
+      taskIds?: string[];
   };
 }
 
@@ -814,6 +919,7 @@ export interface UserProfile {
   level: number;
   scholarCoins: number;
   dailyChallenge?: DailyChallenge;
+  studyPlan?: StudyTask[];
   manualTasks?: StudyTask[];
   widgets?: WidgetConfig[];
   tutorSessionUnlocked: boolean;
@@ -857,6 +963,7 @@ export interface AllFlashcardsData {
 export interface FlashcardReviewItem extends UserFlashcardItem {
   chapterId: string;
   cardIndex: number;
+  id: string;
 }
 
 // --- PARENT DASHBOARD TYPES ---
