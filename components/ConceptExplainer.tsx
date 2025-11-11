@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { LightbulbIcon, SparklesIcon } from '../constants/icons';
 import { explainConceptInDepth, generateConceptDeepDive } from '../services/geminiService';
+import { hasGeminiApiKey } from '../utils/env';
 import MarkdownRenderer from './MarkdownRenderer';
 import { useAuth } from '../contexts/AuthContext';
 import Loader from './Loader';
@@ -20,8 +21,8 @@ const ConceptExplainer: React.FC = () => {
             setError("Please paste some text to explain.");
             return;
         }
-        if (!process.env.API_KEY) {
-            setError("API_KEY is not configured.");
+        if (!hasGeminiApiKey()) {
+            setError("Gemini API key is not configured.");
             return;
         }
 

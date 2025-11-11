@@ -1,6 +1,7 @@
 import { GoogleGenAI, Type, Modality, GenerateContentResponse, FunctionDeclaration } from "@google/genai";
 import { LessonPack, GroundingChunk, AssessmentResult, AdaptiveFollowUp, StudentExplanation, QuestionPoolItem, StructuredContent, Flashcard, InteractiveSimulation, UserProfile, UserProgressData, ParentalReport, InteractiveVideo, ClassAnalyticsData, UserDktData, PrerequisiteGraph, SafalDiagnosticResult, RemediationGroup, QuickFormativeAssessment, QfaResult, FacilityBooking, QuickCheck, CrossCurricularProject, PracticeBlueprint, PracticeResult, LabelData, SyllabusChapterTopic, StudentSubmission, Assignment, AllDktData, DktSkillState, SyllabusBlueprintUnit, PacingCalendarEvent, RemediationPack, ChatMessage, SyllabusUnit, PtmBrief, PaperBlueprint, AIProctoringReport, ExamSubmission, StudyTask, UserFlashcards, BusRoute, MatchingQuiz } from '../types';
 import { blobToBase64, fileToBase64 } from "../utils/fileHelpers";
+import { getGeminiApiKey, requireGeminiApiKey } from "../utils/env";
 import { get, set } from '../utils/db';
 import { cbseSyllabus } from '../constants/syllabus';
 
@@ -72,6 +73,15 @@ export interface ProgressData {
 }
 
 
+const createGeminiClient = () => new GoogleGenAI({ apiKey: requireGeminiApiKey() });
+
+const getResponseText = (response: GenerateContentResponse): string => {
+  if (!response.text) {
+    throw new Error("Gemini response did not include text content.");
+  }
+  return response.text;
+};
+
 const questionPoolItemSchema = {
     type: Type.OBJECT,
     properties: {
@@ -114,16 +124,11 @@ export const fetchTopicContent = async (
         console.error("Could not read from IndexedDB cache", e);
     }
 
-    onProgress?.({ progress: 0, message: 'Generating your lesson...', step: 0, totalSteps: 1 });
-    console.log(`Generating new lesson pack for topic: ${topic}`);
-    
-    if (!process.env.API_KEY) {
-        throw new Error("API_KEY not found. Cannot generate lesson.");
-    }
-    
-    const [grade, subject] = chapter.topic_id.split('-').slice(0, 2).map(s => s.replace('G', ''));
-
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+      onProgress?.({ progress: 0, message: 'Generating your lesson...', step: 0, totalSteps: 1 });
+      console.log(`Generating new lesson pack for topic: ${topic}`);
+      
+      const [grade, subject] = chapter.topic_id.split('-').slice(0, 2).map(s => s.replace('G', ''));
+      const ai = createGeminiClient();
     
     const prompt = `
       ROLE
@@ -247,7 +252,7 @@ export const fetchTopicContent = async (
     
     onProgress?.({ progress: 95, message: 'Finalizing lesson...', step: 1, totalSteps: 1 });
 
-    const partialPack = parseJsonFromResponse(response.text);
+    const partialPack = parseJsonFromResponse(getResponseText(response));
 
     const finalLessonPack: LessonPack = {
         ...partialPack,
@@ -283,11 +288,9 @@ export const generateAdaptiveFollowUp = async (results: AssessmentResult[]): Pro
         return []; // No follow-up needed if everything is correct
     }
 
-    if (!process.env.API_KEY) {
-        throw new Error("API_KEY not found.");
-    }
+    requireGeminiApiKey();
 
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    const ai = createGeminiClient();
 
     const incorrectQuestionsString = incorrectAnswers.map(r => `- ${r.question_text}`).join('\n');
 
@@ -339,15 +342,13 @@ export const generateAdaptiveFollowUp = async (results: AssessmentResult[]): Pro
         }
     });
 
-    const parsedJson = parseJsonFromResponse(response.text);
+    const parsedJson = parseJsonFromResponse(getResponseText(response));
     return parsedJson as AdaptiveFollowUp[];
 };
 
 export const generateStudyNotes = async (studentExplanation: StudentExplanation, topic: string): Promise<string> => {
-    if (!process.env.API_KEY) {
-        throw new Error("API_KEY not found.");
-    }
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    requireGeminiApiKey();
+    const ai = createGeminiClient();
     // Keep only the core explanation to create a concise context
     const context = {
         core_explanation: studentExplanation.core_explanation,
@@ -368,14 +369,12 @@ export const generateStudyNotes = async (studentExplanation: StudentExplanation,
         contents: prompt,
     });
 
-    return response.text;
+    return getResponseText(response);
 };
 
 export const generatePracticeQuiz = async (studentExplanation: StudentExplanation, topic: string): Promise<QuestionPoolItem[]> => {
-    if (!process.env.API_KEY) {
-        throw new Error("API_KEY not found.");
-    }
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    requireGeminiApiKey();
+    const ai = createGeminiClient();
     const context = {
         core_explanation: studentExplanation.core_explanation,
         worked_examples: studentExplanation.worked_examples,
@@ -407,13 +406,13 @@ export const generatePracticeQuiz = async (studentExplanation: StudentExplanatio
         }
     });
 
-    return parseJsonFromResponse(response.text) as QuestionPoolItem[];
+    return parseJsonFromResponse(getResponseText(response)) as QuestionPoolItem[];
 };
 
 
 export const generateFlashcards = async (lessonPack: LessonPack): Promise<Flashcard[]> => {
-    if (!process.env.API_KEY) throw new Error("API_KEY not found.");
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    requireGeminiApiKey();
+    const ai = createGeminiClient();
     
     const context = lessonPack.student_explanation.core_explanation
         .filter(block => block.type === 'paragraph' || block.type === 'key_term')
@@ -456,12 +455,12 @@ export const generateFlashcards = async (lessonPack: LessonPack): Promise<Flashc
     });
 
 
-    return parseJsonFromResponse(response.text) as Flashcard[];
+    return parseJsonFromResponse(getResponseText(response)) as Flashcard[];
 };
 
 export const analyzeQueryComplexity = async (query: string): Promise<'simple' | 'complex'> => {
-    if (!process.env.API_KEY) throw new Error("API_KEY not found.");
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    requireGeminiApiKey();
+    const ai = createGeminiClient();
     const prompt = `
         Analyze the complexity of the following student query.
         - If it's a straightforward factual question that can be answered with a direct search (e.g., "what is photosynthesis", "who was Ashoka"), classify it as "simple".
@@ -485,13 +484,13 @@ export const analyzeQueryComplexity = async (query: string): Promise<'simple' | 
         }
     });
 
-    const result = parseJsonFromResponse(response.text);
+    const result = parseJsonFromResponse(getResponseText(response));
     return result.complexity === 'complex' ? 'complex' : 'simple';
 };
 
 export const generateAdaptiveQuestion = async (grade: string, subject: string, chapter: string, difficulty: 'E' | 'M' | 'H', previousQuestions: string[]): Promise<QuestionPoolItem> => {
-    if (!process.env.API_KEY) throw new Error("API_KEY not found.");
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    requireGeminiApiKey();
+    const ai = createGeminiClient();
     const prompt = `
         Generate a new, unique CBSE-aligned question for a Class ${grade} ${subject} student on the chapter "${chapter}".
         - Difficulty: ${difficulty}
@@ -509,12 +508,12 @@ export const generateAdaptiveQuestion = async (grade: string, subject: string, c
         }
     });
 
-    return parseJsonFromResponse(response.text) as QuestionPoolItem;
+    return parseJsonFromResponse(getResponseText(response)) as QuestionPoolItem;
 };
 
 export const explainConceptInDepth = async (text: string): Promise<string> => {
-    if (!process.env.API_KEY) throw new Error("API_KEY not found.");
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    requireGeminiApiKey();
+    const ai = createGeminiClient();
     const prompt = `
         You are an expert CBSE tutor. Explain the following text to a K-12 student in simple, clear, and concise terms. 
         Use analogies and break it down step-by-step. All output must be plain text. Do not use any markdown.
@@ -522,12 +521,12 @@ export const explainConceptInDepth = async (text: string): Promise<string> => {
         Text to explain: "${text}"
     `;
     const response = await ai.models.generateContent({ model: 'gemini-2.5-flash', contents: prompt });
-    return response.text;
+    return getResponseText(response);
 };
 
 export const generateConceptDeepDive = async (text: string): Promise<string> => {
-    if (!process.env.API_KEY) throw new Error("API_KEY not found.");
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    requireGeminiApiKey();
+    const ai = createGeminiClient();
     const prompt = `
         You are a distinguished professor and an expert CBSE tutor. Your task is to provide a "deep dive" explanation of the following text for a curious K-12 student. Go beyond a simple explanation.
 
@@ -548,12 +547,12 @@ export const generateConceptDeepDive = async (text: string): Promise<string> => 
             thinkingConfig: { thinkingBudget: 32768 }
         }
     });
-    return response.text;
+    return getResponseText(response);
 };
 
 export const checkFlashcardAnswer = async (studentAnswer: string, correctAnswer: string, term: string): Promise<{ isCorrect: boolean, feedback: string }> => {
-    if (!process.env.API_KEY) throw new Error("API_KEY not found.");
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    requireGeminiApiKey();
+    const ai = createGeminiClient();
     const prompt = `
       Evaluate the student's answer for a flashcard. The term is "${term}" and the correct definition is "${correctAnswer}".
       The student's answer is: "${studentAnswer}".
@@ -572,12 +571,12 @@ export const checkFlashcardAnswer = async (studentAnswer: string, correctAnswer:
         }
     });
 
-    return parseJsonFromResponse(response.text);
+    return parseJsonFromResponse(getResponseText(response));
 };
 
 export const generateParentalReport = async (profile: UserProfile, progressData: UserProgressData): Promise<ParentalReport> => {
-    if (!process.env.API_KEY) throw new Error("API_KEY not found.");
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    requireGeminiApiKey();
+    const ai = createGeminiClient();
     const prompt = `
         Generate a parental report for a student named ${profile.name} (Class ${profile.grade}).
         Progress data: ${JSON.stringify(progressData)}.
@@ -605,12 +604,12 @@ export const generateParentalReport = async (profile: UserProfile, progressData:
         }
     });
 
-    return parseJsonFromResponse(response.text) as ParentalReport;
+    return parseJsonFromResponse(getResponseText(response)) as ParentalReport;
 };
 
 export const generateParentalInsight = async (query: string, studentData: { profile: UserProfile, dktData: UserDktData, assignments: Assignment[], submissions: StudentSubmission[] }): Promise<string> => {
-    if (!process.env.API_KEY) throw new Error("API_KEY not found.");
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    requireGeminiApiKey();
+    const ai = createGeminiClient();
     const { profile, dktData, assignments, submissions } = studentData;
 
     const prompt = `
@@ -640,13 +639,13 @@ export const generateParentalInsight = async (query: string, studentData: { prof
         }
     });
 
-    return response.text;
+    return getResponseText(response);
 };
 
 
 export const generateSimulationExplanation = async (concept: string, description: string): Promise<string> => {
-    if (!process.env.API_KEY) throw new Error("API_KEY not found.");
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    requireGeminiApiKey();
+    const ai = createGeminiClient();
     const prompt = `
         Explain the concept of "${concept}" as if you were an interactive simulation.
         The simulation is described as: "${description}".
@@ -654,12 +653,12 @@ export const generateSimulationExplanation = async (concept: string, description
         For example: "Step 1: Observe the particles... What happens when you increase the temperature? Now, try decreasing it..."
     `;
     const response = await ai.models.generateContent({ model: 'gemini-2.5-flash', contents: prompt });
-    return response.text;
+    return getResponseText(response);
 };
 
 export const gradeShortAnswer = async (question: string, rubric: string, totalMarks: number, studentAnswer: string): Promise<{ awardedMarks: number, feedback: string }> => {
-    if (!process.env.API_KEY) throw new Error("API_KEY not found.");
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    requireGeminiApiKey();
+    const ai = createGeminiClient();
     const prompt = `
       You are an expert CBSE examiner. Your task is to grade a student's written answer with nuance, allowing for partial credit.
 
@@ -688,13 +687,13 @@ export const gradeShortAnswer = async (question: string, rubric: string, totalMa
         }
     });
 
-    const parsedJson = parseJsonFromResponse(response.text);
+    const parsedJson = parseJsonFromResponse(getResponseText(response));
     return parsedJson as { awardedMarks: number, feedback: string };
 };
 
 export const gradeVerbalExplanation = async (question: QuestionPoolItem, audioBlob: Blob): Promise<{ transcript: string, awardedMarks: number, feedback: string }> => {
-    if (!process.env.API_KEY) throw new Error("API_KEY not found.");
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    requireGeminiApiKey();
+    const ai = createGeminiClient();
     const audioBase64 = await blobToBase64(audioBlob);
 
     const audioPart = { inlineData: { mimeType: audioBlob.type, data: audioBase64 } };
@@ -729,21 +728,21 @@ export const gradeVerbalExplanation = async (question: QuestionPoolItem, audioBl
             }
         }
     });
-    return parseJsonFromResponse(response.text);
+    return parseJsonFromResponse(getResponseText(response));
 };
 
 
 export const explainTextSnippet = async (snippet: string): Promise<string> => {
-    if (!process.env.API_KEY) throw new Error("API_KEY not found.");
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    requireGeminiApiKey();
+    const ai = createGeminiClient();
     const prompt = `Explain this snippet in simpler terms for a K-12 student: "${snippet}"`;
     const response = await ai.models.generateContent({ model: 'gemini-2.5-flash', contents: prompt });
-    return response.text;
+    return getResponseText(response);
 };
 
 export const generateMicroRemediation = async (topic: string, question: QuestionPoolItem | QuickCheck, studentAnswer: string): Promise<{ explanation: StructuredContent[], quick_check: QuickCheck }> => {
-    if (!process.env.API_KEY) throw new Error("API_KEY not found.");
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    requireGeminiApiKey();
+    const ai = createGeminiClient();
 
     const isMcq = 'options' in question && Array.isArray(question.options);
     const mcqContext = isMcq ? `
@@ -795,13 +794,13 @@ export const generateMicroRemediation = async (topic: string, question: Question
     });
     
 
-    const parsedJson = parseJsonFromResponse(response.text);
+    const parsedJson = parseJsonFromResponse(getResponseText(response));
     return parsedJson as { explanation: StructuredContent[], quick_check: QuickCheck };
 };
 
 export const generateCbeQuestion = async (grade: string, subject: string, chapter: string, type: 'MCQ' | 'SA' | 'Case', competency: string, dok: number, topic: string): Promise<QuestionPoolItem> => {
-    if (!process.env.API_KEY) throw new Error("API_KEY not found.");
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    requireGeminiApiKey();
+    const ai = createGeminiClient();
     const prompt = `
         Generate a single, high-quality, CBSE-aligned competency-based question.
         - Grade: ${grade}, Subject: ${subject}, Chapter: ${chapter}, Topic: ${topic}
@@ -815,12 +814,12 @@ export const generateCbeQuestion = async (grade: string, subject: string, chapte
         model: 'gemini-2.5-pro', contents: prompt, config: { responseMimeType: 'application/json', responseSchema: questionPoolItemSchema }
     });
 
-    return parseJsonFromResponse(response.text) as QuestionPoolItem;
+    return parseJsonFromResponse(getResponseText(response)) as QuestionPoolItem;
 };
 
 export const generateRemediationGroups = async (results: SafalDiagnosticResult[]): Promise<RemediationGroup[]> => {
-    if (!process.env.API_KEY) throw new Error("API_KEY not found.");
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    requireGeminiApiKey();
+    const ai = createGeminiClient();
     const prompt = `
         Based on these SAFAL diagnostic results, identify the top 2-3 competencies where students are struggling most (rated 'low').
         For each of these competencies, create a remediation group.
@@ -841,12 +840,12 @@ export const generateRemediationGroups = async (results: SafalDiagnosticResult[]
         }
     });
 
-    return parseJsonFromResponse(response.text);
+    return parseJsonFromResponse(getResponseText(response));
 };
 
 export const generateQfaRemediation = async (assessment: QuickFormativeAssessment, results: QfaResult[]): Promise<RemediationGroup[]> => {
-    if (!process.env.API_KEY) throw new Error("API_KEY not found.");
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    requireGeminiApiKey();
+    const ai = createGeminiClient();
     const prompt = `
         Analyze the results of this quick formative assessment (exit ticket).
         - Assessment: ${JSON.stringify(assessment)}
@@ -866,12 +865,12 @@ export const generateQfaRemediation = async (assessment: QuickFormativeAssessmen
         }
     });
 
-    return parseJsonFromResponse(response.text);
+    return parseJsonFromResponse(getResponseText(response));
 };
 
 export const generateRentalAgreement = async (booking: FacilityBooking): Promise<string> => {
-    if (!process.env.API_KEY) throw new Error("API_KEY not found.");
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    requireGeminiApiKey();
+    const ai = createGeminiClient();
     const prompt = `
         Generate a simple, one-page facility rental agreement template based on this booking information:
         - Facility: ${booking.facility}
@@ -881,12 +880,12 @@ export const generateRentalAgreement = async (booking: FacilityBooking): Promise
         Include standard clauses for payment, damages, cancellation, and responsibilities. Keep it clear and concise.
     `;
     const response = await ai.models.generateContent({ model: 'gemini-2.5-flash', contents: prompt });
-    return response.text;
+    return getResponseText(response);
 };
 
 export const generateStudentReportCardSummary = async (student: UserProfile, context: string): Promise<string> => {
-    if (!process.env.API_KEY) throw new Error("API_KEY not found.");
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    requireGeminiApiKey();
+    const ai = createGeminiClient();
     const prompt = `
         Write a concise, encouraging summary and recommendation for a student's report card.
         - Student: ${student.name}, Class ${student.grade}
@@ -894,12 +893,12 @@ export const generateStudentReportCardSummary = async (student: UserProfile, con
         Keep the tone positive. Highlight strengths and suggest 1-2 concrete areas for improvement. The output should be a single paragraph.
     `;
     const response = await ai.models.generateContent({ model: 'gemini-2.5-flash', contents: prompt });
-    return response.text;
+    return getResponseText(response);
 };
 
 export const generatePracticeExam = async (grade: string, subject: string, blueprint: PracticeBlueprint, chapters?: string[]): Promise<QuestionPoolItem[]> => {
-    if (!process.env.API_KEY) throw new Error("API_KEY not found.");
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    requireGeminiApiKey();
+    const ai = createGeminiClient();
     const chapterContext = chapters && chapters.length > 0
         ? `- The questions must ONLY cover topics from the following chapters: ${chapters.join(', ')}.`
         : '- The questions must be relevant to the subject and grade level.';
@@ -923,12 +922,12 @@ export const generatePracticeExam = async (grade: string, subject: string, bluep
             }
         }
     });
-    return parseJsonFromResponse(response.text) as QuestionPoolItem[];
+    return parseJsonFromResponse(getResponseText(response)) as QuestionPoolItem[];
 };
 
 export const generatePracticeReportSummary = async (results: PracticeResult[]): Promise<string> => {
-    if (!process.env.API_KEY) throw new Error("API_KEY not found.");
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    requireGeminiApiKey();
+    const ai = createGeminiClient();
     const simplifiedResults = results.map(r => ({ question: r.question.question, isCorrect: r.isCorrect, marksAwarded: r.marksAwarded, totalMarks: r.question.marks }));
     const prompt = `
       Based on these practice exam results, provide a brief, encouraging performance summary for the student.
@@ -939,12 +938,12 @@ export const generatePracticeReportSummary = async (results: PracticeResult[]): 
       Results: ${JSON.stringify(simplifiedResults)}
     `;
     const response = await ai.models.generateContent({ model: 'gemini-2.5-flash', contents: prompt });
-    return response.text;
+    return getResponseText(response);
 };
 
 export const generateCrossCurricularProjectIdea = async (grade: string, subject: string): Promise<Omit<CrossCurricularProject, 'id' | 'evidence'>> => {
-    if (!process.env.API_KEY) throw new Error("API_KEY not found.");
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    requireGeminiApiKey();
+    const ai = createGeminiClient();
     const prompt = `
         Generate a single, creative cross-curricular project idea that integrates AI concepts with ${subject} for a Class ${grade} student.
         - The project should be simple and achievable with basic tools.
@@ -967,12 +966,12 @@ export const generateCrossCurricularProjectIdea = async (grade: string, subject:
             }
         }
     });
-    return parseJsonFromResponse(response.text);
+    return parseJsonFromResponse(getResponseText(response));
 };
 
 export const analyzeScratchpadForHint = async (imageBase64: string, questionText: string): Promise<string> => {
-    if (!process.env.API_KEY) throw new Error("API_KEY not found.");
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    requireGeminiApiKey();
+    const ai = createGeminiClient();
     
     const imagePart = { inlineData: { mimeType: 'image/png', data: imageBase64 } };
     const textPart = { text: `
@@ -986,12 +985,12 @@ export const analyzeScratchpadForHint = async (imageBase64: string, questionText
         model: 'gemini-2.5-pro',
         contents: { parts: [imagePart, textPart] },
     });
-    return response.text;
+    return getResponseText(response);
 };
 
 export const analyzeScratchpadForErrorAnalysis = async (imageBase64: string, questionText: string): Promise<string> => {
-    if (!process.env.API_KEY) throw new Error("API_KEY not found.");
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    requireGeminiApiKey();
+    const ai = createGeminiClient();
 
     const imagePart = { inlineData: { mimeType: 'image/png', data: imageBase64 } };
     const textPart = { text: `
@@ -1021,16 +1020,17 @@ export const analyzeScratchpadForErrorAnalysis = async (imageBase64: string, que
         }
     });
 
-    const result = parseJsonFromResponse(response.text);
+    const result = parseJsonFromResponse(getResponseText(response));
     return result.errorType || 'unknown';
 };
 
 export const generateVideoForConcept = async (prompt: string): Promise<string> => {
     // A new AI instance MUST be created before each call to ensure the latest API key is used.
-    if (!process.env.API_KEY) {
+    const apiKey = getGeminiApiKey();
+    if (!apiKey) {
         throw new Error("API key is not available in the environment.");
     }
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    const ai = new GoogleGenAI({ apiKey });
 
     let operation = await ai.models.generateVideos({
         model: 'veo-3.1-fast-generate-preview',
@@ -1063,7 +1063,7 @@ export const generateVideoForConcept = async (prompt: string): Promise<string> =
     }
 
     // The API key must be appended to the download URL
-    const videoResponse = await fetch(`${downloadLink}&key=${process.env.API_KEY}`);
+    const videoResponse = await fetch(`${downloadLink}&key=${apiKey}`);
     if (!videoResponse.ok) {
         const errorBody = await videoResponse.text();
         console.error("Failed to download video file. Status:", videoResponse.status, "Body:", errorBody);
@@ -1083,8 +1083,8 @@ export const generateTeacherWeeklyReport = async (
     assignments: Assignment[],
     submissions: StudentSubmission[]
 ): Promise<string> => {
-    if (!process.env.API_KEY) throw new Error("API_KEY not found.");
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    requireGeminiApiKey();
+    const ai = createGeminiClient();
 
     // Simplify data to make the prompt more concise and focused for the LLM
     const simplifiedStudents = students.map(({ id, name }) => ({ id, name }));
@@ -1128,7 +1128,7 @@ export const generateTeacherWeeklyReport = async (
         }
     });
 
-    return response.text;
+    return getResponseText(response);
 };
 
 export const gradeHandwrittenAnswer = async (
@@ -1137,8 +1137,8 @@ export const gradeHandwrittenAnswer = async (
     rubric: string,
     totalMarks: number
 ): Promise<{ transcribedText: string, awardedMarks: number, feedback: string }> => {
-    if (!process.env.API_KEY) throw new Error("API_KEY not found.");
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    requireGeminiApiKey();
+    const ai = createGeminiClient();
 
     const imageBase64 = await fileToBase64(imageFile);
 
@@ -1181,15 +1181,13 @@ export const gradeHandwrittenAnswer = async (
     });
 
 
-    const parsedJson = parseJsonFromResponse(response.text);
+    const parsedJson = parseJsonFromResponse(getResponseText(response));
     return parsedJson as { transcribedText: string, awardedMarks: number, feedback: string };
 };
 
 export const generateLessonPackFromTopic = async (grade: string, subject: string, topic: string): Promise<LessonPack> => {
-    if (!process.env.API_KEY) {
-        throw new Error("API_KEY not found.");
-    }
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    requireGeminiApiKey();
+    const ai = createGeminiClient();
 
     const prompt = `
         ROLE: You are an expert CBSE curriculum designer.
@@ -1274,7 +1272,7 @@ export const generateLessonPackFromTopic = async (grade: string, subject: string
     }
 
 
-    const pack = parseJsonFromResponse(response.text) as LessonPack;
+    const pack = parseJsonFromResponse(getResponseText(response)) as LessonPack;
     
     // Replace placeholder video URLs
     if (pack?.student_explanation?.interactive_videos) {
@@ -1295,8 +1293,8 @@ export const generateCurriculumBlueprint = async (
     examDates: { term1: string; term2: string },
     allDktData: AllDktData
 ): Promise<{ blueprint: SyllabusBlueprintUnit[], calendar: PacingCalendarEvent[] }> => {
-    if (!process.env.API_KEY) throw new Error("API_KEY not found.");
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    requireGeminiApiKey();
+    const ai = createGeminiClient();
     
     const syllabusForSubject = cbseSyllabus[grade]?.[subject];
     if (!syllabusForSubject) {
@@ -1403,12 +1401,12 @@ export const generateCurriculumBlueprint = async (
         }
     });
 
-    return parseJsonFromResponse(response.text);
+    return parseJsonFromResponse(getResponseText(response));
 };
 
 export const generateRemediationPack = async (studentName: string, weakConcept: string): Promise<RemediationPack> => {
-    if (!process.env.API_KEY) throw new Error("API_KEY not found.");
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    requireGeminiApiKey();
+    const ai = createGeminiClient();
 
     const prompt = `
       ROLE: You are a special education expert and master teacher for the CBSE curriculum.
@@ -1448,12 +1446,12 @@ export const generateRemediationPack = async (studentName: string, weakConcept: 
         }
     });
 
-    return parseJsonFromResponse(response.text) as RemediationPack;
+    return parseJsonFromResponse(getResponseText(response)) as RemediationPack;
 };
 
 export const deconstructSyllabus = async (syllabusText: string): Promise<{ structuredSyllabus: SyllabusUnit[], prerequisiteGraph: PrerequisiteGraph }> => {
-    if (!process.env.API_KEY) throw new Error("API_KEY not found.");
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    requireGeminiApiKey();
+    const ai = createGeminiClient();
 
     const prompt = `
       ROLE: You are an expert curriculum architect and data scientist specializing in pedagogy.
@@ -1536,7 +1534,7 @@ export const deconstructSyllabus = async (syllabusText: string): Promise<{ struc
         }
     });
 
-    const parsedJson = parseJsonFromResponse(response.text);
+    const parsedJson = parseJsonFromResponse(getResponseText(response));
 
     // Transform the array of graph nodes back into the expected PrerequisiteGraph object
     const rawGraph: { topicId: string, prerequisites: string[] }[] = parsedJson.prerequisiteGraph;
@@ -1552,8 +1550,8 @@ export const deconstructSyllabus = async (syllabusText: string): Promise<{ struc
 };
 
 export const processOmniSearchQuery = async (query: string) => {
-    if (!process.env.API_KEY) throw new Error("API_KEY not found.");
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    requireGeminiApiKey();
+    const ai = createGeminiClient();
 
     const navigateTool: FunctionDeclaration = {
         name: 'navigate',
@@ -1615,8 +1613,8 @@ export const generatePtmBrief = async (
     assignments: Assignment[],
     submissions: StudentSubmission[]
 ): Promise<PtmBrief> => {
-    if (!process.env.API_KEY) throw new Error("API_KEY not found.");
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    requireGeminiApiKey();
+    const ai = createGeminiClient();
 
     // Simplify data for the prompt
     const simplifiedDkt = Object.entries(dktData).reduce((acc, [skillId, skillData]) => {
@@ -1668,7 +1666,7 @@ export const generatePtmBrief = async (
         }
     });
 
-    return parseJsonFromResponse(response.text) as PtmBrief;
+    return parseJsonFromResponse(getResponseText(response)) as PtmBrief;
 };
 
 export const generateExamAnalyticsReport = async (
@@ -1677,8 +1675,8 @@ export const generateExamAnalyticsReport = async (
     submissions: ExamSubmission[],
     students: UserProfile[]
 ): Promise<AIProctoringReport> => {
-    if (!process.env.API_KEY) throw new Error("API_KEY not found.");
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    requireGeminiApiKey();
+    const ai = createGeminiClient();
 
     const simplifiedSubmissions = submissions.map(sub => {
         const student = students.find(s => s.id === sub.studentId);
@@ -1754,7 +1752,7 @@ export const generateExamAnalyticsReport = async (
         }
     });
     
-    return parseJsonFromResponse(response.text);
+    return parseJsonFromResponse(getResponseText(response));
 };
 
 export const generateWeeklyStudyPlan = async (
@@ -1763,8 +1761,8 @@ export const generateWeeklyStudyPlan = async (
     userFlashcards: UserFlashcards,
     assignments: Assignment[]
 ): Promise<StudyTask[]> => {
-    if (!process.env.API_KEY) throw new Error("API_KEY not found.");
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    requireGeminiApiKey();
+    const ai = createGeminiClient();
     const today = new Date();
     
     const weakSkills = Object.entries(dktData)
@@ -1831,12 +1829,12 @@ export const generateWeeklyStudyPlan = async (
         }
     });
 
-    return parseJsonFromResponse(response.text) as StudyTask[];
+    return parseJsonFromResponse(getResponseText(response)) as StudyTask[];
 };
 
 export const generateTransportOptimizationTips = async (routes: BusRoute[]): Promise<string[]> => {
-    if (!process.env.API_KEY) throw new Error("API_KEY not found.");
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    requireGeminiApiKey();
+    const ai = createGeminiClient();
 
     const prompt = `
       ROLE: You are a transport logistics and efficiency expert for a school.
@@ -1867,5 +1865,5 @@ export const generateTransportOptimizationTips = async (routes: BusRoute[]): Pro
         },
     });
 
-    return parseJsonFromResponse(response.text) as string[];
+    return parseJsonFromResponse(getResponseText(response)) as string[];
 };

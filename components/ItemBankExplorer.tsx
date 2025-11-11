@@ -40,7 +40,7 @@ const ItemBankExplorer: React.FC<ItemBankExplorerProps> = ({ grade }) => {
     };
 
     const handleUpdateStatus = (q_id: string, status: 'approved' | 'rejected') => {
-        let updatedBank;
+        let updatedBank: QuestionPoolItem[];
         if (status === 'rejected') {
             updatedBank = itemBank.filter(item => item.q_id !== q_id);
         } else {

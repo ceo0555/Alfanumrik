@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { PracticeBlueprint, QuestionPoolItem, PracticeExam, PracticeResult } from '../types';
+import { PracticeBlueprint, QuestionPoolItem, PracticeExam, PracticeResult, ScratchpadState } from '../types';
 import { generatePracticeExam, generatePracticeReportSummary, gradeShortAnswer } from '../services/geminiService';
 import { pastPapers } from '../constants/pastPapers';
 import PracticeSetup from './PracticeSetup';
@@ -84,39 +84,47 @@ const PracticeCentre: React.FC<PracticeCentreProps> = ({ examToStart, onExamFini
     }, [activeProfile, examPendingStart]);
 
 
-    const handleFinishExam = useCallback(async (finalAnswers: { [q_id: string]: string }, infractions: number) => {
+    const handleFinishExam = useCallback(async (finalAnswers: { [q_id: string]: string | ScratchpadState }, infractions: number) => {
         if (!activeExam) return;
         setExamState('grading');
         setExamInfractions(infractions);
         
         const results: PracticeResult[] = [];
         for (const question of activeExam.questions) {
-            const studentAnswer = finalAnswers[question.q_id] || '';
+            const answerValue = finalAnswers[question.q_id];
+            const recordedAnswer: string | ScratchpadState = answerValue ?? '';
+            const studentAnswerText = typeof answerValue === 'string' ? answerValue : '';
             let isCorrect = false;
             let aiFeedback: string | null = null;
             let marksAwarded = 0;
 
             if (question.type === 'MCQ') {
-                isCorrect = studentAnswer.trim().toLowerCase() === question.answer.trim().toLowerCase();
+                isCorrect = studentAnswerText.trim().toLowerCase() === question.answer.trim().toLowerCase();
                 if (isCorrect) {
                     marksAwarded = question.marks;
                 }
             } else if (question.type === 'SA' || question.type === 'LA' || question.type === 'Case') { // Handle all written types
-                try {
-                    const gradingResult = await gradeShortAnswer(question.question, question.rubric, question.marks, studentAnswer as string);
-                    marksAwarded = gradingResult?.awardedMarks ?? 0;
-                    aiFeedback = gradingResult?.feedback ?? "AI grading failed for this question.";
-                    // A question is considered fully "correct" only if they get full marks.
-                    isCorrect = marksAwarded === question.marks;
-                } catch(e) {
-                    console.error("Error during AI grading for SA question:", e);
+                if (studentAnswerText.trim().length === 0) {
                     marksAwarded = 0;
-                    aiFeedback = "An error occurred during AI grading.";
+                    aiFeedback = "No written response was provided.";
                     isCorrect = false;
+                } else {
+                    try {
+                        const gradingResult = await gradeShortAnswer(question.question, question.rubric, question.marks, studentAnswerText);
+                        marksAwarded = gradingResult?.awardedMarks ?? 0;
+                        aiFeedback = gradingResult?.feedback ?? "AI grading failed for this question.";
+                        // A question is considered fully "correct" only if they get full marks.
+                        isCorrect = marksAwarded === question.marks;
+                    } catch(e) {
+                        console.error("Error during AI grading for SA question:", e);
+                        marksAwarded = 0;
+                        aiFeedback = "An error occurred during AI grading.";
+                        isCorrect = false;
+                    }
                 }
             }
             
-            results.push({ q_id: question.q_id, question, studentAnswer, isCorrect, marksAwarded, aiFeedback });
+            results.push({ q_id: question.q_id, question, studentAnswer: recordedAnswer, isCorrect, marksAwarded, aiFeedback });
         }
         
         setExamResults(results);

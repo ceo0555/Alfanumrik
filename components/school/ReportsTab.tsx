@@ -155,7 +155,7 @@ const ReportsTab: React.FC<ReportsTabProps> = ({ selectedGrade, setIsReportCardO
 
             {/* Existing Student Report Card Section */}
             <div className="overflow-x-auto">
-                 <h3 className="font-bold text-lg mb-2">Individual Student Reports</h3>
+                <h3 className="font-bold text-lg mb-2">Individual Student Reports</h3>
                 <table className="w-full text-sm text-left text-slate-500">
                     <thead className="text-xs text-slate-700 uppercase bg-slate-50">
                         <tr>
@@ -174,12 +174,15 @@ const ReportsTab: React.FC<ReportsTabProps> = ({ selectedGrade, setIsReportCardO
                                 </td>
                             </tr>
                         ))}
+                        {studentsToDisplay.length === 0 && (
+                            <tr>
+                                <td colSpan={3} className="px-6 py-12 text-center text-slate-500 bg-white border-b">
+                                    No students found for the selected grade or your assigned classes.
+                                </td>
+                            </tr>
+                        )}
                     </tbody>
-                 {studentsToDisplay.length === 0 && (
-                    <div className="text-center py-12 text-slate-500 bg-white border-b">
-                        <p>No students found for the selected grade or your assigned classes.</p>
-                    </div>
-                )}
+                </table>
             </div>
         </div>
     );

@@ -1,16 +1,19 @@
 import { useState, useRef, useCallback } from 'react';
-import { GoogleGenAI, LiveServerMessage, Modality, Blob, LiveSession, LiveConnectConfig, LiveCallbacks } from '@google/genai';
+import { GoogleGenAI, Blob, LiveConnectParameters, LiveCallbacks } from '@google/genai';
 import { encode } from './audio';
+import { requireGeminiApiKey } from './env';
+
+type ConnectOptions = Omit<LiveConnectParameters, 'callbacks'>;
 
 export const useLiveAudio = (
-    config: Omit<LiveConnectConfig, 'callbacks'>, 
+    options: ConnectOptions,
     callbacks: LiveCallbacks
 ) => {
     const [isSessionActive, setIsSessionActive] = useState(false);
     const [status, setStatus] = useState('Idle');
     const [stream, setStream] = useState<MediaStream | null>(null);
     
-    const sessionPromiseRef = useRef<Promise<LiveSession> | null>(null);
+    const sessionPromiseRef = useRef<Promise<any> | null>(null);
     const streamRef = useRef<MediaStream | null>(null);
     const inputAudioContextRef = useRef<AudioContext | null>(null);
     const scriptProcessorRef = useRef<ScriptProcessorNode | null>(null);
@@ -43,11 +46,6 @@ export const useLiveAudio = (
     }, []);
 
     const startConversation = useCallback(async (constraints: MediaStreamConstraints) => {
-        if (!process.env.API_KEY) {
-            setStatus("Error: API_KEY is not configured.");
-            return;
-        }
-
         setIsSessionActive(true);
         setStatus('Connecting...');
 
@@ -55,7 +53,16 @@ export const useLiveAudio = (
             streamRef.current = await navigator.mediaDevices.getUserMedia(constraints);
             setStream(streamRef.current);
             
-            const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+            let apiKey: string;
+            try {
+                apiKey = requireGeminiApiKey();
+            } catch (error) {
+                setStatus("Error: Gemini API key is not configured.");
+                setIsSessionActive(false);
+                return;
+            }
+
+            const ai = new GoogleGenAI({ apiKey });
             
             inputAudioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 16000 });
             
@@ -104,7 +111,7 @@ export const useLiveAudio = (
                 }
             };
             
-            sessionPromiseRef.current = ai.live.connect({ ...config, callbacks: fullCallbacks });
+                sessionPromiseRef.current = ai.live.connect({ ...options, callbacks: fullCallbacks });
             
             // Add robust error handling for the connection promise itself
             sessionPromiseRef.current.catch(error => {
@@ -118,7 +125,7 @@ export const useLiveAudio = (
             setStatus('Error: Could not access microphone or camera.');
             setIsSessionActive(false);
         }
-    }, [config, callbacks, stopConversation]);
+    }, [options, callbacks, stopConversation]);
 
     return { isSessionActive, status, startConversation, stopConversation, stream, sessionPromise: sessionPromiseRef.current };
 };

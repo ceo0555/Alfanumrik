@@ -38,30 +38,37 @@ const OmniSearchModal: React.FC<OmniSearchModalProps> = ({ isOpen, onClose, setA
         try {
             const functionCalls = await processOmniSearchQuery(searchQuery);
 
-            if (functionCalls && functionCalls.length > 0) {
-                const call = functionCalls[0]; // Handle first call for simplicity
-                switch (call.name) {
-                    case 'navigate':
-                        setActiveTab(call.args.tabName as SchoolTab);
-                        onClose();
-                        break;
-                    case 'findStudent':
-                        const studentName = call.args.studentName.toLowerCase();
-                        const foundStudents = userProfiles
-                            .filter(p => !p.schoolRole && !p.childIds && p.name.toLowerCase().includes(studentName))
-                            .map(p => ({ type: 'student', data: p } as SearchResult));
-                        setResults(foundStudents);
-                        break;
-                    case 'createAnnouncement':
-                        // This action would be handled by passing down more props from SchoolDashboard
-                        // For now, we just navigate.
-                        setActiveTab('announcements');
-                        onClose();
-                        break;
-                    default:
-                        setResults([]);
-                }
-            } else {
+                if (functionCalls && functionCalls.length > 0) {
+                  const call = functionCalls[0]; // Handle first call for simplicity
+                  const args = (call.args ?? {}) as Record<string, unknown>;
+                  switch (call.name) {
+                      case 'navigate': {
+                          const tabName = typeof args.tabName === 'string' ? args.tabName : undefined;
+                          if (tabName) {
+                              setActiveTab(tabName as SchoolTab);
+                              onClose();
+                          }
+                          break;
+                      }
+                      case 'findStudent': {
+                          const studentNameRaw = typeof args.studentName === 'string' ? args.studentName : '';
+                          const studentName = studentNameRaw.toLowerCase();
+                          const foundStudents = userProfiles
+                              .filter(p => !p.schoolRole && !p.childIds && p.name.toLowerCase().includes(studentName))
+                              .map(p => ({ type: 'student', data: p } as SearchResult));
+                          setResults(foundStudents);
+                          break;
+                      }
+                      case 'createAnnouncement':
+                          // This action would be handled by passing down more props from SchoolDashboard
+                          // For now, we just navigate.
+                          setActiveTab('announcements');
+                          onClose();
+                          break;
+                      default:
+                          setResults([]);
+                  }
+              } else {
                  setResults([]);
             }
 
