@@ -1,5 +1,5 @@
 import React from 'react';
-import { AssessmentQuestionStep as AssessmentQuestionStepType } from '../types';
+import { AssessmentQuestionStep as AssessmentQuestionStepType, TutorInterventionContext } from '../types';
 import QuestionCard from './QuestionCard';
 
 interface AssessmentQuestionStepProps {
@@ -7,9 +7,10 @@ interface AssessmentQuestionStepProps {
   stepAnswer?: { answer: string | null; isCorrect: boolean };
   onStepAnswer: (answer: string | null, isCorrect: boolean) => void;
   isGeneratingRemediation?: boolean;
+  onTriggerIntervention: (context: TutorInterventionContext) => void;
 }
 
-const AssessmentQuestionStep: React.FC<AssessmentQuestionStepProps> = ({ content, stepAnswer, onStepAnswer, isGeneratingRemediation }) => {
+const AssessmentQuestionStep: React.FC<AssessmentQuestionStepProps> = ({ content, stepAnswer, onStepAnswer, isGeneratingRemediation, onTriggerIntervention }) => {
   return (
     <QuestionCard
       questionData={content.question}
@@ -17,6 +18,7 @@ const AssessmentQuestionStep: React.FC<AssessmentQuestionStepProps> = ({ content
       stepAnswer={stepAnswer}
       onStepAnswer={onStepAnswer}
       isGeneratingRemediation={isGeneratingRemediation}
+      onTriggerIntervention={onTriggerIntervention}
     />
   );
 };

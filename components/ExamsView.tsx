@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { ExamSession, PaperBlueprint, QuestionPoolItem, ScratchpadState } from '../types';
+import { ExamSession, PaperBlueprint, PracticeBlueprint, QuestionPoolItem, ScratchpadState } from '../types';
 import HonourCodeModal from './HonourCodeModal';
 import PracticeTaker from './PracticeTaker';
 import Loader from './Loader';
@@ -74,10 +74,24 @@ const ExamsView: React.FC = () => {
     };
 
     if (activeExam) {
+        // FIX: Transformed PaperBlueprint into PracticeBlueprint to match PracticeTaker's expected props.
+        const practiceBlueprint: PracticeBlueprint = {
+            id: activeExam.blueprint.id,
+            title: activeExam.blueprint.name,
+            description: `Secure exam for ${activeExam.blueprint.subject}, Class ${activeExam.blueprint.grade}.`,
+            durationMinutes: 180, // Default to 3 hours for a board exam
+            totalMarks: activeExam.blueprint.totalMarks,
+            structure: activeExam.blueprint.sections.map(s => ({
+                section: s.name,
+                questionType: s.questionType,
+                count: s.questions,
+                marksPerQuestion: s.marksPerQuestion
+            }))
+        };
         return (
             <PracticeTaker
                 exam={{
-                    blueprint: activeExam.blueprint,
+                    blueprint: practiceBlueprint,
                     questions: activeExam.questions,
                     answers: {},
                     markedForReview: new Set(),

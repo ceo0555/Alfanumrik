@@ -3,6 +3,7 @@ import { UserProfile, PtmBrief } from '../../types';
 import { useAuth } from '../../contexts/AuthContext';
 import { generatePtmBrief } from '../../services/geminiService';
 import { XIcon, UsersIcon, CheckCircleIcon, TargetIcon } from '../../constants/icons';
+import Loader from '../Loader';
 
 interface PtmBrieferModalProps {
     isOpen: boolean;
@@ -46,8 +47,7 @@ const PtmBrieferModal: React.FC<PtmBrieferModalProps> = ({ isOpen, onClose, stud
         if (isLoading) {
             return (
                 <div className="text-center p-8">
-                    <div className="w-12 h-12 border-4 border-dashed rounded-full animate-spin border-indigo-500 mx-auto"></div>
-                    <p className="mt-4 text-slate-500 font-semibold">MIGA is synthesizing {student.name}'s data...</p>
+                    <Loader />
                 </div>
             );
         }

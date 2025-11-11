@@ -4,6 +4,7 @@ import { GroundingChunk } from '../types';
 import { SearchIcon, SparklesIcon } from '../constants/icons';
 import { GoogleGenAI } from '@google/genai';
 import MarkdownRenderer from './MarkdownRenderer';
+import Loader from './Loader';
 
 const GroundedSearch: React.FC = () => {
   const [query, setQuery] = useState('');
@@ -141,8 +142,7 @@ const GroundedSearch: React.FC = () => {
       
       {isLoading && (
           <div className="text-center p-8">
-            <div className="w-12 h-12 border-4 border-dashed rounded-full animate-spin border-indigo-600 mx-auto"></div>
-            <p className="mt-4 text-slate-500">Analyzing query...</p>
+            <Loader />
           </div>
       )}
 

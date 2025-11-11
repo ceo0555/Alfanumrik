@@ -10,9 +10,9 @@ interface ScholarWalletProps {
 }
 
 const marketplaceItems: MarketplaceItem[] = [
-    { id: 'powerup-1', title: 'On-Demand Practice Paper', description: 'Generate a new, custom practice paper in the Practice Centre by selecting the chapters you want to focus on.', cost: 500, category: 'power-up', action: { type: 'navigate', payload: 'practice' } },
+    { id: 'powerup-1', title: 'On-Demand Practice Paper', description: 'Generate a new, custom practice paper in the Practice Centre by selecting the chapters you want to focus on.', cost: 500, category: 'power-up', action: { type: 'navigate', payload: 'assess' } },
     { id: 'powerup-2', title: 'AI Tutor Priority Pass', description: 'Get an extended, uninterrupted session with MIGA, our most advanced AI tutor.', cost: 100, category: 'power-up', action: { type: 'unlock', payload: 'tutor' } },
-    { id: 'powerup-3', title: 'Concept Deep Dive', description: 'Request a hyper-detailed explanation of a tough concept with advanced examples.', cost: 250, category: 'power-up', action: { type: 'navigate', payload: 'tools' } },
+    { id: 'powerup-3', title: 'Concept Deep Dive', description: 'Request a hyper-detailed explanation of a tough concept with advanced examples.', cost: 250, category: 'power-up', action: { type: 'navigate', payload: 'studio' } },
     { id: 'custom-1', title: 'Exclusive Profile Border', description: 'Show off your skills with a unique animated profile border.', cost: 1000, category: 'customization', action: { type: 'redeem', payload: 'border' } },
     { id: 'custom-2', title: 'Study Pet Accessory', description: 'Get a new hat or accessory for your study pet.', cost: 200, category: 'customization', action: { type: 'redeem', payload: 'pet-hat' } },
     { id: 'voucher-1', title: 'Bookstore Voucher (₹100)', description: 'Get a ₹100 voucher for a partner bookstore. (Coming Soon!)', cost: 5000, category: 'voucher', action: { type: 'redeem', payload: 'voucher-book-100' } },

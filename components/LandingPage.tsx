@@ -15,6 +15,40 @@ interface LandingPageProps {
 
 type Role = 'student' | 'teacher' | 'school' | 'parent';
 
+const HeroBanner: React.FC = () => (
+    <div className="absolute inset-0 overflow-hidden" aria-hidden="true" style={{zIndex: 0}}>
+        <svg
+            className="absolute top-0 left-0 w-full h-full"
+            width="100%"
+            height="100%"
+            preserveAspectRatio="xMidYMid slice"
+            viewBox="0 0 1440 800"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+        >
+            <defs>
+                <radialGradient id="hero-gradient-1" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(1200 100) rotate(90) scale(700)">
+                    <stop stopColor="rgba(0, 224, 255, 0.2)" />
+                    <stop offset="1" stopColor="rgba(0, 224, 255, 0)" />
+                </radialGradient>
+                <radialGradient id="hero-gradient-2" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(200 700) rotate(90) scale(600)">
+                    <stop stopColor="rgba(79, 70, 229, 0.2)" />
+                    <stop offset="1" stopColor="rgba(79, 70, 229, 0)" />
+                </radialGradient>
+                 <linearGradient id="hero-vignette" x1="50%" y1="0%" x2="50%" y2="100%">
+                    <stop offset="0%" stopColor="rgba(248, 250, 252, 0)" />
+                    <stop offset="30%" stopColor="rgba(248, 250, 252, 0)" />
+                    <stop offset="100%" stopColor="rgba(248, 250, 252, 1)" />
+                </linearGradient>
+            </defs>
+            <rect width="1440" height="800" fill="url(#hero-gradient-1)" />
+            <rect width="1440" height="800" fill="url(#hero-gradient-2)" />
+            <rect width="1440" height="800" fill="url(#hero-vignette)" />
+        </svg>
+    </div>
+);
+
+
 const LandingPage: React.FC<LandingPageProps> = ({ onLaunch }) => {
     const [activeRole, setActiveRole] = useState<Role>('student');
     const [isScrolled, setIsScrolled] = useState(false);
@@ -79,7 +113,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLaunch }) => {
 
             <main>
                 <section id="home" className="relative py-20 md:py-32 text-center bg-slate-50 overflow-hidden">
-                    <div className="hero-shapes"><div style={{ width: '60px', height: '60px', top: '10vh', left: '10vw', animationDuration: '25s' }}></div><div style={{ width: '100px', height: '100px', top: '50vh', left: '80vw', animationDuration: '18s', animationDelay: '2s' }}></div><div style={{ width: '30px', height: '30px', top: '80vh', left: '20vw', animationDuration: '30s' }}></div></div>
+                    <HeroBanner />
                     <div className="container mx-auto px-6 relative">
                         <h1 className="text-4xl md:text-6xl font-extrabold text-slate-900 leading-tight animate-slide-in-up">Learning That Learns You.</h1>
                         <p className="mt-6 max-w-3xl mx-auto text-lg text-slate-600 animate-slide-in-up-hero">Alfanumrik is an <strong>AI-powered adaptive learning app for CBSE</strong> students. We leverage proprietary deep learning models and proven cognitive science frameworks—like <strong>Deep Knowledge Tracing (DKT)</strong> and <strong>Spaced Repetition (FSRS)</strong>—to engineer a hyper-personalized learning ecosystem for the <strong>CBSE curriculum</strong>.</p>
@@ -98,7 +132,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLaunch }) => {
                         <div className="reveal">
                             <h2 className="text-3xl md:text-4xl font-bold">Every Brain Deserves Its Own Teacher.</h2>
                             <p className="mt-4 text-slate-600 md:text-lg">For over a century, the educational paradigm has remained largely unchanged: a one-to-many broadcast model designed for industrial-era scale, not individual cognitive development. This 'factory model' inevitably leaves students behind and places an unsustainable burden on educators. Alfanumrik was founded on a simple, first-principles question: what if we could build an educational ecosystem engineered around the individual learner?</p>
-                            <p className="mt-4 text-slate-600 md:text-lg"><strong>Alfanumrik, a product of Briusha Associates,</strong> is the result of years of rigorous R&amp;D at the intersection of machine learning, cognitive psychology, and pedagogical science. Our mission is to provide every student with a personal cognitive tutor that creates a unique <strong>personalized learning path</strong>, every teacher with an intelligent co-pilot, and every institution with a unified data plane to drive academic excellence.</p>
+                            <p className="mt-4 text-slate-600 md:text-lg"><strong>Alfanumrik, a product of Briusha Associates,</strong> is the result of years of rigorous R&D at the intersection of machine learning, cognitive psychology, and pedagogical science. Our mission is to provide every student with a personal cognitive tutor that creates a unique <strong>personalized learning path</strong>, every teacher with an intelligent co-pilot, and every institution with a unified data plane to drive academic excellence.</p>
                         </div>
                     </div>
                 </section>

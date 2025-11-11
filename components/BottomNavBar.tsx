@@ -1,6 +1,6 @@
 import React from 'react';
 import { View } from '../App';
-import { HomeIcon, CompassIcon, MessageSquareIcon, LayersIcon, TargetIcon, ScholarCoinIcon, ShieldCheckIcon, BarChartIcon } from '../constants/icons';
+import { HomeIcon, CompassIcon, LayersIcon, TargetIcon } from '../constants/icons';
 
 interface BottomNavBarProps {
   activeView: View;
@@ -11,14 +11,13 @@ const BottomNavBar: React.FC<BottomNavBarProps> = ({ activeView, setView }) => {
   
   const navItems = [
     { view: 'home' as View, label: 'Home', icon: HomeIcon },
-    { view: 'learn' as View, label: 'Learn', icon: CompassIcon },
-    { view: 'practice' as View, label: 'Practice', icon: TargetIcon },
-    { view: 'progress' as View, label: 'Progress', icon: BarChartIcon },
+    { view: 'academics' as View, label: 'Academics', icon: CompassIcon },
+    { view: 'assess' as View, label: 'Assess', icon: TargetIcon },
     { view: 'studio' as View, label: 'Studio', icon: LayersIcon },
   ];
 
   const NavButton: React.FC<{ item: typeof navItems[0] }> = ({ item }) => {
-    const isActive = activeView === item.view || (activeView === 'lesson' && item.view === 'learn');
+    const isActive = activeView === item.view || (activeView === 'lesson' && item.view === 'academics');
     return (
       <button
         onClick={() => setView(item.view)}
@@ -27,17 +26,16 @@ const BottomNavBar: React.FC<BottomNavBarProps> = ({ activeView, setView }) => {
         }`}
         aria-current={isActive ? 'page' : undefined}
       >
-        <div className="relative">
-          <item.icon className={`w-6 h-6 mb-0.5 transition-transform duration-200 ${isActive ? 'animate-bounce-in' : 'group-hover:scale-110'}`} />
+        <div className={`relative w-14 h-8 flex items-center justify-center rounded-full transition-colors ${isActive ? 'bg-indigo-50' : ''}`}>
+          <item.icon className={`w-6 h-6 transition-transform duration-200 ${isActive ? 'scale-110' : 'group-hover:scale-110'}`} />
         </div>
         <span className={`font-semibold ${isActive ? 'font-bold' : ''}`}>{item.label}</span>
-        {isActive && <div className="absolute top-0 h-1 w-8 rounded-full bg-[var(--brand-primary)]"></div>}
       </button>
     );
   };
   
   return (
-    <nav className="fixed bottom-0 left-0 right-0 h-16 bg-white border-t border-[var(--border-color)] shadow-[0_-4px_12px_rgba(0,0,0,0.08)] flex items-center justify-around z-20 md:hidden">
+    <nav className="fixed bottom-0 left-0 right-0 h-16 bg-white/80 backdrop-blur-sm border-t border-[var(--border-color)] shadow-[0_-2px_5px_rgba(0,0,0,0.05)] flex items-center justify-around z-20 lg:hidden">
       {navItems.map(item => (
         <NavButton key={item.view} item={item} />
       ))}

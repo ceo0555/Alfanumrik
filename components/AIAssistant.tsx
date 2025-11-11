@@ -4,11 +4,19 @@ import { MicrophoneIcon, StopIcon, SparklesIcon, XIcon, MessageSquareIcon } from
 import { useAuth } from '../contexts/AuthContext';
 import { useLiveAudio } from '../utils/useLiveAudio';
 import { decode, decodeAudioData } from '../utils/audio';
-import { ChatMessage } from '../types';
+import { ChatMessage, UserDktData, DktSkillState, TutorInterventionContext, QuestionPoolItem, QuickCheck } from '../types';
 import MarkdownRenderer from './MarkdownRenderer';
 
 
 // --- Text Chat Component (adapted from TutorCore) ---
+const ThinkingBubble = () => (
+    <div className="flex items-center gap-1.5 p-2">
+        <div className="w-2 h-2 bg-slate-400 rounded-full animate-bounce [animation-delay:-0.3s]"></div>
+        <div className="w-2 h-2 bg-slate-400 rounded-full animate-bounce [animation-delay:-0.15s]"></div>
+        <div className="w-2 h-2 bg-slate-400 rounded-full animate-bounce"></div>
+    </div>
+);
+
 
 const TextTutorView: React.FC<{ systemInstruction: string }> = ({ systemInstruction }) => {
     const { activeProfile } = useAuth();
@@ -47,15 +55,15 @@ const TextTutorView: React.FC<{ systemInstruction: string }> = ({ systemInstruct
         if (!input.trim() || !chat || isLoading) return;
 
         const userMessage: ChatMessage = { role: 'user', content: input };
-        setMessages(prev => [...prev, userMessage]);
+        const thinkingMessage: ChatMessage = { role: 'model', content: '', status: 'generating' };
+
+        setMessages(prev => [...prev, userMessage, thinkingMessage]);
         setInput('');
         setIsLoading(true);
         setError(null);
 
         try {
             const responseStream = await chat.sendMessageStream({ message: input });
-            
-            setMessages(prev => [...prev, { role: 'model', content: '', status: 'generating' }]);
             
             let modelResponse = '';
             const sourceMap = new Map<string, GroundingChunk>();
@@ -126,7 +134,7 @@ const TextTutorView: React.FC<{ systemInstruction: string }> = ({ systemInstruct
                          <div key={index} className={`flex items-start gap-3 ${msg.role === 'user' ? 'justify-end' : ''}`}>
                             {msg.role === 'model' && <div className="w-8 h-8 rounded-full bg-indigo-600 flex items-center justify-center text-white font-bold flex-shrink-0">A</div>}
                             <div className={`max-w-lg p-3 rounded-lg ${msg.role === 'user' ? 'bg-slate-100 text-slate-800' : 'bg-indigo-50 text-slate-700'}`}>
-                                <div className="prose prose-sm max-w-none prose-indigo"><MarkdownRenderer content={msg.content} /></div>
+                                {msg.status === 'generating' && !msg.content ? <ThinkingBubble /> : <div className="prose prose-sm max-w-none prose-indigo"><MarkdownRenderer content={msg.content} /></div>}
                             </div>
                             {msg.role === 'user' && <div className="w-8 h-8 rounded-full bg-slate-400 flex items-center justify-center text-white font-bold flex-shrink-0">{activeProfile?.name.charAt(0)}</div>}
                         </div>
@@ -219,6 +227,9 @@ const LiveTutorView: React.FC<{ systemInstruction: string; studentName: string; 
             responseModalities: [Modality.AUDIO],
             outputAudioTranscription: {},
             inputAudioTranscription: {},
+            speechConfig: {
+                voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Zephyr' } },
+            },
             systemInstruction: systemInstruction,
             thinkingConfig: { thinkingBudget: 24576 }
         },
@@ -295,9 +306,11 @@ const LiveTutorView: React.FC<{ systemInstruction: string; studentName: string; 
                 {isSessionActive && stream ? (
                     <canvas ref={visualizerCanvasRef} className="w-full h-full" />
                 ) : (
-                    <div className="text-center text-slate-400">
-                        <MicrophoneIcon className="w-16 h-16 mx-auto mb-2" />
-                        <p className="font-semibold">MIGA is ready to listen</p>
+                    <div className="text-center text-slate-400 p-4">
+                        <SparklesIcon className="w-16 h-16 mx-auto mb-2 text-indigo-300" />
+                        <h3 className="font-bold text-lg text-slate-300">Hello, {studentName}!</h3>
+                        <p className="font-semibold mt-1">Ready to explore a new topic together?</p>
+                        <p className="text-xs mt-4">Just press the microphone button to start talking.</p>
                     </div>
                 )}
             </div>
@@ -332,34 +345,63 @@ interface AIAssistantProps {
   isOpen: boolean;
   onClose: () => void;
   context: string | null;
+  interventionContext: TutorInterventionContext | null;
+  dktData: UserDktData;
 }
 
-const AIAssistant: React.FC<AIAssistantProps> = ({ isOpen, onClose, context }) => {
+const AIAssistant: React.FC<AIAssistantProps> = ({ isOpen, onClose, context, interventionContext, dktData }) => {
     const { activeProfile } = useAuth();
     const [mode, setMode] = useState<'live' | 'text'>('live');
 
     const studentName = activeProfile?.name || 'Student';
     const currentGrade = activeProfile?.grade || 'your grade';
     
-    const baseSystemInstruction = `You are MIGA, a friendly and encouraging AI tutor for a K-12 student named ${studentName}. Your primary goal is to help them understand concepts from any of their school subjects, not just give answers.
+    const baseSystemInstruction = `You are MIGA, an exceptionally friendly, patient, and engaging AI teacher for a K-12 CBSE student named ${studentName}. Your persona is that of a wise and fun mentor who makes learning exciting. Your primary goal is to help them truly understand concepts, not just give them answers.
 
         **Student's Context**:
         - Grade: ${currentGrade}
         - Curriculum: CBSE (India)
 
-        **Key instructions**:
-        1.  **Audio & Multilingual Support**: You are in an audio-only conversation. You MUST detect the language ${studentName} is speaking (e.g., English, Hindi, Hinglish) and respond in the exact same language.
-        2.  **Personalization**: Always address the student as ${studentName}.
-        3.  **Socratic Method & Mathematical Accuracy**: Do not just give away answers. For numerical/problem-solving questions, you must be 100% accurate. Before responding, think step-by-step to deconstruct the problem, identify correct formulas, perform calculations carefully, and double-check your work. Guide ${studentName} through these verified steps.
-        4.  **Tone**: Be patient, positive, and encouraging. Keep your answers concise and easy to follow.
-        5.  **Educational Focus**: If the query is unrelated to academics, you must politely decline and explain your role is to assist with educational questions.`;
+        **CRITICAL INSTRUCTIONS - YOU MUST FOLLOW THESE PRECISELY**:
+        1.  **100% Accuracy**: You must be completely accurate in your explanations, especially for mathematical and scientific concepts. Before responding to a problem-solving question, you must think step-by-step to deconstruct the problem, identify correct formulas, perform calculations carefully, and double-check your work to ensure you make NO mistakes.
+        2.  **Friendly Teacher Persona**: Always be encouraging, positive, and patient. Address the student as ${studentName}. Use simple analogies and real-world examples to make complex topics clear.
+        3.  **Vocal Emphasis (Audio Mode)**: You are in an audio-only conversation. To be more engaging, you MUST use vocal emphasis for key terms and important concepts. Vary your tone, pace, and volume naturally, just like a real teacher would to highlight what's important. For example, say a key term a little slower and louder for emphasis.
+        4.  **Socratic Method**: Do not just give away answers. Guide ${studentName} by asking leading questions to help them arrive at the solution themselves.
+        5.  **Language Detection**: You MUST detect the language ${studentName} is speaking (e.g., English, Hindi, Hinglish) and respond fluently in the exact same language.
+        6.  **Stay on Topic**: Your role is strictly educational. If the query is unrelated to academic subjects (like Science, Maths, History, etc.), you must politely and gently decline, reminding them your purpose is to help with their studies.`;
 
     const finalSystemInstruction = useMemo(() => {
-        if (context) {
-            return `${baseSystemInstruction}\n\n**Current Student Context**: The student is currently viewing a lesson step. Use this context to inform your response:\n"${context}"`;
+        if (interventionContext) {
+            const { question, studentAnswer } = interventionContext;
+            const correctAnswer = 'answer' in question ? question.answer : question.correct_answer;
+            const rubric = 'rubric' in question ? question.rubric : question.explanation;
+
+            return `You are MIGA, a patient and wise AI tutor. The student, ${studentName}, just answered a question incorrectly. Your task is to guide them to the correct answer using the Socratic method. Do NOT give them the answer directly. Ask step-by-step questions to help them identify their own mistake.
+
+Here is the context:
+- Question: "${question.question}"
+- Their incorrect answer: "${studentAnswer}"
+- Correct Answer/Rubric: "${correctAnswer} - ${rubric}"
+
+Start the conversation by saying something warm and encouraging, like: "Hi ${studentName}, I saw that last question was a bit tricky. Let's walk through it together. Can you tell me how you first approached the problem?"`;
         }
-        return baseSystemInstruction;
-    }, [context, baseSystemInstruction]);
+        
+        const weakSkills = Object.entries(dktData || {})
+            .filter(([, data]) => (data as DktSkillState).mastery < 0.6)
+            .sort(([, a], [, b]) => (a as DktSkillState).mastery - (b as DktSkillState).mastery)
+            .slice(0, 3)
+            .map(([skillId]) => skillId.split('-').slice(2).join(' '));
+        
+        let dktContext = '';
+        if (weakSkills.length > 0) {
+            dktContext = `\n\n**Student's Current Weaknesses**: The student is currently struggling with the following topics: ${weakSkills.join(', ')}. Please provide extra clear, step-by-step explanations and simple analogies for these topics. Be patient and encouraging.`;
+        }
+
+        if (context) {
+            return `${baseSystemInstruction}${dktContext}\n\n**Current Student Context**: The student is currently viewing a lesson step. Use this context to inform your response:\n"${context}"`;
+        }
+        return `${baseSystemInstruction}${dktContext}`;
+    }, [context, interventionContext, baseSystemInstruction, dktData, studentName]);
 
     if (!isOpen) return null;
 

@@ -1,15 +1,16 @@
 import React, { useMemo } from 'react';
-import { QuickCheck } from '../types';
-import { ThumbsUpIcon, ThumbsDownIcon, LightbulbIcon } from '../constants/icons';
+import { QuickCheck, TutorInterventionContext } from '../types';
+import { ThumbsUpIcon, ThumbsDownIcon, LightbulbIcon, SparklesIcon } from '../constants/icons';
 
 interface QuickCheckStepProps {
   content: QuickCheck;
   stepAnswer?: { answer: string | null; isCorrect: boolean };
   onStepAnswer: (answer: string | null, isCorrect: boolean) => void;
   isGeneratingRemediation?: boolean;
+  onTriggerIntervention: (context: TutorInterventionContext) => void;
 }
 
-const QuickCheckStep: React.FC<QuickCheckStepProps> = ({ content, stepAnswer, onStepAnswer, isGeneratingRemediation }) => {
+const QuickCheckStep: React.FC<QuickCheckStepProps> = ({ content, stepAnswer, onStepAnswer, isGeneratingRemediation, onTriggerIntervention }) => {
   const isAnswered = !!stepAnswer;
   const selectedOption = stepAnswer?.answer;
 
@@ -72,9 +73,21 @@ const QuickCheckStep: React.FC<QuickCheckStepProps> = ({ content, stepAnswer, on
             <p className="mt-1">{content.explanation}</p>
         </div>
       )}
-      {isAnswered && !isCorrect && isGeneratingRemediation && (
-        <div className="mt-2 text-sm text-indigo-600 font-semibold animate-pulse">
-            Generating a quick review to help with this concept...
+      {isAnswered && !isCorrect && (
+        <div className="mt-4 space-y-3">
+          {isGeneratingRemediation && (
+            <div className="p-3 bg-indigo-50 border-l-4 border-indigo-400 rounded-r-lg flex items-center gap-3 animate-pulse">
+                <SparklesIcon className="w-5 h-5 text-indigo-500 flex-shrink-0" />
+                <p className="text-sm font-semibold text-indigo-700">MIGA is generating a quick review to help with this concept...</p>
+            </div>
+          )}
+          <button 
+              onClick={() => onTriggerIntervention({ question: content, studentAnswer: selectedOption || '' })}
+              className="w-full btn bg-purple-100 text-purple-800 hover:bg-purple-200 flex items-center justify-center gap-2"
+          >
+              <SparklesIcon className="w-5 h-5" />
+              Struggling? Let's break this down together.
+          </button>
         </div>
       )}
     </div>

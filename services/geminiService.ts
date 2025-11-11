@@ -1,5 +1,5 @@
 import { GoogleGenAI, Type, Modality, GenerateContentResponse, FunctionDeclaration } from "@google/genai";
-import { LessonPack, GroundingChunk, AssessmentResult, AdaptiveFollowUp, StudentExplanation, QuestionPoolItem, StructuredContent, Flashcard, InteractiveSimulation, UserProfile, UserProgressData, ParentalReport, InteractiveVideo, ClassAnalyticsData, UserDktData, PrerequisiteGraph, SafalDiagnosticResult, RemediationGroup, QuickFormativeAssessment, QfaResult, FacilityBooking, QuickCheck, CrossCurricularProject, PracticeBlueprint, PracticeResult, LabelData, SyllabusChapterTopic, StudentSubmission, Assignment, AllDktData, DktSkillState, SyllabusBlueprintUnit, PacingCalendarEvent, RemediationPack, ChatMessage, SyllabusUnit, PtmBrief, PaperBlueprint, AIProctoringReport, ExamSubmission, StudyTask, UserFlashcards, BusRoute, TeacherSchedule } from '../types';
+import { LessonPack, GroundingChunk, AssessmentResult, AdaptiveFollowUp, StudentExplanation, QuestionPoolItem, StructuredContent, Flashcard, InteractiveSimulation, UserProfile, UserProgressData, ParentalReport, InteractiveVideo, ClassAnalyticsData, UserDktData, PrerequisiteGraph, SafalDiagnosticResult, RemediationGroup, QuickFormativeAssessment, QfaResult, FacilityBooking, QuickCheck, CrossCurricularProject, PracticeBlueprint, PracticeResult, LabelData, SyllabusChapterTopic, StudentSubmission, Assignment, AllDktData, DktSkillState, SyllabusBlueprintUnit, PacingCalendarEvent, RemediationPack, ChatMessage, SyllabusUnit, PtmBrief, PaperBlueprint, AIProctoringReport, ExamSubmission, StudyTask, UserFlashcards, BusRoute, MatchingQuiz } from '../types';
 import { blobToBase64, fileToBase64 } from "../utils/fileHelpers";
 import { get, set } from '../utils/db';
 import { cbseSyllabus } from '../constants/syllabus';
@@ -64,8 +64,13 @@ function parseJsonFromResponse(text: string): any {
   }
 }
 
-// Type for the partial content generated for each sub-topic
-type PartialLessonContent = Pick<LessonPack, 'student_explanation' | 'assessment_blueprint'>;
+export interface ProgressData {
+  progress: number;
+  message: string;
+  step: number;
+  totalSteps: number;
+}
+
 
 const questionPoolItemSchema = {
     type: Type.OBJECT,
@@ -90,174 +95,164 @@ const questionPoolItemSchema = {
     required: ['q_id', 'type', 'marks', 'difficulty', 'bloom', 'question', 'answer', 'rubric', 'competency', 'dok']
 };
 
-
-export const fetchChapterContent = async (grade: string, subject: string, chapter: string): Promise<LessonPack> => {
-    const cacheKey = `lesson-pack-v7-${grade}-${subject}-${chapter}`; // Bumped version for new generation logic
+export const fetchTopicContent = async (
+    chapter: SyllabusChapterTopic,
+    topic: string,
+    onProgress?: (progressData: ProgressData) => void
+): Promise<LessonPack> => {
+    const topicId = `${chapter.topic_id}|${topic}`;
+    const cacheKey = `lesson-pack-v8-${topicId}`;
     
     try {
         const cachedData = await get<string>('cache', cacheKey);
         if (cachedData) {
-            console.log(`Loading COMPLETE lesson pack from IndexedDB cache for: ${chapter}`);
+            console.log(`Loading lesson pack from cache for topic: ${topic}`);
+            onProgress?.({ progress: 100, message: 'Loaded from cache!', step: 1, totalSteps: 1 });
             return JSON.parse(cachedData) as LessonPack;
         }
     } catch (e) {
         console.error("Could not read from IndexedDB cache", e);
     }
 
-    console.log(`Generating new lesson pack for: Grade ${grade}, Subject: ${subject}, Chapter: ${chapter}`);
+    onProgress?.({ progress: 0, message: 'Generating your lesson...', step: 0, totalSteps: 1 });
+    console.log(`Generating new lesson pack for topic: ${topic}`);
     
     if (!process.env.API_KEY) {
         throw new Error("API_KEY not found. Cannot generate lesson.");
     }
+    
+    const [grade, subject] = chapter.topic_id.split('-').slice(0, 2).map(s => s.replace('G', ''));
 
-    const syllabusForGrade = cbseSyllabus[grade];
-    if (!syllabusForGrade || !syllabusForGrade[subject]) {
-        throw new Error(`Syllabus not found for Grade ${grade}, Subject ${subject}`);
-    }
-
-    let chapterTopic: SyllabusChapterTopic | undefined;
-    for (const unit of syllabusForGrade[subject]) {
-        chapterTopic = unit.chapters_or_topics.find(t => t.topic_name === chapter);
-        if (chapterTopic) break;
-    }
-
-    if (!chapterTopic) {
-        throw new Error(`Chapter "${chapter}" not found in syllabus for Grade ${grade}, Subject ${subject}`);
-    }
-
-    // NEW LOGIC: We will now generate content for each learning outcome as a sub-topic.
-    const subTopics = chapterTopic.learning_outcomes;
-
-    const allGeneratedContent: PartialLessonContent[] = [];
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    
+    const prompt = `
+      ROLE
+      You are a senior CBSE curriculum designer and pedagogy expert. Your instructions are CRITICAL and must be followed with extreme precision.
 
-    for (const subTopic of subTopics) {
-        console.log(`Generating content for sub-topic: ${subTopic}`);
-        try {
-            const prompt = `
-              ROLE
-              You are a senior CBSE curriculum designer and pedagogy expert. Your instructions are CRITICAL and must be followed with extreme precision.
+      GOAL
+      Generate a detailed, comprehensive, and pedagogically sound content module for a **single, specific topic** within a larger chapter.
 
-              GOAL
-              Generate a detailed, comprehensive, and pedagogically sound content module for a **single, specific sub-topic** within a larger chapter.
+      CONTEXT
+      - Grade: ${grade}
+      - Subject: ${subject}
+      - Chapter: "${chapter.topic_name}"
+      - **Current Topic to Generate Content For**: "${topic}"
 
-              CONTEXT
-              - Chapter: "${chapterTopic.topic_name}"
-              - Grade: ${grade}
-              - Subject: ${subject}
-              - **Current Sub-Topic to Generate Content For**: "${subTopic}"
+      PEDAGOGICAL INSTRUCTIONS (CRITICAL - NON-NEGOTIABLE):
+      1.  **Strict Focus**: Generate content ONLY for the specified topic ("${topic}"). Do NOT include content from other parts of the chapter.
+      2.  **CBSE & NCF Alignment**: All content MUST be strictly aligned with the latest CBSE syllabus and NCF guidelines. Assessments and rubrics must reflect the official CBSE marking scheme.
+      3.  **Depth and Variety**: The 'student_explanation' section must be rich and varied. Generate content for ALL fields as specified in the schema.
+      4.  **Board Paper Integration & Dual Framework**: The 'question_pool' MUST contain 2-3 questions directly modeled on the patterns and difficulty levels for this specific topic from the **last 10 years of CBSE Board Papers**. For each question, you MUST provide:
+          - A 'bloom' level (e.g., 'Remember', 'Understand', 'Apply', 'Analyze').
+          - A 'competency' classification (e.g., 'Demonstrate Knowledge and Understanding', 'Application of Knowledge/Concepts').
+          - A 'dok' (Webb's Depth of Knowledge) level from 1 to 4.
+      5.  **Plain Text Content**: All string content within the JSON must be plain text. Do not use any markdown formatting.
 
-              PEDAGOGICAL INSTRUCTIONS (CRITICAL - NON-NEGOTIABLE):
-              1.  **Strict Focus**: Generate content ONLY for the specified sub-topic ("${subTopic}"). Do NOT include content from other parts of the chapter.
-              2.  **CBSE & NCF Alignment**: All content MUST be strictly aligned with the latest CBSE syllabus and NCF guidelines. Assessments and rubrics must reflect the official CBSE marking scheme.
-              3.  **Depth and Variety**: The 'student_explanation' section must be rich and varied for this sub-topic. Include multiple sub-headings, lists, key terms, and at least one 'note' block if relevant. Generate content for ALL fields, including the REQUIRED 'interactive_videos' and 'real_world_applications'.
-              4.  **Board Paper Integration & Dual Framework**: The 'question_pool' MUST contain 2-3 questions directly modeled on the patterns and difficulty levels for this specific sub-topic from the **last 10 years of CBSE Board Papers**. For each question, you MUST provide:
-                  - A 'bloom' level (e.g., 'Remember', 'Understand', 'Apply', 'Analyze').
-                  - A 'competency' classification (e.g., 'Demonstrate Knowledge and Understanding', 'Application of Knowledge/Concepts').
-                  - A 'dok' (Webb's Depth of Knowledge) level from 1 to 4.
-              5.  **Neutral & Educational Tone**: For subjects like History and Social Studies, maintain a strictly neutral, factual, and educational tone suitable for a K-12 textbook. Avoid sensationalism or overly graphic descriptions of historical events.
-              6.  **Plain Text Content**: All string content within the JSON must be plain text. Do not use any markdown formatting.
-              7.  **Schema Adherence**: All 'type' values in 'core_explanation' MUST be one of: 'heading', 'paragraph', 'list', 'key_term', or 'note'. Do not invent other types.
+      SCHEMA RULES (ABSOLUTE & NON-NEGOTIABLE):
+      - The 'core_explanation' array can contain objects of different 'type'.
+      - If 'type' is 'heading', the object MUST contain 'level' (a number) and 'content' (a string).
+      - If 'type' is 'paragraph', the object MUST contain 'content' (a string).
+      - If 'type' is 'list', the object MUST contain 'items' (an array of strings).
+      - If 'type' is 'key_term', the object MUST contain 'term' (a string) and 'definition' (a string).
+      - If 'type' is 'note', the object MUST contain 'content' (a string).
+      - If 'type' is 'diagram', the object MUST contain 'imageUrl', 'altText', and 'hotspots'. It MUST NOT contain 'level', 'term', 'definition', or 'content'.
+      - DO NOT add properties to an object that do not belong to its 'type'. This is the most critical rule. For example, a 'paragraph' object should ONLY have 'type' and 'content' properties.
 
+      OUTPUT FORMAT
+      - Output ONLY a single raw JSON object for the content module, containing 'student_explanation', 'assessment_blueprint', and 'teacher_notes'.
+    `;
+    
+    const interactiveVideoSchema = {
+        type: Type.OBJECT, properties: { title: { type: Type.STRING }, video_url: { type: Type.STRING }, script: { type: Type.ARRAY, items: { type: Type.OBJECT, properties: { timestamp: { type: Type.NUMBER }, question_text: { type: Type.STRING }, options: { type: Type.ARRAY, items: { type: Type.STRING } }, correct_answer: { type: Type.STRING }, feedback_correct: { type: Type.STRING }, feedback_incorrect: { type: Type.STRING }, branch_on_incorrect: { type: Type.NUMBER }, }, required: ['timestamp', 'question_text', 'options', 'correct_answer', 'feedback_correct', 'feedback_incorrect'] } } }, required: ['title', 'video_url', 'script']
+    };
 
-              OUTPUT FORMAT
-              - Output ONLY the raw JSON object for the content module, containing 'student_explanation' and 'assessment_blueprint' for this sub-topic.
-            `;
-            
-             const interactiveVideoSchema = {
-                type: Type.OBJECT, properties: { title: { type: Type.STRING }, video_url: { type: Type.STRING }, script: { type: Type.ARRAY, items: { type: Type.OBJECT, properties: { timestamp: { type: Type.NUMBER }, question_text: { type: Type.STRING }, options: { type: Type.ARRAY, items: { type: Type.STRING } }, correct_answer: { type: Type.STRING }, feedback_correct: { type: Type.STRING }, feedback_incorrect: { type: Type.STRING }, branch_on_incorrect: { type: Type.NUMBER }, }, required: ['timestamp', 'question_text', 'options', 'correct_answer', 'feedback_correct', 'feedback_incorrect'] } } }, required: ['title', 'video_url', 'script']
-            };
+    const studentExplanationSchema = {
+        type: Type.OBJECT,
+        properties: {
+            core_explanation: { type: Type.ARRAY, items: { type: Type.OBJECT, properties: { 
+                type: { type: Type.STRING }, 
+                level: { type: Type.NUMBER }, 
+                content: { type: Type.STRING }, 
+                items: { type: Type.ARRAY, items: { type: Type.STRING } }, 
+                term: { type: Type.STRING }, 
+                definition: { type: Type.STRING },
+                imageUrl: { type: Type.STRING },
+                altText: { type: Type.STRING },
+                hotspots: { type: Type.ARRAY, items: { type: Type.OBJECT, properties: {
+                    x: { type: Type.NUMBER },
+                    y: { type: Type.NUMBER },
+                    label: { type: Type.STRING },
+                    details: { type: Type.STRING },
+                }, required: ['x', 'y', 'label', 'details'] } },
+            }, required: ['type'] } },
+            quick_check: { type: Type.OBJECT, properties: { question: { type: Type.STRING }, options: { type: Type.ARRAY, items: { type: Type.STRING } }, correct_answer: { type: Type.STRING }, explanation: { type: Type.STRING } }, required: ['question', 'options', 'correct_answer', 'explanation'] },
+            worked_examples: { type: Type.ARRAY, items: { type: Type.OBJECT, properties: { prompt: { type: Type.STRING }, solution: { type: Type.STRING }, why_it_works: { type: Type.STRING } }, required: ['prompt', 'solution', 'why_it_works'] } },
+            guided_practice: { type: Type.ARRAY, items: { type: Type.OBJECT, properties: { question: { type: Type.STRING }, hint: { type: Type.STRING }, stepwise_solution: { type: Type.STRING } }, required: ['question', 'hint', 'stepwise_solution'] } },
+            independent_practice: { type: Type.ARRAY, items: { type: Type.OBJECT, properties: { question: { type: Type.STRING }, answer_key: { type: Type.STRING } }, required: ['question', 'answer_key'] } },
+            HOTS: { type: Type.ARRAY, items: { type: Type.OBJECT, properties: { question: { type: Type.STRING }, exemplar_answer: { type: Type.STRING } }, required: ['question', 'exemplar_answer'] } },
+            common_errors_and_fixes: { type: Type.ARRAY, items: { type: Type.OBJECT, properties: { error: { type: Type.STRING }, fix: { type: Type.STRING } }, required: ['error', 'fix'] } },
+            fill_in_the_blanks: { type: Type.ARRAY, items: { type: Type.OBJECT, properties: { sentence_parts: { type: Type.ARRAY, items: { type: Type.STRING } }, options: { type: Type.ARRAY, items: { type: Type.STRING } }, correct_answer: { type: Type.STRING } }, required: ['sentence_parts', 'options', 'correct_answer'] } },
+            interactive_simulations: { type: Type.ARRAY, items: { type: Type.OBJECT, properties: { description: { type: Type.STRING }, concept_link: { type: Type.STRING } }, required: ['description', 'concept_link'] } },
+            interactive_videos: { type: Type.ARRAY, items: interactiveVideoSchema, },
+            real_world_applications: { type: Type.ARRAY, items: { type: Type.STRING } },
+            matching_quizzes: { type: Type.ARRAY, items: {
+                type: Type.OBJECT, properties: {
+                    instruction: { type: Type.STRING },
+                    pairs: { type: Type.ARRAY, items: { type: Type.OBJECT, properties: {
+                        term: { type: Type.STRING },
+                        definition: { type: Type.STRING }
+                    }, required: ['term', 'definition'] } }
+                }, required: ['instruction', 'pairs']
+            } }
+        },
+        required: ['core_explanation', 'quick_check', 'worked_examples', 'guided_practice', 'independent_practice', 'HOTS', 'common_errors_and_fixes', 'fill_in_the_blanks', 'interactive_simulations', 'interactive_videos', 'real_world_applications', 'matching_quizzes']
+    };
 
-            const response = await ai.models.generateContent({
-                model: 'gemini-2.5-pro',
-                contents: prompt,
-                config: {
-                    responseMimeType: 'application/json',
-                    thinkingConfig: { thinkingBudget: 32768 },
-                    responseSchema: {
+    const response = await ai.models.generateContent({
+        model: 'gemini-2.5-pro',
+        contents: prompt,
+        config: {
+            responseMimeType: 'application/json',
+            thinkingConfig: { thinkingBudget: 32768 },
+            responseSchema: {
+                type: Type.OBJECT,
+                properties: {
+                    student_explanation: studentExplanationSchema,
+                    assessment_blueprint: {
                         type: Type.OBJECT,
                         properties: {
-                            student_explanation: {
-                                type: Type.OBJECT,
-                                properties: {
-                                    core_explanation: { type: Type.ARRAY, items: { type: Type.OBJECT, properties: { type: { type: Type.STRING }, level: { type: Type.NUMBER }, content: { type: Type.STRING }, items: { type: Type.ARRAY, items: { type: Type.STRING } }, term: { type: Type.STRING }, definition: { type: Type.STRING }, }, required: ['type'] } },
-                                    quick_check: { type: Type.OBJECT, properties: { question: { type: Type.STRING }, options: { type: Type.ARRAY, items: { type: Type.STRING } }, correct_answer: { type: Type.STRING }, explanation: { type: Type.STRING } }, required: ['question', 'options', 'correct_answer', 'explanation'] },
-                                    worked_examples: { type: Type.ARRAY, items: { type: Type.OBJECT, properties: { prompt: { type: Type.STRING }, solution: { type: Type.STRING }, why_it_works: { type: Type.STRING } }, required: ['prompt', 'solution', 'why_it_works'] } },
-                                    guided_practice: { type: Type.ARRAY, items: { type: Type.OBJECT, properties: { question: { type: Type.STRING }, hint: { type: Type.STRING }, stepwise_solution: { type: Type.STRING } }, required: ['question', 'hint', 'stepwise_solution'] } },
-                                    independent_practice: { type: Type.ARRAY, items: { type: Type.OBJECT, properties: { question: { type: Type.STRING }, answer_key: { type: Type.STRING } }, required: ['question', 'answer_key'] } },
-                                    HOTS: { type: Type.ARRAY, items: { type: Type.OBJECT, properties: { question: { type: Type.STRING }, exemplar_answer: { type: Type.STRING } }, required: ['question', 'exemplar_answer'] } },
-                                    common_errors_and_fixes: { type: Type.ARRAY, items: { type: Type.OBJECT, properties: { error: { type: Type.STRING }, fix: { type: Type.STRING } }, required: ['error', 'fix'] } },
-                                    fill_in_the_blanks: { type: Type.ARRAY, items: { type: Type.OBJECT, properties: { sentence_parts: { type: Type.ARRAY, items: { type: Type.STRING } }, options: { type: Type.ARRAY, items: { type: Type.STRING } }, correct_answer: { type: Type.STRING } }, required: ['sentence_parts', 'options', 'correct_answer'] } },
-                                    interactive_simulations: { type: Type.ARRAY, items: { type: Type.OBJECT, properties: { description: { type: Type.STRING }, concept_link: { type: Type.STRING } }, required: ['description', 'concept_link'] } },
-                                    interactive_videos: { type: Type.ARRAY, items: interactiveVideoSchema, },
-                                    real_world_applications: { type: Type.ARRAY, items: { type: Type.STRING } }
-                                },
-                                required: ['core_explanation', 'quick_check', 'worked_examples', 'guided_practice', 'independent_practice', 'HOTS', 'common_errors_and_fixes', 'interactive_videos', 'real_world_applications']
-                            },
-                            assessment_blueprint: {
-                                type: Type.OBJECT,
-                                properties: {
-                                    question_pool: { type: Type.ARRAY, items: questionPoolItemSchema },
-                                },
-                                required: ['question_pool']
-                            }
+                            question_pool: { type: Type.ARRAY, items: questionPoolItemSchema },
                         },
-                        required: ['student_explanation', 'assessment_blueprint']
+                        required: ['question_pool']
+                    },
+                     teacher_notes: {
+                        type: Type.OBJECT,
+                        properties: {
+                            TLM_list: { type: Type.ARRAY, items: { type: Type.STRING } },
+                            differentiation: { type: Type.ARRAY, items: { type: Type.STRING } },
+                            remediation_plan: { type: Type.ARRAY, items: { type: Type.STRING } },
+                            safety_notes: { type: Type.ARRAY, items: { type: Type.STRING } },
+                        },
+                        required: ['TLM_list', 'differentiation', 'remediation_plan']
                     }
-                }
-            });
-
-            if (!response.text) {
-                console.warn(`Gemini API returned no text for sub-topic "${subTopic}". This might be due to a safety filter. Skipping.`);
-                continue; // Skip this sub-topic and move to the next
+                },
+                required: ['student_explanation', 'assessment_blueprint', 'teacher_notes']
             }
-            
-            try {
-                const partialContent = parseJsonFromResponse(response.text) as PartialLessonContent;
-                allGeneratedContent.push(partialContent);
-            } catch (parsingError) {
-                console.error(`Error parsing JSON from Gemini API for sub-topic "${subTopic}":`, parsingError);
-                console.error("Original text from Gemini:", response.text);
-            }
-
-        } catch (error) {
-            console.error(`Error fetching from Gemini API for sub-topic "${subTopic}":`, error);
         }
+    });
+
+    if (!response.text) {
+        throw new Error(`Gemini API returned no text for topic "${topic}". This might be due to a safety filter.`);
     }
     
-    if (allGeneratedContent.length === 0) {
-      throw new Error("Failed to generate any content for the chapter's sub-topics. The AI model may be temporarily unavailable. Please try again.");
-    }
+    onProgress?.({ progress: 95, message: 'Finalizing lesson...', step: 1, totalSteps: 1 });
 
-    // --- AGGREGATE ALL GENERATED CONTENT ---
+    const partialPack = parseJsonFromResponse(response.text);
+
     const finalLessonPack: LessonPack = {
-        topic_id: chapterTopic.topic_id,
-        topic_name: chapterTopic.topic_name,
-        student_explanation: {
-            core_explanation: allGeneratedContent.flatMap(c => c.student_explanation.core_explanation),
-            quick_check: allGeneratedContent[0]?.student_explanation.quick_check, // Take the first one for simplicity
-            worked_examples: allGeneratedContent.flatMap(c => c.student_explanation.worked_examples),
-            guided_practice: allGeneratedContent.flatMap(c => c.student_explanation.guided_practice),
-            independent_practice: allGeneratedContent.flatMap(c => c.student_explanation.independent_practice),
-            HOTS: allGeneratedContent.flatMap(c => c.student_explanation.HOTS),
-            common_errors_and_fixes: allGeneratedContent.flatMap(c => c.student_explanation.common_errors_and_fixes),
-            fill_in_the_blanks: allGeneratedContent.flatMap(c => c.student_explanation.fill_in_the_blanks),
-            interactive_simulations: allGeneratedContent.flatMap(c => c.student_explanation.interactive_simulations),
-            interactive_videos: allGeneratedContent.flatMap(c => c.student_explanation.interactive_videos),
-            real_world_applications: allGeneratedContent.flatMap(c => c.student_explanation.real_world_applications),
-        },
-        assessment_blueprint: {
-            question_pool: allGeneratedContent.flatMap(c => c.assessment_blueprint.question_pool),
-            section_breakup: [{ name: 'Section A', description: '1 Mark MCQs' }, { name: 'Section B', description: '2 Mark Short Answers' }],
-            total_marks: allGeneratedContent.flatMap(c => c.assessment_blueprint.question_pool).reduce((sum, q) => sum + q.marks, 0),
-            marking_scheme_rationale: "Aggregated from all sub-topics."
-        },
-        teacher_notes: { // Generate simple teacher notes
-            TLM_list: ["Digital Whiteboard", "Alfanumrik Platform"],
-            differentiation: ["Use adaptive quizzes for varied difficulty.", "Provide extra support via AI Tutor."],
-            remediation_plan: ["Utilize automatically generated micro-remediation loops after assessments."],
-            safety_notes: []
-        },
+        ...partialPack,
+        topic_id: topicId,
+        topic_name: topic,
     };
     
     // Replace placeholder video URLs
@@ -271,13 +266,15 @@ export const fetchChapterContent = async (grade: string, subject: string, chapte
     
     try {
         await set('cache', cacheKey, JSON.stringify(finalLessonPack));
-        console.log(`Saved COMPLETE lesson pack to IndexedDB cache for: ${chapter}`);
+        console.log(`Saved lesson pack to cache for topic: ${topic}`);
     } catch (e) {
-        console.error("Could not write complete lesson pack to IndexedDB cache", e);
+        console.error("Could not write lesson pack to IndexedDB cache", e);
     }
+    onProgress?.({ progress: 100, message: 'Lesson ready!', step: 1, totalSteps: 1 });
 
     return finalLessonPack;
 };
+
 
 export const generateAdaptiveFollowUp = async (results: AssessmentResult[]): Promise<AdaptiveFollowUp[]> => {
     const incorrectAnswers = results.filter(r => !r.is_correct);
@@ -363,7 +360,7 @@ export const generateStudyNotes = async (studentExplanation: StudentExplanation,
       **Instructions**:
       - Summarize the key points from the "core_explanation".
       - List all "key_terms" with their definitions.
-      - The output must be clean, easy-to-read plain text. Do not use any markdown or formatting. Use line breaks to separate ideas.
+      - The output must be clean, easy-to-read plain text. Do not use any markdown formatting. Use line breaks to separate ideas.
     `;
 
     const response = await ai.models.generateContent({
@@ -538,8 +535,9 @@ export const generateConceptDeepDive = async (text: string): Promise<string> => 
         1.  **First Principles**: Break down the concept to its fundamental principles.
         2.  **Detailed Analogies**: Use detailed, relatable analogies to explain complex parts.
         3.  **Connections**: Explain how this concept connects to other topics in the curriculum or real-world applications.
-        4.  **Structure**: Structure your answer logically with clear sub-headings. The entire output must be plain text, using line breaks for structure. Do not use markdown.
-        5.  **Depth**: This is a deep dive. Be comprehensive and thorough.
+        4.  **Socratic Method**: Incorporate guiding questions throughout your explanation to encourage the student to think, rather than just passively reading. For example: "Now, what do you think would happen if...?", "Can you see how this relates to...?".
+        5.  **Structure**: Structure your answer logically with clear sub-headings. The entire output must be plain text, using line breaks for structure. Do not use markdown.
+        6.  **Depth**: This is a deep dive. Be comprehensive and thorough.
 
         **Text to explain**: "${text}"
     `;
@@ -1870,87 +1868,4 @@ export const generateTransportOptimizationTips = async (routes: BusRoute[]): Pro
     });
 
     return parseJsonFromResponse(response.text) as string[];
-};
-
-export const generateTeacherDailyBriefing = async (
-    teacher: UserProfile,
-    schedule: TeacherSchedule[],
-    allDktData: AllDktData
-): Promise<string> => {
-    if (!process.env.API_KEY) throw new Error("API_KEY not found.");
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-
-    const relevantDktData = Object.entries(allDktData).reduce((acc, [userId, userDkt]) => {
-        const student = (acc.students as UserProfile[]).find(s => s.id === Number(userId));
-        if (student) {
-            (acc.dkt as any)[userId] = userDkt;
-        }
-        return acc;
-    }, { students: [], dkt: {} });
-
-
-    const prompt = `
-      ROLE: You are MIGA, a proactive AI co-pilot for a teacher named ${teacher.name}.
-      TASK: Generate a concise, actionable morning briefing for the teacher based on their schedule and student data.
-
-      CONTEXT:
-      - Teacher: ${teacher.name}
-      - Today's Schedule: ${JSON.stringify(schedule)}
-      - Relevant Student Mastery Data (DKT): ${JSON.stringify(relevantDktData.dkt)}
-
-      INSTRUCTIONS:
-      1.  **Analyze Schedule & Data**: Look at today's schedule. For each class, cross-reference the topic with student mastery data.
-      2.  **Identify Key Insights**: Pinpoint 1-2 critical insights. This could be:
-          -   A few students who are struggling with the specific topic being taught today.
-          -   A reminder about an assignment due soon for a particular class.
-          -   A positive note about a class that has high mastery in a prerequisite topic.
-      3.  **Draft the Briefing**: Write a short, 2-3 sentence briefing. Be direct and helpful.
-      4.  **Tone**: Professional, concise, and supportive.
-      5.  **Output**: Return a single plain text string. No markdown.
-
-      EXAMPLE OUTPUT:
-      "Good morning, ${teacher.name}. In your Class 10 Science period today on 'Acids & Bases', be aware that Rohan and Priya's mastery is below 50%. A quick 5-min recap of the pH scale could be beneficial. Also, a reminder that the Class 9 Maths assignment is due tomorrow."
-    `;
-
-    const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
-        contents: prompt,
-    });
-    return response.text;
-};
-
-
-export const generateParentCommunication = async (
-    student: UserProfile,
-    dktData: UserDktData,
-    submissions: StudentSubmission[]
-): Promise<string> => {
-    if (!process.env.API_KEY) throw new Error("API_KEY not found.");
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-
-    const prompt = `
-      ROLE: You are an experienced teacher drafting a brief, constructive update for a parent.
-      TASK: Analyze the provided student data and draft a professional, 2-3 sentence message.
-
-      CONTEXT:
-      - Student: ${student.name}, Class ${student.grade}
-      - Data: ${JSON.stringify({ dktData, submissions })}
-
-      INSTRUCTIONS:
-      1.  **Identify one specific strength**: Find a topic where the student has high mastery (e.g., >85%) or a recent high-scoring assignment.
-      2.  **Identify one specific area for focus**: Find a topic with lower mastery (e.g., <65%) or a lower-scoring assignment.
-      3.  **Draft the message**: Combine these into a positive and encouraging message. Start with the strength, then gently introduce the area for focus with a simple suggestion.
-      4.  **Tone**: Professional, supportive, and collaborative.
-      5.  **Output**: Return a single plain text string. No markdown or salutations (like "Dear Parent").
-
-      EXAMPLE OUTPUT:
-      "Just wanted to share a quick update on ${student.name}'s progress. He/She is showing a great grasp of 'Chemical Reactions' with 88% mastery! We are currently working on 'Acids & Bases', and a little extra review of the pH scale at home would be very beneficial to solidify his/her understanding."
-    `;
-
-    const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
-        contents: prompt,
-    });
-
-    return response.text;
 };

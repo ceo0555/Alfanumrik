@@ -1,29 +1,33 @@
-import React, { useState, useEffect, useCallback, ErrorInfo, ReactNode, Suspense, useMemo, useTransition, PropsWithChildren } from 'react';
+import React, { useState, useEffect, useCallback, ErrorInfo, ReactNode, Suspense, useMemo, useTransition } from 'react';
 import Header from './components/Header';
 import Loader from './components/Loader';
 import BottomNavBar from './components/BottomNavBar';
 import ProfileSetup from './components/ProfileSetup';
 import UserManagementModal from './components/UserManagementModal';
-import { LessonPack, UserRole, Assignment, UserProfile, LtiContext, PracticeBlueprint } from './types';
+import { LessonPack, UserRole, Assignment, UserProfile, LtiContext, PracticeBlueprint, SyllabusChapterTopic, UserDktData, TutorInterventionContext } from './types';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { StudentDataProvider, useStudentData } from './contexts/StudentDataContext';
 import Sidebar from './components/Sidebar';
 import * as ltiService from './services/ltiService';
 import { SparklesIcon } from './constants/icons';
+import LessonPlayerSkeleton from './components/LessonPlayerSkeleton';
+
+// Define and export the View type used for navigation across the app.
+export type View = 'home' | 'academics' | 'assess' | 'studio' | 'lesson' | 'quiz' | 'ask';
 
 // --- Production-Ready Enhancements ---
 
 // 1. Error Boundary to prevent crashes
+interface ErrorBoundaryProps {
+  children: ReactNode;
+}
 interface ErrorBoundaryState {
   hasError: boolean;
 }
 
-class ErrorBoundary extends React.Component<PropsWithChildren, ErrorBoundaryState> {
-  // FIX: Added a constructor to properly initialize state and props for the class component.
-  constructor(props: PropsWithChildren) {
-    super(props);
-    this.state = { hasError: false };
-  }
+// FIX: Refactored ErrorBoundary to use a class property for state, which resolves TS errors about 'state' and 'props' not existing.
+class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
+  state: ErrorBoundaryState = { hasError: false };
 
   static getDerivedStateFromError(_: Error): ErrorBoundaryState {
     return { hasError: true };
@@ -49,29 +53,23 @@ class ErrorBoundary extends React.Component<PropsWithChildren, ErrorBoundaryStat
 // 2. Code Splitting / Lazy Loading for main views
 const LandingPage = React.lazy(() => import('./components/LandingPage'));
 const LessonView = React.lazy(() => import('./components/LessonView'));
-const LessonPlayerSkeleton = React.lazy(() => import('./components/LessonPlayerSkeleton'));
 const AIAssistant = React.lazy(() => import('./components/AIAssistant'));
-const StudyStudio = React.lazy(() => import('./components/StudyStudio'));
-const StudentDashboard = React.lazy(() => import('./components/StudentDashboard'));
-const CurriculumBrowser = React.lazy(() => import('./components/CurriculumBrowser'));
-const Planner = React.lazy(() => import('./components/Planner'));
+const StudentDashboard = React.lazy(() => import('./StudentDashboard'));
 const FlashcardCreationModal = React.lazy(() => import('./components/FlashcardCreationModal'));
 const AchievementToast = React.lazy(() => import('./components/AchievementToast'));
 const RoleSelectionScreen = React.lazy(() => import('./components/RoleSelectionScreen'));
 const ParentDashboard = React.lazy(() => import('./components/ParentDashboard'));
 const SchoolDashboard = React.lazy(() => import('./components/school/SchoolDashboard'));
-const StudentAssignments = React.lazy(() => import('./components/StudentAssignments'));
 const QuizTaker = React.lazy(() => import('./components/QuizTaker'));
-const PracticeCentre = React.lazy(() => import('./components/PracticeCentre'));
+const AcademicsView = React.lazy(() => import('./components/AcademicsView'));
+const AssessView = React.lazy(() => import('./components/AssessView'));
+const StudioView = React.lazy(() => import('./components/AITools'));
 const ScholarWallet = React.lazy(() => import('./components/ScholarWallet'));
-const ExamsView = React.lazy(() => import('./components/ExamsView'));
-const LmsDashboard = React.lazy(() => import('./components/lms/LmsDashboard'));
-const ProgressDashboard = React.lazy(() => import('./components/ProgressDashboard'));
+const DeepDiveModal = React.lazy(() => import('./components/DeepDiveModal'));
+const ExitLessonConfirmationModal = React.lazy(() => import('./components/ExitLessonConfirmationModal'));
 
 
 // --- App Component ---
-
-export type View = 'home' | 'learn' | 'lesson' | 'ask' | 'studio' | 'planner' | 'parentDashboard' | 'schoolDashboard' | 'assignments' | 'quiz' | 'practice' | 'progress' | 'wallet' | 'exams' | 'courses';
 
 const AskMigaFab = ({ onClick }: { onClick: () => void }) => (
     <div className="fixed bottom-20 right-4 z-30 md:bottom-6 md:right-6">
@@ -87,15 +85,16 @@ const AskMigaFab = ({ onClick }: { onClick: () => void }) => (
 
 
 interface StudentAppProps {
-    isLtiLaunch?: boolean;
-    ltiContext?: LtiContext | null;
+    ltiContext: LtiContext | null;
     onOpenUserModal: () => void;
     onLogout: () => void;
     handleSetTutorLock: (isUnlocked: boolean) => void;
+    onToggleSidebar: () => void;
 }
 
-const StudentApp: React.FC<StudentAppProps> = ({ isLtiLaunch = false, ltiContext = null, onOpenUserModal, onLogout, handleSetTutorLock }) => {
-  const { activeProfile, updateActiveUserProfile, view, setView } = useAuth();
+const StudentApp: React.FC<StudentAppProps> = ({ ltiContext, onOpenUserModal, onLogout, handleSetTutorLock, onToggleSidebar }) => {
+  const { activeProfile, updateActiveUserProfile, view, setView, activeTopic, setActiveTopic } = useAuth();
+  const { resetTopicProgress, userDktData } = useStudentData();
 
   const [flashcardModalChapter, setFlashcardModalChapter] = useState<{ grade: string, subject: string, chapter: string } | null>(null);
   const [activeQuiz, setActiveQuiz] = useState<Assignment | null>(null);
@@ -104,11 +103,56 @@ const StudentApp: React.FC<StudentAppProps> = ({ isLtiLaunch = false, ltiContext
 
   const [isTutorOpen, setIsTutorOpen] = useState(false);
   const [aiContext, setAiContext] = useState<string | null>(null);
+  const [tutorInterventionContext, setTutorInterventionContext] = useState<TutorInterventionContext | null>(null);
+
 
   const [isPending, startTransition] = useTransition();
 
+  // State for lesson exit confirmation
+  const [isLessonInProgress, setIsLessonInProgress] = useState(false);
+  const [isExitModalOpen, setIsExitModalOpen] = useState(false);
+  const [nextViewOnExit, setNextViewOnExit] = useState<View | null>(null);
+
+  const handleNavigation = (targetView: View) => {
+    if (view === 'lesson' && isLessonInProgress) {
+        setNextViewOnExit(targetView);
+        setIsExitModalOpen(true);
+    } else {
+        setView(targetView);
+    }
+  };
+
+  const handleSaveAndExit = () => {
+    if (nextViewOnExit) setView(nextViewOnExit);
+    setIsExitModalOpen(false);
+    setNextViewOnExit(null);
+    setIsLessonInProgress(false);
+  };
+
+  const handleDiscardAndExit = () => {
+    if (nextViewOnExit && activeTopic) {
+        const topicId = `${activeTopic.chapter.topic_id}|${activeTopic.topic}`;
+        resetTopicProgress(topicId);
+        setView(nextViewOnExit);
+    }
+    setIsExitModalOpen(false);
+    setNextViewOnExit(null);
+    setIsLessonInProgress(false);
+  };
+
+  const handleCancelExit = () => {
+    setIsExitModalOpen(false);
+    setNextViewOnExit(null);
+  };
+  
+  const handleTriggerTutorIntervention = (context: TutorInterventionContext) => {
+    setTutorInterventionContext(context);
+    setIsTutorOpen(true);
+  };
+
   const openTutorWithContext = (context: string | null = null) => {
     setAiContext(context);
+    setTutorInterventionContext(null); // Ensure intervention context is cleared
     setIsTutorOpen(true);
   };
   
@@ -127,9 +171,11 @@ const StudentApp: React.FC<StudentAppProps> = ({ isLtiLaunch = false, ltiContext
     }
   }, [isTutorOpen, activeProfile, handleSetTutorLock]);
 
-  const handleSelectChapter = (chapter: string, subject: string, grade: string) => {
+  const handleSelectTopic = (chapter: SyllabusChapterTopic, topic: string) => {
     startTransition(() => {
-      updateActiveUserProfile({ lastChapter: chapter, lastSubject: subject, grade: grade });
+      // While activeTopic is the main driver, we still update lastChapter for persistence
+      updateActiveUserProfile({ lastChapter: chapter.topic_name, lastSubject: chapter.topic_id.split('-')[1], grade: chapter.topic_id.split('-')[0].substring(1) });
+      setActiveTopic({ chapter, topic });
       setView('lesson');
     });
   };
@@ -145,108 +191,103 @@ const StudentApp: React.FC<StudentAppProps> = ({ isLtiLaunch = false, ltiContext
 
   const handleStartPracticeFromWidget = (subject: string, blueprint: PracticeBlueprint) => {
     setPracticeToStart({ subject, blueprint });
-    setView('practice');
+    setView('assess');
   };
 
   useEffect(() => {
-      if (isLtiLaunch && ltiContext) {
+      if (ltiContext) {
           setView('lesson');
       }
-  }, [isLtiLaunch, ltiContext, setView]);
+  }, [ltiContext, setView]);
 
   const renderContent = () => {
     if (!activeProfile) return <Loader />;
     
     switch(view) {
       case 'home':
-        return <StudentDashboard />;
-      case 'learn':
-        return <CurriculumBrowser 
-          onSelectChapter={handleSelectChapter}
-          onOpenFlashcardCreator={handleOpenFlashcardCreator}
+        return <StudentDashboard onStartPractice={handleStartPracticeFromWidget} setView={handleNavigation} />;
+      case 'academics':
+        return <AcademicsView
+            onSelectTopic={handleSelectTopic}
+            onOpenFlashcardCreator={handleOpenFlashcardCreator}
+            setView={handleNavigation}
+            onStartQuiz={handleStartQuiz}
+        />;
+       case 'assess':
+        return <AssessView 
+            examToStart={practiceToStart}
+            onExamFinish={() => {
+                setPracticeToStart(null);
+                setPracticeMode(null);
+            }}
+            mode={practiceMode}
+            setView={handleNavigation}
+        />;
+       case 'studio':
+        return <StudioView 
+            setView={handleNavigation}
+            onStartPractice={handleStartPracticeFromWidget}
+            setPracticeMode={setPracticeMode}
         />;
       case 'lesson':
         return (
           <ErrorBoundary>
-            <Suspense fallback={<LessonPlayerSkeleton />}>
-              <LessonView
-                isTransitioning={isPending}
-                ltiContext={ltiContext}
-                onFinish={() => setView('learn')}
-                setAiContext={setAiContext}
-              />
-            </Suspense>
+            <LessonView
+              isTransitioning={isPending}
+              ltiContext={ltiContext}
+              onFinish={() => handleNavigation('academics')}
+              setAiContext={setAiContext}
+              onProgressUpdate={setIsLessonInProgress}
+              onTriggerTutorIntervention={handleTriggerTutorIntervention}
+            />
           </ErrorBoundary>
         );
-      case 'practice':
-        return <PracticeCentre 
-                  examToStart={practiceToStart} 
-                  onExamFinish={() => {
-                    setPracticeToStart(null);
-                    setPracticeMode(null);
-                  }} 
-                  mode={practiceMode} 
-                  onBack={() => {
-                    setPracticeMode(null); setView('wallet');
-                  }}
-                />;
-      case 'planner':
-        return <Planner setView={setView} onStartPractice={handleStartPracticeFromWidget} />;
-      case 'assignments':
-        return <StudentAssignments setView={setView} onStartQuiz={handleStartQuiz} />;
       case 'quiz':
         if (!activeQuiz) {
-          setView('assignments');
+          handleNavigation('academics');
           return null;
         }
-        return <QuizTaker assignment={activeQuiz} onFinishQuiz={() => { setActiveQuiz(null); setView('assignments'); }} />;
-      case 'studio':
-        return <StudyStudio />;
-      case 'wallet':
-        return <ScholarWallet setView={setView} setPracticeMode={setPracticeMode} />;
-      case 'progress':
-        return <ProgressDashboard setView={setView} />;
-      case 'exams':
-        return <ExamsView />;
-      case 'courses':
-        return <LmsDashboard setView={setView} setActiveQuiz={setActiveQuiz} />;
+        return <QuizTaker assignment={activeQuiz} onFinishQuiz={() => { setActiveQuiz(null); handleNavigation('academics'); }} />;
       default:
-        return null;
+        return <StudentDashboard onStartPractice={handleStartPracticeFromWidget} setView={handleNavigation} />;
     }
   };
 
   const getHeaderTitle = () => {
-    if (view === 'lesson' && activeProfile) return `${activeProfile.lastSubject} - ${activeProfile.lastChapter}`;
+    if (view === 'lesson' && activeTopic) return `${activeTopic.chapter.topic_name} - ${activeTopic.topic}`;
     if (view === 'quiz' && activeQuiz) return `Quiz: ${activeQuiz.title}`;
-    const viewTitles = { home: `Today's Plan`, learn: 'Curriculum', practice: 'Practice Centre', planner: 'Weekly Planner', assignments: 'Homework', studio: 'Study Studio', wallet: `Scholar's Wallet`, progress: 'My Progress', exams: 'Secure Exam', courses: 'My Courses' };
+    const viewTitles = { 
+        home: `Welcome, ${activeProfile?.name}`, 
+        academics: 'Academics', 
+        assess: 'Assess', 
+        studio: 'Studio',
+    };
     return viewTitles[view as keyof typeof viewTitles] || 'Alfanumrik';
   };
 
   return (
-    <>
-      {!isLtiLaunch && <Sidebar activeView={view} setView={setView} />}
-      <div className="flex-1 flex flex-col h-full overflow-hidden">
-        <Header 
-          showBackButton={['lesson', 'quiz'].includes(view)}
-          onBack={() => setView(view === 'lesson' ? 'learn' : 'assignments')}
-          title={getHeaderTitle()}
-          onOpenUserModal={onOpenUserModal}
-          userRole="student"
-          onLogout={onLogout}
-        />
-        <main className="flex-1 overflow-y-auto overflow-x-hidden p-4 md:p-6 pb-20 md:pb-6 app-bg">
-          <Suspense fallback={<Loader />}>
-            <div className="min-h-full max-w-7xl mx-auto w-full transition-opacity duration-300">
-              {renderContent()}
-            </div>
-          </Suspense>
-        </main>
-      </div>
+    <div className="flex-1 flex flex-col h-full overflow-hidden">
+      <Header 
+        showBackButton={['lesson', 'quiz'].includes(view)}
+        onBack={() => handleNavigation(view === 'lesson' ? 'academics' : 'academics')}
+        title={getHeaderTitle()}
+        onOpenUserModal={onOpenUserModal}
+        userRole="student"
+        onLogout={onLogout}
+        onToggleSidebar={onToggleSidebar}
+      />
+      <main className="flex-1 overflow-y-auto overflow-x-hidden p-4 md:p-6 pb-20 lg:pb-6 bg-[var(--bg-app)]">
+        <Suspense fallback={<LessonPlayerSkeleton />}>
+          <div className="min-h-full max-w-7xl mx-auto w-full">
+            {renderContent()}
+          </div>
+        </Suspense>
+      </main>
       
-      {!isLtiLaunch && (
+      {!ltiContext && (
           <>
             <AskMigaFab onClick={() => openTutorWithContext()} />
-            <BottomNavBar activeView={view} setView={setView} />
+            <BottomNavBar activeView={view} setView={handleNavigation} />
           </>
       )}
       
@@ -261,12 +302,27 @@ const StudentApp: React.FC<StudentAppProps> = ({ isLtiLaunch = false, ltiContext
         {isTutorOpen && (
             <AIAssistant 
                 isOpen={isTutorOpen}
-                onClose={() => setIsTutorOpen(false)}
+                onClose={() => { setIsTutorOpen(false); setTutorInterventionContext(null); }}
                 context={aiContext}
+                interventionContext={tutorInterventionContext}
+                dktData={userDktData}
             />
         )}
+        <ExitLessonConfirmationModal
+          isOpen={isExitModalOpen}
+          onSaveAndExit={handleSaveAndExit}
+          onDiscardAndExit={handleDiscardAndExit}
+          onCancel={handleCancelExit}
+        />
+        <DeepDiveModal
+            isOpen={false}
+            onClose={()=>{}}
+            isLoading={false}
+            content=""
+            title=""
+        />
       </Suspense>
-    </>
+    </div>
   );
 };
 
@@ -283,11 +339,13 @@ const AppContent: React.FC = () => {
     handleSwitchUser,
     _dangerouslySetAllProfiles: setAllProfiles,
     handleSetTutorLock,
+    view,
     setView,
   } = useAuth();
 
   const [isUserModalOpen, setIsUserModalOpen] = useState(false);
   const [ltiContext, setLtiContext] = useState<LtiContext | null>(null);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   
     // This logic is for auto-opening the student selector for parent/school roles
   useEffect(() => {
@@ -419,11 +477,11 @@ const AppContent: React.FC = () => {
       return (
         <StudentDataProvider>
           <StudentApp 
-            isLtiLaunch={!!ltiContext} 
             ltiContext={ltiContext} 
             onOpenUserModal={() => setIsUserModalOpen(true)}
             onLogout={handleLogout}
             handleSetTutorLock={handleSetTutorLock}
+            onToggleSidebar={() => setIsSidebarOpen(p => !p)}
           />
           {!ltiContext && (
             <UserManagementModal
@@ -458,8 +516,9 @@ const AppContent: React.FC = () => {
           onOpenUserModal={() => setIsUserModalOpen(true)}
           userRole={userRole}
           onLogout={handleLogout}
+          onToggleSidebar={() => {}}
         />
-        <main className="flex-1 overflow-y-auto overflow-x-hidden p-4 md:p-6 app-bg">
+        <main className="flex-1 overflow-y-auto overflow-x-hidden p-4 md:p-6 bg-[var(--bg-app)]">
           <ErrorBoundary>
             <Suspense fallback={<Loader />}>
               <div className="min-h-full">
@@ -479,7 +538,22 @@ const AppContent: React.FC = () => {
   }
 
   return (
-    <div className="app-container flex h-full w-full font-sans text-slate-900 bg-[var(--bg-app)]">
+    <div className="flex h-full w-full bg-[var(--bg-app)]">
+       {isSidebarOpen && (
+        <div 
+          onClick={() => setIsSidebarOpen(false)} 
+          className="fixed inset-0 bg-black/50 z-20 lg:hidden animate-fade-in"
+          aria-hidden="true"
+        ></div>
+      )}
+      {!ltiContext && userRole === 'student' && (
+        <Sidebar 
+            activeView={view} 
+            setView={setView} 
+            isOpen={isSidebarOpen} 
+            onClose={() => setIsSidebarOpen(false)} 
+        />
+      )}
       {renderRoleSpecificApp()}
     </div>
   );

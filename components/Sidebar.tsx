@@ -1,11 +1,13 @@
 import React from 'react';
 import { View } from '../App';
-import { HomeIcon, CompassIcon, CalendarDaysIcon, MessageSquareIcon, LayersIcon, ClipboardListIcon, TargetIcon, ScholarCoinIcon, ShieldCheckIcon, BookIcon, BarChartIcon } from '../constants/icons';
+import { HomeIcon, CompassIcon, MessageSquareIcon, LayersIcon, TargetIcon, XIcon } from '../constants/icons';
 import { useAuth } from '../contexts/AuthContext';
 
 interface SidebarProps {
   activeView: View;
   setView: (view: View) => void;
+  isOpen: boolean;
+  onClose: () => void;
 }
 
 const AppLogo: React.FC = () => (
@@ -35,35 +37,35 @@ const NavButton: React.FC<{
 );
 
 
-const Sidebar: React.FC<SidebarProps> = ({ activeView, setView }) => {
+const Sidebar: React.FC<SidebarProps> = ({ activeView, setView, isOpen, onClose }) => {
   const { activeProfile } = useAuth();
 
   const navItems = [
     { view: 'home' as View, label: 'Home', icon: HomeIcon },
-    { view: 'learn' as View, label: 'Learn', icon: CompassIcon },
-    { view: 'courses' as View, label: 'Courses', icon: BookIcon },
-    { view: 'practice' as View, label: 'Practice', icon: TargetIcon },
-    { view: 'progress' as View, label: 'Progress', icon: BarChartIcon },
-    { view: 'studio' as View, label: 'Study Studio', icon: LayersIcon },
-    { view: 'exams' as View, label: 'Exams', icon: ShieldCheckIcon },
-    { view: 'assignments' as View, label: 'Homework', icon: ClipboardListIcon },
-    { view: 'planner' as View, label: 'Planner', icon: CalendarDaysIcon },
-    { view: 'wallet' as View, label: 'Wallet', icon: ScholarCoinIcon },
+    { view: 'academics' as View, label: 'Academics', icon: CompassIcon },
+    { view: 'assess' as View, label: 'Assess', icon: TargetIcon },
+    { view: 'studio' as View, label: 'Studio', icon: LayersIcon },
     { view: 'ask' as View, label: 'AI Tutor', icon: MessageSquareIcon },
   ];
   
   return (
-    <aside className="hidden md:flex flex-col w-64 bg-[var(--bg-sidebar)] text-white flex-shrink-0">
-      <div className="flex items-center justify-center h-16 border-b border-gray-700 hover:bg-gray-700/50 transition-colors">
+    <aside className={`fixed inset-y-0 left-0 z-30 flex flex-col w-64 bg-[var(--bg-sidebar)] text-white flex-shrink-0 transition-transform transform ${isOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0 lg:static`}>
+      <div className="flex items-center justify-between h-16 border-b border-gray-700 px-4">
         <AppLogo />
+        <button onClick={onClose} className="p-2 rounded-full hover:bg-gray-700/50 lg:hidden">
+            <XIcon className="w-5 h-5" />
+        </button>
       </div>
       <nav className="flex-1 px-4 py-6 space-y-2">
         {navItems.map(item => (
           <NavButton 
             key={item.view} 
             item={item} 
-            isActive={activeView === item.view || (activeView === 'lesson' && item.view === 'learn')}
-            onClick={() => setView(item.view)}
+            isActive={activeView === item.view || (activeView === 'lesson' && item.view === 'academics')}
+            onClick={() => {
+                setView(item.view);
+                onClose();
+            }}
           />
         ))}
       </nav>

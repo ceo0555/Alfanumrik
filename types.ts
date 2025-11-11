@@ -75,7 +75,7 @@ export interface QuickCheck {
 
 // --- STRUCTURED CONTENT FOR EXPLANATIONS ---
 
-export type StructuredContentType = 'heading' | 'paragraph' | 'list' | 'key_term' | 'note';
+export type StructuredContentType = 'heading' | 'paragraph' | 'list' | 'key_term' | 'note' | 'diagram';
 
 export interface HeadingBlock {
     type: 'heading';
@@ -104,8 +104,22 @@ export interface NoteBlock {
     content: string;
 }
 
+export interface DiagramHotspot {
+    x: number; // percentage from left (0.0 to 1.0)
+    y: number; // percentage from top (0.0 to 1.0)
+    label: string;
+    details: string;
+}
 
-export type StructuredContent = HeadingBlock | ParagraphBlock | ListBlock | KeyTermBlock | NoteBlock;
+export interface DiagramBlock {
+    type: 'diagram';
+    imageUrl: string;
+    altText: string;
+    hotspots: DiagramHotspot[];
+}
+
+
+export type StructuredContent = HeadingBlock | ParagraphBlock | ListBlock | KeyTermBlock | NoteBlock | DiagramBlock;
 
 
 // --- NEW INTERACTIVE VIDEO TYPES ---
@@ -139,6 +153,12 @@ export interface StudentExplanation {
   interactive_simulations: InteractiveSimulation[];
   interactive_videos: InteractiveVideo[];
   real_world_applications: string[];
+  matching_quizzes: MatchingQuiz[];
+}
+
+export interface MatchingQuiz {
+  instruction: string;
+  pairs: { term: string; definition: string }[];
 }
 
 export interface SubQuestion {
@@ -248,6 +268,7 @@ export type LessonStepType =
   | 'adaptive_follow_up'
   | 'feedback'
   | 'key_term'
+  | 'matching_quiz'
   | 'note';
 
 // Base interface
@@ -344,6 +365,11 @@ export interface KeyTermStep extends BaseLessonStep {
   content: KeyTermBlock;
 }
 
+export interface MatchingQuizStep extends BaseLessonStep {
+  type: 'matching_quiz';
+  content: MatchingQuiz;
+}
+
 export interface NoteStep extends BaseLessonStep {
   type: 'note';
   content: NoteBlock;
@@ -368,6 +394,7 @@ export type LessonStep =
   | AdaptiveFollowUpStep
   | FeedbackStep
   | KeyTermStep
+  | MatchingQuizStep
   | NoteStep;
 
 
@@ -402,6 +429,13 @@ export interface FineTuningDataPoint {
     teacherFeedback: string;
   };
 }
+
+// NEW: Context for proactive tutor intervention
+export type TutorInterventionContext = {
+  question: QuestionPoolItem | QuickCheck;
+  studentAnswer: string;
+};
+
 
 // --- DIGITAL SCRATCHPAD TYPES ---
 export interface Path {
@@ -1014,6 +1048,7 @@ export interface QuickNoteWidgetConfig extends BaseWidgetConfig {
 }
 
 export type WidgetConfig = TodayFocusWidgetConfig | PinnedChapterWidgetConfig | PinnedPracticeWidgetConfig | QuickNoteWidgetConfig;
+
 
 // --- SCHOLAR'S WALLET TYPES ---
 export type MarketplaceCategory = 'power-up' | 'customization' | 'voucher';

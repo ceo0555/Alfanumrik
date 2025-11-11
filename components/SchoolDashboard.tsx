@@ -9,24 +9,25 @@ const StudentsTab = React.lazy(() => import('./school/StudentsTab'));
 const AssignmentsTab = React.lazy(() => import('./school/AssignmentsTab'));
 const ReportsTab = React.lazy(() => import('./school/ReportsTab'));
 const AnnouncementsTab = React.lazy(() => import('./school/AnnouncementsTab'));
-const PaperBuilder = React.lazy(() => import('./PaperBuilder'));
-const DiagnosticsDashboard = React.lazy(() => import('./DiagnosticsDashboard'));
-const CodingModuleDashboard = React.lazy(() => import('./CodingModuleDashboard'));
-const BoardPlanner = React.lazy(() => import('./BoardPlanner'));
-const ClassroomCore = React.lazy(() => import('./ClassroomCore'));
-const FinanceOpsDashboard = React.lazy(() => import('./FinanceOpsDashboard'));
-const GrowthDashboard = React.lazy(() => import('./GrowthDashboard'));
+const PaperBuilder = React.lazy(() => import('../PaperBuilder'));
+const DiagnosticsDashboard = React.lazy(() => import('../DiagnosticsDashboard'));
+const CodingModuleDashboard = React.lazy(() => import('../CodingModuleDashboard'));
+const BoardPlanner = React.lazy(() => import('../BoardPlanner'));
+const ClassroomCore = React.lazy(() => import('../ClassroomCore'));
+const FinanceOpsDashboard = React.lazy(() => import('../FinanceOpsDashboard'));
+const GrowthDashboard = React.lazy(() => import('../GrowthDashboard'));
 const CurriculumPlanner = React.lazy(() => import('./school/CurriculumPlanner'));
-const ExamsTab = React.lazy(() => import('./school/ExamsTab'));
+const ExamsTab = React.lazy(() => import('./ExamsTab'));
+const LmsDashboard = React.lazy(() => import('../lms/LmsDashboard'));
 
 
 // Lazy load modals
 const BrandingModal = React.lazy(() => import('./school/BrandingModal'));
-const BulkOnboardModal = React.lazy(() => import('./BulkOnboardModal'));
-const CreateAssignmentModal = React.lazy(() => import('./CreateAssignmentModal'));
-const ReportCardModal = React.lazy(() => import('./ReportCardModal'));
-const CreateAnnouncementModal = React.lazy(() => import('./CreateAnnouncementModal'));
-const GradingModal = React.lazy(() => import('./GradingModal'));
+const BulkOnboardModal = React.lazy(() => import('../BulkOnboardModal'));
+const CreateAssignmentModal = React.lazy(() => import('../CreateAssignmentModal'));
+const ReportCardModal = React.lazy(() => import('../ReportCardModal'));
+const CreateAnnouncementModal = React.lazy(() => import('../CreateAnnouncementModal'));
+const GradingModal = React.lazy(() => import('../GradingModal'));
 
 const SchoolLogo = ({ className }: { className?: string }) => (
     <div className={`p-2 bg-slate-700 rounded-lg ${className}`}>
@@ -34,12 +35,14 @@ const SchoolLogo = ({ className }: { className?: string }) => (
     </div>
 );
 
-export type SchoolTab = 'overview' | 'students' | 'assignments' | 'reports' | 'announcements' | 'exam_suite' | 'diagnostics' | 'ai_coding' | 'board_planner' | 'classroom' | 'finance_ops' | 'growth' | 'curriculum_planner' | 'exams';
+// FIX: Added 'courses' to SchoolTab to align with other components like SchoolSidebar and App.
+export type SchoolTab = 'overview' | 'students' | 'assignments' | 'reports' | 'announcements' | 'exam_suite' | 'diagnostics' | 'ai_coding' | 'board_planner' | 'classroom' | 'finance_ops' | 'growth' | 'curriculum_planner' | 'exams' | 'courses';
 
 const MobileNav: React.FC<{ activeTab: SchoolTab, setActiveTab: (tab: SchoolTab) => void, schoolRole?: 'principal' | 'teacher' }> = ({ activeTab, setActiveTab, schoolRole }) => {
     const allTabs: { tab: SchoolTab, label: string, principalOnly?: boolean }[] = [
         { tab: 'overview', label: 'Overview' },
         { tab: 'classroom', label: 'Classroom' },
+        { tab: 'courses', label: 'Courses' },
         { tab: 'students', label: 'Students' },
         { tab: 'assignments', label: 'Assignments' },
         { tab: 'reports', label: 'Reports' },
@@ -145,6 +148,7 @@ const SchoolDashboard: React.FC = () => {
             case 'curriculum_planner': return <CurriculumPlanner />;
             case 'finance_ops': return <FinanceOpsDashboard />;
             case 'growth': return <GrowthDashboard />;
+            case 'courses': return <LmsDashboard />;
             default: return null;
         }
     };

@@ -1,16 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { VideoIcon, SparklesIcon, LoaderIcon, TriangleAlertIcon } from '../constants/icons';
 import { generateVideoForConcept } from '../services/geminiService';
-
-const loadingMessages = [
-    "Warming up the video synthesizer...",
-    "Storyboarding the concept visuals...",
-    "Rendering initial frames...",
-    "This can take a few minutes, please wait...",
-    "Applying visual effects and animations...",
-    "Finalizing the video stream...",
-    "Almost there..."
-];
+import Loader from './Loader';
 
 const VideoGenerator: React.FC = () => {
     const [veoKeyState, setVeoKeyState] = useState<'unknown' | 'checking' | 'present' | 'absent'>('checking');
@@ -18,10 +9,7 @@ const VideoGenerator: React.FC = () => {
     const [generationState, setGenerationState] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
     const [videoUrl, setVideoUrl] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
-    const [loadingMessage, setLoadingMessage] = useState(loadingMessages[0]);
     
-    const loadingIntervalRef = useRef<number | null>(null);
-
     useEffect(() => {
         const checkKey = async () => {
             if (window.aistudio && typeof window.aistudio.hasSelectedApiKey === 'function') {
@@ -34,23 +22,6 @@ const VideoGenerator: React.FC = () => {
         };
         checkKey();
     }, []);
-
-    useEffect(() => {
-        if (generationState === 'loading') {
-            loadingIntervalRef.current = window.setInterval(() => {
-                setLoadingMessage(prev => {
-                    const currentIndex = loadingMessages.indexOf(prev);
-                    const nextIndex = (currentIndex + 1) % loadingMessages.length;
-                    return loadingMessages[nextIndex];
-                });
-            }, 3000);
-        } else {
-            if (loadingIntervalRef.current) clearInterval(loadingIntervalRef.current);
-        }
-        return () => {
-            if (loadingIntervalRef.current) clearInterval(loadingIntervalRef.current);
-        };
-    }, [generationState]);
 
     const handleSelectKey = async () => {
         if (window.aistudio && typeof window.aistudio.openSelectKey === 'function') {
@@ -95,9 +66,8 @@ const VideoGenerator: React.FC = () => {
         if (generationState === 'loading') {
             return (
                 <div className="text-center p-8">
-                    <LoaderIcon className="w-12 h-12 text-indigo-600 mx-auto animate-spin"/>
-                    <p className="mt-4 font-semibold text-slate-600">{loadingMessage}</p>
-                    <p className="text-xs text-slate-400 mt-1">This process can take several minutes.</p>
+                    <Loader />
+                    <p className="text-xs text-slate-400 mt-1">Video generation can take several minutes.</p>
                 </div>
             );
         }

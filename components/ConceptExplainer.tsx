@@ -3,6 +3,7 @@ import { LightbulbIcon, SparklesIcon } from '../constants/icons';
 import { explainConceptInDepth, generateConceptDeepDive } from '../services/geminiService';
 import MarkdownRenderer from './MarkdownRenderer';
 import { useAuth } from '../contexts/AuthContext';
+import Loader from './Loader';
 
 const DEEP_DIVE_COST = 250;
 
@@ -93,8 +94,7 @@ const ConceptExplainer: React.FC = () => {
             
             {isLoading && (
                  <div className="mt-6 text-center p-8">
-                    <div className="w-12 h-12 border-4 border-dashed rounded-full animate-spin border-indigo-600 mx-auto"></div>
-                    <p className="mt-4 text-slate-500">MIGA is thinking...</p>
+                    <Loader />
                 </div>
             )}
             

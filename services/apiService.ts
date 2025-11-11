@@ -6,6 +6,7 @@ import { mockBusRoutes as initialBusRoutes, mockPrintQuotas as initialPrintQuota
 import { mockAfterSchoolPrograms as initialAfterSchoolPrograms, mockFacilityBookings as initialFacilityBookings } from '../constants/growthData';
 import { mockCalendarEvents as initialBoardPlannerEvents, communicationTemplates as initialCommunicationTemplates } from '../constants/boardPlannerData';
 import { codingModules as initialCodingModules, crossCurricularProjects as initialCrossCurricularProjects, mockPortfolios } from '../constants/codingModules';
+import { appEventBus } from '../utils/eventBus';
 
 
 const API_LATENCY = 300; // ms
@@ -340,6 +341,7 @@ export const saveUserProfile = async (
   }
 
   localStorage.setItem('userProfiles', JSON.stringify(updatedProfiles));
+  appEventBus.emit('data-changed', { store: 'userProfiles' });
   return simulateNetwork(updatedProfiles);
 };
 
@@ -350,6 +352,7 @@ export const saveUserProfile = async (
 export const saveActiveUserId = async (id: number): Promise<number> => {
   console.log(`API: Setting active user to ${id}...`);
   localStorage.setItem('activeUserId', JSON.stringify(id));
+  appEventBus.emit('data-changed', { store: 'activeUserId' });
   return simulateNetwork(id);
 };
 
@@ -360,6 +363,7 @@ export const saveActiveUserId = async (id: number): Promise<number> => {
 export const saveAllProgress = async (progress: AllProgressData): Promise<AllProgressData> => {
   console.log("API: Saving all progress data...");
   localStorage.setItem('allProgressData', JSON.stringify(progress));
+  appEventBus.emit('data-changed', { store: 'allProgressData' });
   return simulateNetwork(progress);
 };
 
@@ -369,6 +373,7 @@ export const saveAllProgress = async (progress: AllProgressData): Promise<AllPro
 export const saveAllDktData = async (dktData: AllDktData): Promise<AllDktData> => {
     console.log("API: Saving all DKT data...");
     localStorage.setItem('allDktData', JSON.stringify(dktData));
+    appEventBus.emit('data-changed', { store: 'allDktData' });
     return simulateNetwork(dktData);
 };
 
@@ -379,6 +384,7 @@ export const saveAllDktData = async (dktData: AllDktData): Promise<AllDktData> =
 export const saveAllFlashcards = async (flashcards: AllFlashcardsData): Promise<AllFlashcardsData> => {
   console.log("API: Saving all flashcards data...");
   localStorage.setItem('allFlashcards', JSON.stringify(flashcards));
+  appEventBus.emit('data-changed', { store: 'allFlashcards' });
   return simulateNetwork(flashcards);
 };
 
@@ -388,6 +394,7 @@ export const saveAllFlashcards = async (flashcards: AllFlashcardsData): Promise<
 export const saveAllFlnProgress = async (progress: StudentFlnProgress): Promise<StudentFlnProgress> => {
   console.log("API: Saving all FLN progress data...");
   localStorage.setItem('allFlnProgress', JSON.stringify(progress));
+  appEventBus.emit('data-changed', { store: 'allFlnProgress' });
   return simulateNetwork(progress);
 };
 
@@ -397,6 +404,7 @@ export const saveAllFlnProgress = async (progress: StudentFlnProgress): Promise<
 export const saveAllAssignments = async (assignments: Assignment[]): Promise<Assignment[]> => {
   console.log("API: Saving all assignments data...");
   localStorage.setItem('allAssignments', JSON.stringify(assignments));
+  appEventBus.emit('data-changed', { store: 'allAssignments' });
   return simulateNetwork(assignments);
 };
 
@@ -406,6 +414,7 @@ export const saveAllAssignments = async (assignments: Assignment[]): Promise<Ass
 export const saveAllAnnouncements = async (announcements: Announcement[]): Promise<Announcement[]> => {
   console.log("API: Saving all announcements...");
   localStorage.setItem('allAnnouncements', JSON.stringify(announcements));
+  appEventBus.emit('data-changed', { store: 'allAnnouncements' });
   return simulateNetwork(announcements);
 };
 
@@ -415,6 +424,7 @@ export const saveAllAnnouncements = async (announcements: Announcement[]): Promi
 export const saveAllSubmissions = async (submissions: StudentSubmission[]): Promise<StudentSubmission[]> => {
     console.log("API: Saving all student submissions...");
     localStorage.setItem('allSubmissions', JSON.stringify(submissions));
+    appEventBus.emit('data-changed', { store: 'allSubmissions' });
     return simulateNetwork(submissions);
 };
 
@@ -440,6 +450,7 @@ export const updateUserProfileData = async (
     if (!updatedProfile) throw new Error("User not found for update");
     
     localStorage.setItem('userProfiles', JSON.stringify(updatedProfiles));
+    appEventBus.emit('data-changed', { store: 'userProfiles' });
     return simulateNetwork(updatedProfile);
 };
 
@@ -453,6 +464,7 @@ export const saveUserRole = async (role: UserRole | null): Promise<UserRole | nu
     } else {
         localStorage.removeItem('userRole');
     }
+    appEventBus.emit('data-changed', { store: 'userRole' });
     return simulateNetwork(role);
 };
 
@@ -461,18 +473,21 @@ export const saveUserRole = async (role: UserRole | null): Promise<UserRole | nu
 export const saveAttendanceRecords = async (records: AttendanceRecord): Promise<AttendanceRecord> => {
     console.log("API: Saving attendance records...");
     localStorage.setItem('attendanceRecords', JSON.stringify(records));
+    appEventBus.emit('data-changed', { store: 'attendanceRecords' });
     return simulateNetwork(records);
 };
 
 export const saveQuickFormativeAssessments = async (assessments: QuickFormativeAssessment[]): Promise<QuickFormativeAssessment[]> => {
     console.log("API: Saving quick formative assessments...");
     localStorage.setItem('quickFormativeAssessments', JSON.stringify(assessments));
+    appEventBus.emit('data-changed', { store: 'quickFormativeAssessments' });
     return simulateNetwork(assessments);
 };
 
 export const saveTeacherSchedules = async (schedules: TeacherSchedule[]): Promise<TeacherSchedule[]> => {
     console.log("API: Saving teacher schedules...");
     localStorage.setItem('teacherSchedules', JSON.stringify(schedules));
+    appEventBus.emit('data-changed', { store: 'teacherSchedules' });
     return simulateNetwork(schedules);
 };
 
@@ -480,18 +495,21 @@ export const saveTeacherSchedules = async (schedules: TeacherSchedule[]): Promis
 export const saveItemBank = async (itemBank: QuestionPoolItem[]): Promise<QuestionPoolItem[]> => {
     console.log("API: Saving item bank...");
     localStorage.setItem('itemBank', JSON.stringify(itemBank));
+    appEventBus.emit('data-changed', { store: 'itemBank' });
     return simulateNetwork(itemBank);
 };
 
 export const saveAllExamSessions = async (sessions: ExamSession[]): Promise<ExamSession[]> => {
     console.log("API: Saving all exam sessions...");
     localStorage.setItem('allExamSessions', JSON.stringify(sessions));
+    appEventBus.emit('data-changed', { store: 'allExamSessions' });
     return simulateNetwork(sessions);
 };
 
 export const saveAllExamSubmissions = async (submissions: ExamSubmission[]): Promise<ExamSubmission[]> => {
     console.log("API: Saving all exam submissions...");
     localStorage.setItem('allExamSubmissions', JSON.stringify(submissions));
+    appEventBus.emit('data-changed', { store: 'allExamSubmissions' });
     return simulateNetwork(submissions);
 };
 
@@ -499,6 +517,7 @@ export const saveAllExamSubmissions = async (submissions: ExamSubmission[]): Pro
 export const saveAllNotifications = async (notifications: Notification[]): Promise<Notification[]> => {
     console.log("API: Saving all notifications...");
     localStorage.setItem('allNotifications', JSON.stringify(notifications));
+    appEventBus.emit('data-changed', { store: 'allNotifications' });
     return simulateNetwork(notifications);
 };
 
@@ -506,16 +525,19 @@ export const saveAllNotifications = async (notifications: Notification[]): Promi
 export const saveAllBusRoutes = async (routes: BusRoute[]): Promise<BusRoute[]> => {
     console.log("API: Saving bus routes...");
     localStorage.setItem('busRoutes', JSON.stringify(routes));
+    appEventBus.emit('data-changed', { store: 'busRoutes' });
     return simulateNetwork(routes);
 };
 export const saveAllPrintQuotas = async (quotas: PrintQuota[]): Promise<PrintQuota[]> => {
     console.log("API: Saving print quotas...");
     localStorage.setItem('printQuotas', JSON.stringify(quotas));
+    appEventBus.emit('data-changed', { store: 'printQuotas' });
     return simulateNetwork(quotas);
 };
 export const saveAllFeeStatus = async (statuses: FeeStatus[]): Promise<FeeStatus[]> => {
     console.log("API: Saving fee statuses...");
     localStorage.setItem('feeStatus', JSON.stringify(statuses));
+    appEventBus.emit('data-changed', { store: 'feeStatus' });
     return simulateNetwork(statuses);
 };
 
@@ -523,11 +545,13 @@ export const saveAllFeeStatus = async (statuses: FeeStatus[]): Promise<FeeStatus
 export const saveAllAfterSchoolPrograms = async (programs: AfterSchoolProgram[]): Promise<AfterSchoolProgram[]> => {
     console.log("API: Saving after school programs...");
     localStorage.setItem('afterSchoolPrograms', JSON.stringify(programs));
+    appEventBus.emit('data-changed', { store: 'afterSchoolPrograms' });
     return simulateNetwork(programs);
 };
 export const saveAllFacilityBookings = async (bookings: FacilityBooking[]): Promise<FacilityBooking[]> => {
     console.log("API: Saving facility bookings...");
     localStorage.setItem('facilityBookings', JSON.stringify(bookings));
+    appEventBus.emit('data-changed', { store: 'facilityBookings' });
     return simulateNetwork(bookings);
 };
 
@@ -535,6 +559,7 @@ export const saveAllFacilityBookings = async (bookings: FacilityBooking[]): Prom
 export const saveAllBoardPlannerEvents = async (events: BoardPlannerEvent[]): Promise<BoardPlannerEvent[]> => {
     console.log("API: Saving board planner events...");
     localStorage.setItem('boardPlannerEvents', JSON.stringify(events));
+    appEventBus.emit('data-changed', { store: 'boardPlannerEvents' });
     return simulateNetwork(events);
 };
 
@@ -542,12 +567,14 @@ export const saveAllBoardPlannerEvents = async (events: BoardPlannerEvent[]): Pr
 export const saveAllCrossCurricularProjects = async (projects: CrossCurricularProject[]): Promise<CrossCurricularProject[]> => {
     console.log("API: Saving cross-curricular projects...");
     localStorage.setItem('crossCurricularProjects', JSON.stringify(projects));
+    appEventBus.emit('data-changed', { store: 'crossCurricularProjects' });
     return simulateNetwork(projects);
 };
 
 export const saveAllPortfolios = async (portfolios: AllPortfolios): Promise<AllPortfolios> => {
     console.log("API: Saving all portfolios...");
     localStorage.setItem('allPortfolios', JSON.stringify(portfolios));
+    appEventBus.emit('data-changed', { store: 'allPortfolios' });
     return simulateNetwork(portfolios);
 };
 
@@ -555,12 +582,14 @@ export const saveAllPortfolios = async (portfolios: AllPortfolios): Promise<AllP
 export const saveSchoolName = async (name: string): Promise<string> => {
     console.log("API: Saving school name...");
     localStorage.setItem('schoolName', JSON.stringify(name));
+    appEventBus.emit('data-changed', { store: 'schoolName' });
     return simulateNetwork(name);
 }
 
 export const saveAllBlueprints = async (blueprints: PaperBlueprint[]): Promise<PaperBlueprint[]> => {
     console.log("API: Saving all paper blueprints...");
     localStorage.setItem('allBlueprints', JSON.stringify(blueprints));
+    appEventBus.emit('data-changed', { store: 'allBlueprints' });
     return simulateNetwork(blueprints);
 }
 
@@ -568,11 +597,13 @@ export const saveAllBlueprints = async (blueprints: PaperBlueprint[]): Promise<P
 export const saveAllCourses = async (courses: Course[]): Promise<Course[]> => {
     console.log("API: Saving all courses...");
     localStorage.setItem('allCourses', JSON.stringify(courses));
+    appEventBus.emit('data-changed', { store: 'allCourses' });
     return simulateNetwork(courses);
 };
 
 export const saveAllGrades = async (grades: Grade[]): Promise<Grade[]> => {
     console.log("API: Saving all grades...");
     localStorage.setItem('allGrades', JSON.stringify(grades));
+    appEventBus.emit('data-changed', { store: 'allGrades' });
     return simulateNetwork(grades);
 };

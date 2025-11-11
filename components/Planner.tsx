@@ -15,8 +15,9 @@ interface PlannerProps {
 }
 
 const Planner: React.FC<PlannerProps> = ({ setView, onStartPractice }) => {
-  const { activeProfile, handleUpdateStudyPlan } = useAuth();
-  const { userDktData, userFlashcards, allAssignments, awardXP } = useStudentData();
+  // FIX: 'allAssignments' is provided by AuthContext, not StudentDataContext.
+  const { activeProfile, handleUpdateStudyPlan, allAssignments } = useAuth();
+  const { userDktData, userFlashcards, awardXP } = useStudentData();
   
   const [isLoading, setIsLoading] = useState(false);
   const [isAddTaskModalOpen, setIsAddTaskModalOpen] = useState(false);
@@ -72,7 +73,8 @@ const Planner: React.FC<PlannerProps> = ({ setView, onStartPractice }) => {
           const [, grade, subject, ...chapterParts] = task.data.chapterId.split('-');
           // updateActiveUserProfile({ lastChapter: chapterParts.join('-'), lastSubject: subject, grade });
           setView('lesson');
-      } else if (task.data?.assignmentId) setView('assignments');
+      // FIX: 'assignments' is not a valid View. Changed to 'academics'.
+      } else if (task.data?.assignmentId) setView('academics');
   };
 
   const daysOfWeek = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
@@ -162,7 +164,8 @@ const Planner: React.FC<PlannerProps> = ({ setView, onStartPractice }) => {
 
       {isAddTaskModalOpen && (
         <Suspense>
-          <AddTaskModal isOpen={isAddTaskModalOpen} onClose={() => setIsAddTaskModalOpen(false)} initialDate={addTaskDate} />
+          {/* FIX: Passed the required onAddTask prop. */}
+          <AddTaskModal isOpen={isAddTaskModalOpen} onClose={() => setIsAddTaskModalOpen(false)} initialDate={addTaskDate} onAddTask={handleAddTask} />
         </Suspense>
       )}
 

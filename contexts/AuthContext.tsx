@@ -1,7 +1,8 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
-import { UserProfile, UserRole, AllProgressData, AllFlashcardsData, AllDktData, Assignment, Announcement, StudentSubmission, StudentFlnProgress, TeacherSchedule, AttendanceRecord, QuickFormativeAssessment, Notification, QuestionPoolItem, BusRoute, PrintQuota, FeeStatus, AfterSchoolProgram, FacilityBooking, BoardPlannerEvent, CrossCurricularProject, CodingModule, CommunicationTemplate, TeacherAssignment, StudentPortfolioProject, AllPortfolios, WidgetConfig, PaperBlueprint, ExamSession, ExamSubmission, Course, Grade, StudyTask } from '../types';
+import { UserProfile, UserRole, AllProgressData, AllFlashcardsData, AllDktData, Assignment, Announcement, StudentSubmission, StudentFlnProgress, TeacherSchedule, AttendanceRecord, QuickFormativeAssessment, Notification, QuestionPoolItem, BusRoute, PrintQuota, FeeStatus, AfterSchoolProgram, FacilityBooking, BoardPlannerEvent, CrossCurricularProject, CodingModule, CommunicationTemplate, TeacherAssignment, StudentPortfolioProject, AllPortfolios, WidgetConfig, PaperBlueprint, ExamSession, ExamSubmission, Course, Grade, StudyTask, SyllabusChapterTopic } from '../types';
 import * as apiService from '../services/apiService';
 import type { View } from '../App';
+import { appEventBus } from '../utils/eventBus';
 
 interface AuthContextType {
   // State
@@ -41,6 +42,7 @@ interface AuthContextType {
   allCourses: Course[];
   allGrades: Grade[];
   view: View;
+  activeTopic: { chapter: SyllabusChapterTopic; topic: string } | null;
 
   // Handlers
   handleSetRole: (role: UserRole | null) => void;
@@ -78,6 +80,7 @@ interface AuthContextType {
   handleUpdateCourses: (courses: Course[]) => void;
   handleUpdateGrades: (grades: Grade[]) => void;
   setView: (view: View) => void;
+  setActiveTopic: (topic: { chapter: SyllabusChapterTopic; topic: string } | null) => void;
   _dangerouslySetAllProfiles: (profiles: UserProfile[]) => void;
 }
 
@@ -122,55 +125,68 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   // Add a state for view management
   const [view, setView] = useState<View>('home');
+  const [activeTopic, setActiveTopic] = useState<{ chapter: SyllabusChapterTopic; topic: string } | null>(null);
 
-
-  // Initial data load from the "backend"
-  useEffect(() => {
-    const loadData = async () => {
-      try {
-        setIsLoading(true);
-        const data = await apiService.fetchAllData();
-        setUserProfiles(data.profiles);
-        setActiveUserId(data.activeId);
-        setAllProgressData(data.progress);
-        setAllFlashcards(data.flashcards);
-        setAllDktData(data.allDktData);
-        setUserRole(data.userRole);
-        setAllAssignments(data.allAssignments);
-        setAllAnnouncements(data.allAnnouncements);
-        setAllSubmissions(data.allSubmissions);
-        setAllFlnProgress(data.allFlnProgress);
-        setTeacherSchedules(data.teacherSchedules);
-        setTeacherAssignments(data.teacherAssignments);
-        setAttendanceRecords(data.attendanceRecords);
-        setQuickFormativeAssessments(data.quickFormativeAssessments);
-        setAllNotifications(data.allNotifications);
-        setItemBank(data.itemBank);
-        setBusRoutes(data.busRoutes);
-        setPrintQuotas(data.printQuotas);
-        setFeeStatus(data.feeStatus);
-        setAfterSchoolPrograms(data.afterSchoolPrograms);
-        setFacilityBookings(data.facilityBookings);
-        setBoardPlannerEvents(data.boardPlannerEvents);
-        setCrossCurricularProjects(data.crossCurricularProjects);
-        setCodingModules(data.codingModules);
-        setCommunicationTemplates(data.communicationTemplates);
-        setAllPortfolios(data.allPortfolios);
-        setSchoolName(data.schoolName);
-        setAllBlueprints(data.allBlueprints);
-        setAllExamSessions(data.allExamSessions);
-        setAllExamSubmissions(data.allExamSubmissions);
-        setAllCourses(data.allCourses);
-        setAllGrades(data.allGrades);
-      } catch (e) {
-        console.error("Failed to load user data:", e);
-        setError("Could not load your data. Please try refreshing the page.");
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    loadData();
+  const loadData = useCallback(async () => {
+    try {
+      // Don't show main loader on real-time refetches
+      // setIsLoading(true); 
+      const data = await apiService.fetchAllData();
+      setUserProfiles(data.profiles);
+      setActiveUserId(data.activeId);
+      setAllProgressData(data.progress);
+      setAllFlashcards(data.flashcards);
+      setAllDktData(data.allDktData);
+      setUserRole(data.userRole);
+      setAllAssignments(data.allAssignments);
+      setAllAnnouncements(data.allAnnouncements);
+      setAllSubmissions(data.allSubmissions);
+      setAllFlnProgress(data.allFlnProgress);
+      setTeacherSchedules(data.teacherSchedules);
+      setTeacherAssignments(data.teacherAssignments);
+      setAttendanceRecords(data.attendanceRecords);
+      setQuickFormativeAssessments(data.quickFormativeAssessments);
+      setAllNotifications(data.allNotifications);
+      setItemBank(data.itemBank);
+      setBusRoutes(data.busRoutes);
+      setPrintQuotas(data.printQuotas);
+      setFeeStatus(data.feeStatus);
+      setAfterSchoolPrograms(data.afterSchoolPrograms);
+      setFacilityBookings(data.facilityBookings);
+      setBoardPlannerEvents(data.boardPlannerEvents);
+      setCrossCurricularProjects(data.crossCurricularProjects);
+      setCodingModules(data.codingModules);
+      setCommunicationTemplates(data.communicationTemplates);
+      setAllPortfolios(data.allPortfolios);
+      setSchoolName(data.schoolName);
+      setAllBlueprints(data.allBlueprints);
+      setAllExamSessions(data.allExamSessions);
+      setAllExamSubmissions(data.allExamSubmissions);
+      setAllCourses(data.allCourses);
+      setAllGrades(data.allGrades);
+    } catch (e) {
+      console.error("Failed to load user data:", e);
+      setError("Could not load your data. Please try refreshing the page.");
+    } finally {
+      setIsLoading(false);
+    }
   }, []);
+
+  // Initial data load and real-time event listener setup
+  useEffect(() => {
+    loadData();
+
+    const handleDataChange = (data?: { store: string }) => {
+        console.log(`[Real-Time Sync] Data changed in '${data?.store || 'unknown'}'. Refetching all data.`);
+        loadData();
+    };
+
+    appEventBus.on('data-changed', handleDataChange);
+
+    return () => {
+        appEventBus.off('data-changed', handleDataChange);
+    };
+}, [loadData]);
 
   const activeProfile = userProfiles.find(p => p.id === activeUserId) || null;
 
@@ -550,6 +566,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     afterSchoolPrograms, facilityBookings, boardPlannerEvents, crossCurricularProjects, codingModules, communicationTemplates,
     allPortfolios, schoolName, allBlueprints, allExamSessions, allExamSubmissions, allCourses, allGrades,
     view,
+    activeTopic,
     handleSetRole, handleSaveUser, handleSwitchUser, updateActiveUserProfile, handleUpdateStudyPlan, handleUpdateSingleTask, handleUpdateWidgets, handleUpdateScholarCoins,
     handleSaveAllDktData, handleCreateAssignment, handleAddTaskToStudentPlans, handleCreateAnnouncement, handleSaveSubmission, handleUpdateSubmission,
     handleSaveAllFlnProgress, handleSaveAttendance, handleSaveQfas, handleUpdateTeacherSchedule, handleUpdateItemBank,
@@ -558,6 +575,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     handleUpdatePortfolios, handleUpdateSchoolName, handleUpdateBlueprints, handleSetTutorLock,
     handleSaveExamSessions, handleSaveExamSubmission, handleUpdateCourses, handleUpdateGrades,
     setView,
+    setActiveTopic,
     _dangerouslySetAllProfiles: setUserProfiles,
   };
 

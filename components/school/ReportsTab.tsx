@@ -5,6 +5,7 @@ import { generateStudentReportCardSummary, generateTeacherWeeklyReport } from '.
 import { curriculum } from '../../constants/curriculum';
 import { INITIAL_MASTERY } from '../../services/adaptiveEngine';
 import { SparklesIcon } from '../../constants/icons';
+import Loader from '../Loader';
 
 interface ReportsTabProps {
     selectedGrade: string | null;
@@ -141,8 +142,7 @@ const ReportsTab: React.FC<ReportsTabProps> = ({ selectedGrade, setIsReportCardO
                 
                 {isGeneratingNarrative && (
                      <div className="mt-4 text-center p-8">
-                        <div className="w-10 h-10 border-4 border-dashed rounded-full animate-spin border-indigo-500 mx-auto"></div>
-                        <p className="mt-3 text-slate-500 font-semibold">Analyzing class data...</p>
+                        <Loader />
                     </div>
                 )}
 

@@ -29,7 +29,7 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, setView, onFocus }) => {
                 }
                 break;
             case 'assignment':
-                setView('assignments');
+                setView('academics');
                 break;
             case 'manual':
                 // Manual tasks don't have a default action

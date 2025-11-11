@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { fetchChapterContent, generateFlashcards } from '../services/geminiService';
-import { Flashcard } from '../types';
+import { fetchTopicContent, generateFlashcards } from '../services/geminiService';
+import { Flashcard, SyllabusChapterTopic } from '../types';
 import { XIcon, LayersIcon } from '../constants/icons';
 import { useStudentData } from '../contexts/StudentDataContext';
+import Loader from './Loader';
 
 interface FlashcardCreationModalProps {
   chapterInfo: { grade: string; subject: string; chapter: string; };
@@ -17,13 +18,26 @@ const FlashcardCreationModal: React.FC<FlashcardCreationModalProps> = ({ chapter
   const [generatedCards, setGeneratedCards] = useState<Flashcard[]>([]);
   const [error, setError] = useState<string | null>(null);
   
-  const chapterId = `G${chapterInfo.grade}-${chapterInfo.subject}-${chapterInfo.chapter}`;
+  const chapterId = `G${chapterInfo.grade}-${chapterInfo.subject.replace(/\s+/g, '')}-${chapterInfo.chapter.replace(/\s+/g, '-')}`;
+
 
   useEffect(() => {
     const createCards = async () => {
       try {
         setLoadingState('fetchingContent');
-        const lessonPack = await fetchChapterContent(chapterInfo.grade, chapterInfo.subject, chapterInfo.chapter);
+        
+        const dummyChapter: SyllabusChapterTopic = {
+            topic_id: `G${chapterInfo.grade}-${chapterInfo.subject}-${chapterInfo.chapter}`,
+            topic_name: chapterInfo.chapter,
+            learning_outcomes: [],
+            bloom_levels: [],
+            prerequisites: [],
+            common_misconceptions: [],
+            cross_links: [],
+            estimated_time_mins: 0,
+            marking_scheme_mapping: { K: 0, U: 0, A: 0, HOTS: 0 },
+        };
+        const lessonPack = await fetchTopicContent(dummyChapter, chapterInfo.chapter);
         
         setLoadingState('generatingCards');
         const cards = await generateFlashcards(lessonPack);
@@ -50,10 +64,7 @@ const FlashcardCreationModal: React.FC<FlashcardCreationModalProps> = ({ chapter
       case 'generatingCards':
         return (
           <div className="text-center p-8">
-            <div className="w-12 h-12 border-4 border-dashed rounded-full animate-spin border-[var(--brand-primary)] mx-auto"></div>
-            <p className="mt-4 text-slate-500 font-semibold">
-              {loadingState === 'fetchingContent' ? 'Analyzing lesson content...' : 'Generating flashcards with AI...'}
-            </p>
+            <Loader />
           </div>
         );
       case 'error':

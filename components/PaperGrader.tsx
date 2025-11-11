@@ -1,6 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import { SparklesIcon, UploadIcon, XIcon, CheckCircleIcon } from '../constants/icons';
 import { gradeHandwrittenAnswer } from '../services/geminiService';
+import Loader from './Loader';
 
 interface GradingResult {
     transcribedText: string;
@@ -132,8 +133,7 @@ const PaperGrader: React.FC = () => {
                     <h4 className="font-bold text-lg mb-4 text-center">Grading Results</h4>
                     {isLoading && (
                         <div className="flex flex-col items-center justify-center h-full">
-                            <div className="w-10 h-10 border-4 border-dashed rounded-full animate-spin border-indigo-500"></div>
-                            <p className="mt-3 text-slate-500">Analyzing handwriting and grading...</p>
+                           <Loader />
                         </div>
                     )}
                     {result && (

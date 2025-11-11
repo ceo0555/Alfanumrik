@@ -1,5 +1,5 @@
 import React from 'react';
-import { ArrowLeftIcon, LogOutIcon, ScholarCoinIcon } from '../constants/icons';
+import { ArrowLeftIcon, LogOutIcon, ScholarCoinIcon, MenuIcon } from '../constants/icons';
 import { useAuth } from '../contexts/AuthContext';
 import { UserRole } from '../types';
 
@@ -10,25 +10,35 @@ interface HeaderProps {
   onOpenUserModal: () => void;
   userRole: UserRole | null;
   onLogout: () => void;
+  onToggleSidebar: () => void;
 }
 
-const Header: React.FC<HeaderProps> = ({ showBackButton, onBack, title, onOpenUserModal, userRole, onLogout }) => {
+const Header: React.FC<HeaderProps> = ({ showBackButton, onBack, title, onOpenUserModal, userRole, onLogout, onToggleSidebar }) => {
   const { activeProfile } = useAuth();
 
   return (
-    <header className="flex-shrink-0 bg-white border-b border-[var(--border-color)] z-10">
+    <header className="flex-shrink-0 bg-white border-b border-[var(--border-color)]">
       <div className="flex items-center h-16 px-4 md:px-6 gap-2">
+        {userRole === 'student' && (
+           <button
+            onClick={onToggleSidebar}
+            className="p-2 rounded-full hover:bg-slate-100 transition-colors lg:hidden"
+            aria-label="Open menu"
+          >
+            <MenuIcon className="w-6 h-6 text-slate-600" />
+          </button>
+        )}
         {showBackButton && (
           <button
             onClick={onBack}
-            className="p-2 rounded-full hover:bg-slate-200 transition-colors md:hidden"
+            className="p-2 rounded-full hover:bg-slate-100 transition-colors"
             aria-label="Go back"
           >
             <ArrowLeftIcon className="w-6 h-6 text-slate-600" />
           </button>
         )}
 
-        <h1 className="flex-1 text-xl font-bold text-slate-800 truncate">
+        <h1 className="flex-1 text-lg md:text-xl font-bold text-slate-800 truncate">
           {title}
         </h1>
 
@@ -36,14 +46,14 @@ const Header: React.FC<HeaderProps> = ({ showBackButton, onBack, title, onOpenUs
             {activeProfile && (
               <>
                 {userRole === 'student' ? (
-                  <div className="hidden md:flex items-center gap-4">
+                  <div className="flex items-center gap-2 sm:gap-4">
                     <div className="flex items-center gap-2 p-2 bg-amber-100 rounded-full text-amber-800">
                         <ScholarCoinIcon className="w-5 h-5" />
                         <span className="font-bold text-sm">{activeProfile.scholarCoins}</span>
                     </div>
                     <button 
                         onClick={onOpenUserModal}
-                        className="h-10 w-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 text-white flex items-center justify-center font-bold text-lg ring-2 ring-offset-2 ring-indigo-200 shadow-md transition-transform transform hover:scale-110 focus:outline-none focus:ring-4 focus:ring-indigo-300"
+                        className="h-9 w-9 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 text-white flex items-center justify-center font-bold text-lg ring-2 ring-offset-2 ring-indigo-200 shadow-md transition-transform transform hover:scale-110 focus:outline-none focus:ring-4 focus:ring-indigo-300"
                         aria-label={`Switch from ${activeProfile.name} profile`}
                     >
                         {activeProfile.name.charAt(0).toUpperCase()}

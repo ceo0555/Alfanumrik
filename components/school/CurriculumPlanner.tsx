@@ -4,6 +4,7 @@ import { curriculum } from '../../constants/curriculum';
 import { generateCurriculumBlueprint } from '../../services/geminiService';
 import { SyllabusBlueprintUnit, PacingCalendarEvent } from '../../types';
 import { SparklesIcon, CalendarDaysIcon, BookIcon } from '../../constants/icons';
+import Loader from '../Loader';
 
 const CurriculumPlanner: React.FC = () => {
     const { allDktData } = useAuth();
@@ -96,8 +97,7 @@ const CurriculumPlanner: React.FC = () => {
 
             {isLoading && (
                 <div className="text-center p-8">
-                    <div className="w-10 h-10 border-4 border-dashed rounded-full animate-spin border-indigo-500 mx-auto"></div>
-                    <p className="mt-3 text-slate-500">Synthesizing curriculum and historical data...</p>
+                   <Loader />
                 </div>
             )}
 
@@ -127,4 +127,26 @@ const CurriculumPlanner: React.FC = () => {
                          <h3 className="font-bold text-lg mb-3 flex items-center gap-2"><CalendarDaysIcon className="w-5 h-5"/> Pacing Calendar</h3>
                          <div className="space-y-2 max-h-[60vh] overflow-y-auto">
                             {result.calendar.map(event => (
-                                <div key={event.week} className="flex items-
+                                <div key={event.week} className="flex items-center gap-3 text-sm p-2 rounded-md bg-slate-50">
+                                    <span className="font-bold w-12 text-center">Wk {event.week}</span>
+                                    <span className={`w-2 h-6 rounded-full ${
+                                        event.activity_type === 'Teaching' ? 'bg-blue-400' :
+                                        event.activity_type === 'Assessment' ? 'bg-yellow-400' :
+                                        event.activity_type === 'Remediation' ? 'bg-green-400' :
+                                        event.activity_type === 'Exam' ? 'bg-red-400' : 'bg-slate-400'
+                                    }`}></span>
+                                    <div>
+                                        <p className="font-semibold">{event.activity_type}</p>
+                                        <p className="text-xs text-slate-600">{event.details}</p>
+                                    </div>
+                                </div>
+                            ))}
+                         </div>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+};
+
+export default CurriculumPlanner;

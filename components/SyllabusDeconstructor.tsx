@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { NetworkIcon, SparklesIcon, ClipboardCopyIcon, CheckCircleIcon } from '../constants/icons';
 import { deconstructSyllabus } from '../services/geminiService';
 import { SyllabusUnit, PrerequisiteGraph } from '../types';
+import Loader from './Loader';
 
 interface DeconstructedSyllabus {
     structuredSyllabus: SyllabusUnit[];
@@ -72,8 +73,7 @@ const SyllabusDeconstructor: React.FC = () => {
                     <h4 className="font-bold text-lg mb-2 text-center flex-shrink-0">Structured Output</h4>
                     {isLoading && (
                         <div className="flex flex-col items-center justify-center h-full flex-grow">
-                            <div className="w-10 h-10 border-4 border-dashed rounded-full animate-spin border-indigo-500"></div>
-                            <p className="mt-3 text-slate-500">Analyzing dependencies...</p>
+                           <Loader />
                         </div>
                     )}
                     {result && (

@@ -5,10 +5,9 @@ import MarkdownRenderer from './MarkdownRenderer';
 interface PracticeStepProps {
   content: GuidedPracticeStep['content'] | IndependentPracticeStep['content'];
   type: 'guided_practice' | 'independent_practice';
-  onCompleted: () => void;
 }
 
-const PracticeStep: React.FC<PracticeStepProps> = ({ content, type, onCompleted }) => {
+const PracticeStep: React.FC<PracticeStepProps> = ({ content, type }) => {
   const [userAnswer, setUserAnswer] = useState('');
   const isGuided = type === 'guided_practice';
   const themeClasses = isGuided
@@ -36,7 +35,7 @@ const PracticeStep: React.FC<PracticeStepProps> = ({ content, type, onCompleted 
         onChange={(e) => setUserAnswer(e.target.value)}
       />
 
-      <details className="mt-2" onToggle={(e) => { if ((e.target as HTMLDetailsElement).open) onCompleted(); }}>
+      <details className="mt-2">
         <summary className={`cursor-pointer font-semibold not-prose ${themeClasses.text} ${themeClasses.hover}`}>
           Check the solution.
         </summary>

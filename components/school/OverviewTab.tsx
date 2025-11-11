@@ -1,8 +1,7 @@
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useMemo } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { UsersIcon, BarChartIcon, SparklesIcon, UserIcon, TrendingUpIcon, TrendingDownIcon } from '../../constants/icons';
 import * as schoolService from '../../services/schoolService';
-import { generateTeacherDailyBriefing } from '../../services/geminiService';
 
 const StatCard: React.FC<{ title: string; value: string | number; icon: React.ReactNode }> = ({ title, value, icon }) => (
     <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex items-center gap-4">
@@ -69,49 +68,6 @@ const ClassPacingCard: React.FC<{ pacing: { subject: string, progress: number }[
     </div>
 );
 
-const DailyBriefingCard: React.FC = () => {
-    const { activeProfile, teacherSchedules, allDktData } = useAuth();
-    const [briefing, setBriefing] = useState<string | null>(null);
-    const [isLoading, setIsLoading] = useState(true);
-
-    useEffect(() => {
-        const fetchBriefing = async () => {
-            if (!activeProfile || activeProfile.schoolRole !== 'teacher') {
-                setIsLoading(false);
-                return;
-            };
-
-            // Filter schedule for today (mock)
-            const todaySchedule = teacherSchedules;
-
-            try {
-                const generatedBriefing = await generateTeacherDailyBriefing(activeProfile, todaySchedule, allDktData);
-                setBriefing(generatedBriefing);
-            } catch (e) {
-                console.error("Failed to generate daily briefing:", e);
-                setBriefing("Could not generate today's briefing.");
-            } finally {
-                setIsLoading(false);
-            }
-        };
-
-        fetchBriefing();
-    }, [activeProfile, teacherSchedules, allDktData]);
-
-    if (!activeProfile || activeProfile.schoolRole !== 'teacher') return null;
-
-    return (
-        <div className="p-4 bg-indigo-50 border-l-4 border-indigo-500 rounded-r-lg">
-            <h3 className="font-bold text-lg text-indigo-800 flex items-center gap-2"><SparklesIcon className="w-5 h-5"/> MIGA's Daily Briefing</h3>
-            {isLoading ? (
-                <p className="text-sm text-slate-600 mt-2 animate-pulse">Analyzing schedule and student data...</p>
-            ) : (
-                <p className="text-sm text-slate-700 mt-2">{briefing}</p>
-            )}
-        </div>
-    );
-};
-
 
 interface OverviewTabProps {
     selectedGrade: string | null;
@@ -152,7 +108,6 @@ const OverviewTab: React.FC<OverviewTabProps> = ({ selectedGrade }) => {
 
     return (
         <div className="space-y-6">
-            {schoolRole === 'teacher' && <DailyBriefingCard />}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 <StatCard title="Total Students" value={overviewMetrics.totalStudents} icon={<UsersIcon className="w-6 h-6"/>} />
                 <StatCard title="Lessons Completed" value={overviewMetrics.lessonsCompleted} icon={<BarChartIcon className="w-6 h-6"/>} />

@@ -3,6 +3,7 @@ import { UserProfile, RemediationPack, StructuredContent, QuestionPoolItem, Work
 import { useAuth } from '../../contexts/AuthContext';
 import { generateRemediationPack } from '../../services/geminiService';
 import { XIcon, SparklesIcon, BookIcon } from '../../constants/icons';
+import Loader from '../Loader';
 
 interface RemediationModalProps {
     isOpen: boolean;
@@ -109,6 +110,8 @@ const RemediationModal: React.FC<RemediationModalProps> = ({ isOpen, onClose, st
                         {isLoading ? "Generating Pack..." : "2. Generate Remediation Pack"}
                     </button>
                     {error && <p className="text-sm text-red-600 text-center">{error}</p>}
+
+                    {isLoading && <Loader />}
 
                     {generatedPack && (
                         <div className="mt-4 p-4 bg-slate-50 rounded-lg border animate-fade-in space-y-3">

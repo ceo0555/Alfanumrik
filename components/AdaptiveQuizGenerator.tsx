@@ -3,6 +3,7 @@ import { QuizState, QuestionPoolItem } from '../types';
 import { curriculum } from '../constants/curriculum';
 import { generateAdaptiveQuestion } from '../services/geminiService';
 import { ClipboardCheckIcon, ThumbsUpIcon, ThumbsDownIcon } from '../constants/icons';
+import Loader from './Loader';
 
 const MAX_QUESTIONS = 10; // Failsafe to prevent infinitely long quizzes
 
@@ -219,7 +220,7 @@ const AdaptiveQuizGenerator: React.FC = () => {
                         <span className="font-semibold">Question: {questionNumber}</span>
                     </div>
                 </div>
-                {isLoading && <div className="text-center p-8"><div className="w-12 h-12 border-4 border-dashed rounded-full animate-spin border-[var(--brand-primary)] mx-auto"></div><p className="mt-4 text-slate-500">Generating Question...</p></div>}
+                {isLoading && <div className="text-center p-8"><Loader /></div>}
                 
                 {error && !isLoading && (
                     <div className="p-4 bg-red-50 text-red-700 rounded-lg text-center">

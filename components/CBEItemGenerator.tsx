@@ -5,6 +5,7 @@ import { CBSE_COMPETENCIES, DOK_LEVELS } from '../constants/competencies';
 import { curriculum } from '../constants/curriculum';
 import { SparklesIcon, PlusIcon } from '../constants/icons';
 import { useAuth } from '../contexts/AuthContext';
+import Loader from './Loader';
 
 interface CBEItemGeneratorProps {
     grade: string;
@@ -103,7 +104,7 @@ const CBEItemGenerator: React.FC<CBEItemGeneratorProps> = ({ grade, onAddItemToB
 
             <div className="p-4 bg-slate-50 rounded-lg border min-h-[300px] flex flex-col">
                 <h3 className="font-bold text-lg mb-4">Generated Item</h3>
-                {isLoading && <div className="m-auto text-center"><div className="w-10 h-10 border-4 border-dashed rounded-full animate-spin border-indigo-500 mx-auto"></div><p className="mt-2 text-slate-500">Generating...</p></div>}
+                {isLoading && <div className="m-auto text-center"><Loader /></div>}
                 {generatedItem && (
                     <div className="flex-grow space-y-3">
                          <div className="p-4 bg-white rounded-lg border">

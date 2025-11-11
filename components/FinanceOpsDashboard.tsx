@@ -5,6 +5,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { FeeStatus, PrintQuota, BusRoute } from '../types';
 import ManageFinanceItemModal from './school/ManageFinanceItemModal';
 import { generateTransportOptimizationTips } from '../services/geminiService';
+import Loader from './Loader';
 
 type ItemToEdit = 
     | { type: 'print', data: PrintQuota }
@@ -78,7 +79,7 @@ const FinanceOpsDashboard: React.FC = () => {
                     <div className="mt-4 p-3 bg-indigo-50 border-l-4 border-indigo-400 rounded-r-lg min-h-[90px]">
                         <h4 className="font-semibold text-sm text-indigo-800 flex items-center gap-1"><SparklesIcon className="w-4 h-4" /> AI Suggestions</h4>
                         {isGeneratingTips ? (
-                            <p className="text-xs text-indigo-700 mt-1">Generating optimization tips...</p>
+                           <div className="py-4"><Loader /></div>
                         ) : transportTips ? (
                             <ul className="list-disc list-inside text-xs text-indigo-700 mt-1 space-y-1">
                                 {transportTips.map((tip, i) => <li key={i}>{tip}</li>)}

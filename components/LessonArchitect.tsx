@@ -4,6 +4,7 @@ import { generateLessonPackFromTopic } from '../services/geminiService';
 import { LessonPack } from '../types';
 import { curriculum } from '../constants/curriculum';
 import { useAuth } from '../contexts/AuthContext';
+import Loader from './Loader';
 
 const LessonArchitect: React.FC = () => {
     const { activeProfile } = useAuth();
@@ -90,8 +91,7 @@ const LessonArchitect: React.FC = () => {
                     <h4 className="font-bold text-lg mb-4 text-center">Generated Content</h4>
                     {isLoading && (
                         <div className="flex flex-col items-center justify-center h-full">
-                            <div className="w-10 h-10 border-4 border-dashed rounded-full animate-spin border-indigo-500"></div>
-                            <p className="mt-3 text-slate-500">Building lesson structure...</p>
+                           <Loader />
                         </div>
                     )}
                     {generatedPack && (

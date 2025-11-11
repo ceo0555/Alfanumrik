@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { QuestionPoolItem, ScratchpadState } from '../types';
+import { QuestionPoolItem, ScratchpadState, TutorInterventionContext } from '../types';
 import { ThumbsDownIcon, ThumbsUpIcon, SparklesIcon, NotebookIcon, MicrophoneIcon, StopCircleIcon } from '../constants/icons';
 import { gradeShortAnswer, analyzeScratchpadForErrorAnalysis, gradeVerbalExplanation } from '../services/geminiService';
 import DigitalScratchpad from './DigitalScratchpad';
@@ -11,6 +11,7 @@ interface QuestionCardProps {
   stepAnswer?: { answer: string | null; isCorrect: boolean };
   onStepAnswer: (answer: string | null, isCorrect: boolean, errorType?: string) => void;
   isGeneratingRemediation?: boolean;
+  onTriggerIntervention: (context: TutorInterventionContext) => void;
 }
 
 const DifficultyBadge: React.FC<{ difficulty: 'E' | 'M' | 'H' }> = ({ difficulty }) => {
@@ -28,7 +29,7 @@ const DifficultyBadge: React.FC<{ difficulty: 'E' | 'M' | 'H' }> = ({ difficulty
   return <span className={`${baseClasses} ${colorClasses[difficulty]}`}>{text[difficulty]}</span>;
 };
 
-const QuestionCard: React.FC<QuestionCardProps> = ({ questionData, questionNumber, stepAnswer, onStepAnswer, isGeneratingRemediation }) => {
+const QuestionCard: React.FC<QuestionCardProps> = ({ questionData, questionNumber, stepAnswer, onStepAnswer, isGeneratingRemediation, onTriggerIntervention }) => {
   const [currentMcqSelection, setCurrentMcqSelection] = useState<string | null>(null);
   const [currentShortAnswer, setCurrentShortAnswer] = useState('');
   const [isAiGrading, setIsAiGrading] = useState(false);
@@ -245,9 +246,21 @@ const QuestionCard: React.FC<QuestionCardProps> = ({ questionData, questionNumbe
               </div>
           </div>
         )}
-        {isAnswered && !stepAnswer?.isCorrect && isGeneratingRemediation && (
-          <div className="mt-2 text-sm text-indigo-600 font-semibold animate-pulse">
-              Generating a quick review to help with this concept...
+        {isAnswered && !stepAnswer?.isCorrect && (
+          <div className="mt-4 space-y-3">
+            {isGeneratingRemediation && (
+              <div className="p-3 bg-indigo-50 border-l-4 border-indigo-400 rounded-r-lg flex items-center gap-3 animate-pulse">
+                <SparklesIcon className="w-5 h-5 text-indigo-500 flex-shrink-0" />
+                <p className="text-sm font-semibold text-indigo-700">MIGA is generating a quick review to help with this concept...</p>
+              </div>
+            )}
+            <button 
+                onClick={() => onTriggerIntervention({ question: questionData, studentAnswer: submittedAnswer || '' })}
+                className="w-full btn bg-purple-100 text-purple-800 hover:bg-purple-200 flex items-center justify-center gap-2"
+            >
+                <SparklesIcon className="w-5 h-5" />
+                Struggling? Let's break this down together.
+            </button>
           </div>
         )}
       </div>

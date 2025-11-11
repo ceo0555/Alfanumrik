@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, Suspense } from 'react';
-import { LessonPack, AssessmentResult, AdaptiveFollowUp, LessonStep, LessonStepType, QuestionPoolItem, InteractiveSimulation, LtiContext, CoreExplanationStep, QuickCheckStep, StructuredContent, QuickCheck } from '../types';
-import { generateAdaptiveFollowUp, generateStudyNotes, generatePracticeQuiz, explainTextSnippet, generateMicroRemediation } from '../services/geminiService';
+import { LessonPack, AssessmentResult, AdaptiveFollowUp, LessonStep, LessonStepType, QuestionPoolItem, InteractiveSimulation, LtiContext, CoreExplanationStep, QuickCheckStep, StructuredContent, QuickCheck, TutorInterventionContext } from '../types';
+import { generateAdaptiveFollowUp, generateStudyNotes, generatePracticeQuiz, explainTextSnippet, generateMicroRemediation, generateConceptDeepDive } from '../services/geminiService';
 import { transformLessonPackToSteps } from '../utils/lessonHelpers';
 import { SparklesIcon, ArrowLeftIcon, ArrowRightIcon, BookIcon, FileTextIcon, ClipboardCopyIcon, ClipboardListIcon, CheckCircleIcon, ChevronDownIcon } from '../constants/icons';
 import { useStudentData } from '../contexts/StudentDataContext';
@@ -26,9 +26,11 @@ import FeedbackStep from './FeedbackStep';
 import KeyTermStep from './KeyTermStep';
 import NoteStep from './NoteStep';
 import TTSPlayer from './TTSPlayer';
+import MatchingQuizStep from './MatchingQuizStep';
 
 const SimulationExplainerModal = React.lazy(() => import('./SimulationExplainerModal'));
 const InteractiveVideoStep = React.lazy(() => import('./InteractiveVideoStep'));
+const DeepDiveModal = React.lazy(() => import('./DeepDiveModal'));
 
 
 interface AdaptiveLessonPlayerProps {
@@ -37,6 +39,8 @@ interface AdaptiveLessonPlayerProps {
   isTransitioning?: boolean;
   onFinish: () => void;
   setAiContext: (context: string | null) => void;
+  onProgressUpdate: (isInProgress: boolean) => void;
+  onTriggerTutorIntervention: (context: TutorInterventionContext) => void;
 }
 
 const getTextForTTS = (step: LessonStep | undefined): string => {
@@ -104,9 +108,9 @@ const getTextForTTS = (step: LessonStep | undefined): string => {
 };
 
 
-const AdaptiveLessonPlayer: React.FC<AdaptiveLessonPlayerProps> = ({ lessonPack, ltiContext, isTransitioning, onFinish, setAiContext }) => {
-  const { activeProfile } = useAuth();
-  const { progressData, markChapterAsCompleted, awardXP, recordAnswer, updateChapterStep } = useStudentData();
+const AdaptiveLessonPlayer: React.FC<AdaptiveLessonPlayerProps> = ({ lessonPack, ltiContext, isTransitioning, onFinish, setAiContext, onProgressUpdate, onTriggerTutorIntervention }) => {
+  const { activeProfile, activeTopic } = useAuth();
+  const { progressData, markTopicAsCompleted, awardXP, recordAnswer, updateTopicStep, startTopic } = useStudentData();
   
   const [originalSteps, setOriginalSteps] = useState<LessonStep[]>([]);
   const [steps, setSteps] = useState<LessonStep[]>([]);
@@ -115,7 +119,6 @@ const AdaptiveLessonPlayer: React.FC<AdaptiveLessonPlayerProps> = ({ lessonPack,
   const [stepAnswers, setStepAnswers] = useState<{ [index: number]: { answer: string | null; isCorrect: boolean } }>({});
   
   const [explanationPopup, setExplanationPopup] = useState<{ content: string; top: number; left: number } | null>(null);
-  const [isExplaining, setIsExplaining] = useState(false);
   const contentRef = useRef<HTMLDivElement>(null);
   
   const [assessmentResults, setAssessmentResults] = useState<AssessmentResult[]>([]);
@@ -131,11 +134,19 @@ const AdaptiveLessonPlayer: React.FC<AdaptiveLessonPlayerProps> = ({ lessonPack,
   const [simulationModalContent, setSimulationModalContent] = useState<InteractiveSimulation | null>(null);
   const [isSubmittingToLMS, setIsSubmittingToLMS] = useState(false);
   const [isGeneratingRemediation, setIsGeneratingRemediation] = useState<number | null>(null);
+  const [deepDiveModal, setDeepDiveModal] = useState<{ isOpen: boolean; content: string; title: string; isLoading: boolean; }>({ isOpen: false, content: '', title: '', isLoading: false });
 
   const hasInitialized = useRef(false);
   const prevLessonPackRef = useRef<LessonPack | null>(null);
   
   const currentStep = steps[currentStepIndex];
+  const topicId = lessonPack?.topic_id;
+  const isFinalStep = currentStepIndex >= steps.length - 1;
+
+  useEffect(() => {
+    // Communicate progress status to parent for exit confirmation logic
+    onProgressUpdate(!isFinalStep && steps.length > 0);
+  }, [currentStepIndex, steps.length, onProgressUpdate, isFinalStep]);
 
   useEffect(() => {
     if (currentStep) {
@@ -146,28 +157,30 @@ const AdaptiveLessonPlayer: React.FC<AdaptiveLessonPlayerProps> = ({ lessonPack,
     }
   }, [currentStep, setAiContext]);
 
-  const isQuestionStep = (type: LessonStepType) => ['quick_check', 'fill_in_the_blanks', 'assessment_question'].includes(type);
-  const isDetailsStep = (type: LessonStepType) => ['guided_practice', 'independent_practice', 'HOTS'].includes(type);
-
+  const isQuestionStep = (type: LessonStepType) => ['quick_check', 'fill_in_the_blanks', 'assessment_question', 'matching_quiz'].includes(type);
+  
   const updateStepCompletionStatus = (index: number, currentSteps: LessonStep[], currentAnswers: typeof stepAnswers) => {
     const step = currentSteps[index];
     if (!step) {
-        setIsStepCompleted(true);
-        return;
+      setIsStepCompleted(true);
+      return;
     }
-    if (isQuestionStep(step.type)) setIsStepCompleted(!!currentAnswers[index]);
-    else if (isDetailsStep(step.type)) setIsStepCompleted(false);
-    else setIsStepCompleted(true);
+    
+    if (isQuestionStep(step.type) && !currentAnswers[index]) {
+      setIsStepCompleted(false);
+    } else {
+      setIsStepCompleted(true);
+    }
   };
 
   useEffect(() => {
-    if (lessonPack && lessonPack !== prevLessonPackRef.current) {
+    if (lessonPack && lessonPack !== prevLessonPackRef.current && topicId) {
         prevLessonPackRef.current = lessonPack;
         hasInitialized.current = false;
         
-        const { grade, lastSubject, lastChapter } = activeProfile!;
-        const chapterId = `G${grade}-${lastSubject}-${lastChapter}`;
-        const chapterProgress = progressData[chapterId];
+        startTopic(topicId);
+
+        const chapterProgress = progressData[topicId];
         
         const initialSteps = transformLessonPackToSteps(lessonPack);
         const initialStepIndex = (chapterProgress?.status !== 'completed' && chapterProgress?.currentStep) 
@@ -188,12 +201,15 @@ const AdaptiveLessonPlayer: React.FC<AdaptiveLessonPlayerProps> = ({ lessonPack,
         setSteps([]);
         setOriginalSteps([]);
     }
-  }, [lessonPack, activeProfile, progressData]);
+  }, [lessonPack, activeProfile, progressData, startTopic, topicId]);
 
   useEffect(() => {
-    if (hasInitialized.current && !ltiContext) updateChapterStep(currentStepIndex);
-    else hasInitialized.current = true;
-  }, [currentStepIndex, updateChapterStep, ltiContext]);
+    if (hasInitialized.current && !ltiContext && topicId) {
+        updateTopicStep(topicId, currentStepIndex);
+    } else {
+        hasInitialized.current = true;
+    }
+  }, [currentStepIndex, updateTopicStep, ltiContext, topicId]);
 
   // Effect to handle generation of adaptive follow-up plan
   useEffect(() => {
@@ -218,7 +234,6 @@ const AdaptiveLessonPlayer: React.FC<AdaptiveLessonPlayerProps> = ({ lessonPack,
                           const introIndex = prevSteps.findIndex(s => s.type === 'adaptive_intro');
                           if (introIndex !== -1) {
                               const updatedSteps = [...prevSteps];
-                              // Remove the intro step and insert the new adaptive steps
                               updatedSteps.splice(introIndex, 1, ...newSteps);
                               return updatedSteps;
                           }
@@ -227,13 +242,11 @@ const AdaptiveLessonPlayer: React.FC<AdaptiveLessonPlayerProps> = ({ lessonPack,
 
                   } catch (e) {
                       console.error("Failed to generate adaptive plan", e);
-                      // If plan fails, just remove the intro step and let the user proceed
                       setSteps(prev => prev.filter(s => s.type !== 'adaptive_intro'));
                   } finally {
                       setIsGeneratingPlan(false);
                   }
               } else {
-                  // No incorrect answers, just remove the intro step and move on
                   setSteps(prev => prev.filter(s => s.type !== 'adaptive_intro'));
               }
           }
@@ -241,13 +254,15 @@ const AdaptiveLessonPlayer: React.FC<AdaptiveLessonPlayerProps> = ({ lessonPack,
       generatePlan();
   }, [currentStep, assessmentResults, adaptivePlan, isGeneratingPlan]);
 
-  const handleStepAnswer = async (stepIndex: number, answer: string | null, isCorrect: boolean, q_id?: string, question_text?: string) => {
+    const handleStepAnswer = async (stepIndex: number, answer: string | null, isCorrect: boolean, q_id?: string, question_text?: string) => {
       if (stepAnswers[stepIndex]) return;
 
       setStepAnswers(prev => ({ ...prev, [stepIndex]: { answer, isCorrect } }));
-      if (lessonPack) recordAnswer(lessonPack.topic_id, isCorrect);
+      if (lessonPack) recordAnswer(lessonPack.topic_id.split('|')[0], isCorrect);
       if (q_id && question_text) setAssessmentResults(prev => [...prev, { q_id, question_text, is_correct: isCorrect }]);
       
+      setIsStepCompleted(true);
+
       if (!isCorrect && lessonPack) {
         setIsGeneratingRemediation(stepIndex);
         try {
@@ -291,10 +306,7 @@ const AdaptiveLessonPlayer: React.FC<AdaptiveLessonPlayerProps> = ({ lessonPack,
             console.error("Failed to generate micro-remediation", e);
         } finally {
             setIsGeneratingRemediation(null);
-            setIsStepCompleted(true); // Allow user to proceed
         }
-    } else {
-        setIsStepCompleted(true);
     }
   };
 
@@ -306,8 +318,8 @@ const AdaptiveLessonPlayer: React.FC<AdaptiveLessonPlayerProps> = ({ lessonPack,
       awardXP('step_completed');
       setCurrentStepIndex(nextStepIndex);
       updateStepCompletionStatus(nextStepIndex, steps, stepAnswers);
-      if (nextStepIndex === steps.length - 1 && !ltiContext) {
-        markChapterAsCompleted();
+      if (nextStepIndex === steps.length - 1 && !ltiContext && topicId) {
+        markTopicAsCompleted(topicId);
       }
     }
   };
@@ -348,25 +360,30 @@ const AdaptiveLessonPlayer: React.FC<AdaptiveLessonPlayerProps> = ({ lessonPack,
 
     if (!contentRect) return;
 
-    // Position popup below the paragraph
     const top = rect.top - contentRect.top + rect.height + 8;
-    // Center the popup horizontally relative to the content area
-    const left = contentRect.width / 2;
-
-    setIsExplaining(true);
-    setExplanationPopup({ content: 'Thinking...', top: top, left: left });
+    
+    setExplanationPopup({ content: 'Thinking...', top: top, left: rect.left - contentRect.left });
     try {
         const explanation = await explainTextSnippet(snippet);
         setExplanationPopup(prev => prev ? { ...prev, content: explanation } : null);
     } catch (e) {
         console.error("Failed to explain snippet", e);
         setExplanationPopup(prev => prev ? { ...prev, content: 'Sorry, could not generate an explanation.' } : null);
-    } finally {
-        setIsExplaining(false);
     }
   };
-  const handleGenerateNotes = async () => { /* ... */ };
-  const handleGenerateQuiz = async () => { /* ... */ };
+
+  const handleDeepDiveSnippet = async (event: React.MouseEvent, snippet: string) => {
+    event.stopPropagation();
+    setDeepDiveModal({ isOpen: true, content: '', title: snippet, isLoading: true });
+    try {
+        const explanation = await generateConceptDeepDive(snippet);
+        setDeepDiveModal(prev => ({ ...prev, content: explanation, isLoading: false }));
+    } catch (e) {
+        console.error("Failed to generate deep dive", e);
+        setDeepDiveModal(prev => ({ ...prev, content: 'Sorry, an error occurred while generating the deep dive explanation.', isLoading: false }));
+    }
+  };
+
   const handleOpenSimulation = (content: InteractiveSimulation) => setSimulationModalContent(content);
 
   if (!lessonPack) return null;
@@ -374,7 +391,6 @@ const AdaptiveLessonPlayer: React.FC<AdaptiveLessonPlayerProps> = ({ lessonPack,
 
   const progress = ((currentStepIndex + 1) / steps.length) * 100;
   
-  const isFinalStep = currentStepIndex === steps.length - 1;
   const isFinalStepInLti = ltiContext && isFinalStep;
   
   const renderStepContent = () => {
@@ -384,13 +400,20 @@ const AdaptiveLessonPlayer: React.FC<AdaptiveLessonPlayerProps> = ({ lessonPack,
         case 'topic_title':
             return <TopicTitleStep content={currentStep.content} />;
         case 'core_explanation':
-            return <CoreExplanationStepComponent content={currentStep.content} handleExplainSnippet={handleExplainSnippet} />;
+            return <CoreExplanationStepComponent content={currentStep.content} handleExplainSnippet={handleExplainSnippet} handleDeepDiveSnippet={handleDeepDiveSnippet} />;
         case 'quick_check':
             return <QuickCheckStepComponent 
                         content={currentStep.content}
                         stepAnswer={stepAnswers[currentStepIndex]} 
                         onStepAnswer={(answer, isCorrect) => handleStepAnswer(currentStepIndex, answer, isCorrect)} 
                         isGeneratingRemediation={isGeneratingRemediation === currentStepIndex}
+                        onTriggerIntervention={onTriggerTutorIntervention}
+                    />;
+        case 'matching_quiz':
+            return <MatchingQuizStep
+                        content={currentStep.content}
+                        stepAnswer={stepAnswers[currentStepIndex]}
+                        onStepAnswer={(answer, isCorrect) => handleStepAnswer(currentStepIndex, answer, isCorrect)}
                     />;
         case 'worked_example':
             return <WorkedExampleStep content={currentStep.content} />;
@@ -399,10 +422,9 @@ const AdaptiveLessonPlayer: React.FC<AdaptiveLessonPlayerProps> = ({ lessonPack,
             return <PracticeStep 
                         content={currentStep.content} 
                         type={currentStep.type} 
-                        onCompleted={() => setIsStepCompleted(true)}
                     />;
         case 'HOTS':
-            return <HOTSStep content={currentStep.content} onCompleted={() => setIsStepCompleted(true)} />;
+            return <HOTSStep content={currentStep.content} />;
         case 'common_error':
             return <CommonErrorStep content={currentStep.content} />;
         case 'fill_in_the_blanks':
@@ -417,7 +439,7 @@ const AdaptiveLessonPlayer: React.FC<AdaptiveLessonPlayerProps> = ({ lessonPack,
             return <Suspense fallback={<div>Loading Video...</div>}>
                         <InteractiveVideoStep 
                             content={currentStep.content} 
-                            skillId={lessonPack!.topic_id}
+                            skillId={lessonPack!.topic_id.split('|')[0]}
                             onAnswer={recordAnswer}
                             onCompleted={() => setIsStepCompleted(true)}
                         />
@@ -432,6 +454,7 @@ const AdaptiveLessonPlayer: React.FC<AdaptiveLessonPlayerProps> = ({ lessonPack,
                             handleStepAnswer(currentStepIndex, answer, isCorrect, currentStep.content.question.q_id, currentStep.content.question.question)
                         } 
                         isGeneratingRemediation={isGeneratingRemediation === currentStepIndex}
+                        onTriggerIntervention={onTriggerTutorIntervention}
                     />;
         case 'adaptive_intro':
             return <AdaptiveIntroStep assessmentResults={assessmentResults} />;
@@ -440,7 +463,7 @@ const AdaptiveLessonPlayer: React.FC<AdaptiveLessonPlayerProps> = ({ lessonPack,
         case 'feedback':
             return <FeedbackStep />;
         case 'key_term':
-            return <KeyTermStep content={currentStep.content} />;
+            return <KeyTermStep content={currentStep.content} handleDeepDiveSnippet={handleDeepDiveSnippet} />;
         case 'note':
             return <NoteStep content={currentStep.content} />;
         default:
@@ -478,12 +501,8 @@ const AdaptiveLessonPlayer: React.FC<AdaptiveLessonPlayerProps> = ({ lessonPack,
         </div>
          {explanationPopup && (
             <div 
-                className="absolute z-10 p-4 bg-white rounded-lg shadow-lg border w-full max-w-md text-sm text-slate-700 animate-fade-in"
-                style={{ 
-                    top: explanationPopup.top, 
-                    left: '50%',
-                    transform: 'translateX(-50%)',
-                }}
+                className="absolute z-10 p-3 bg-white rounded-lg shadow-lg border w-full max-w-sm text-sm text-slate-700 animate-fade-in"
+                style={{ top: explanationPopup.top, left: explanationPopup.left }}
                 onClick={(e) => e.stopPropagation()}
             >
                 <MarkdownRenderer content={explanationPopup.content} />
@@ -514,6 +533,18 @@ const AdaptiveLessonPlayer: React.FC<AdaptiveLessonPlayerProps> = ({ lessonPack,
       {simulationModalContent && (
         <Suspense>
             <SimulationExplainerModal simulationContent={simulationModalContent} onClose={() => setSimulationModalContent(null)} />
+        </Suspense>
+      )}
+
+      {deepDiveModal.isOpen && (
+        <Suspense fallback={<div/>}>
+            <DeepDiveModal
+                isOpen={deepDiveModal.isOpen}
+                onClose={() => setDeepDiveModal({ isOpen: false, content: '', title: '', isLoading: false })}
+                isLoading={deepDiveModal.isLoading}
+                content={deepDiveModal.content}
+                title={deepDiveModal.title}
+            />
         </Suspense>
       )}
     </div>

@@ -57,7 +57,7 @@ export const AdaptiveLessonPlayerMockup: React.FC = () => (
             <g transform="translate(30, 95)">
                 <text x="0" y="10" className="text-lg font-bold text-slate-800 font-poppins">Core Concept: Reflection of Light</text>
                 <foreignObject x="0" y="25" width="260" height="200">
-                    <p className="text-sm text-slate-600 font-sans" xmlns="http://www.w3.org/1999/xhtml">
+                    <p className="text-sm text-slate-600 font-sans">
                         When a ray of light approaches a smooth, polished surface and the light ray bounces back, it is called the reflection of light.
                         <br/><br/>The two laws of reflection are:
                         <br/>1. The angle of incidence is equal to the angle of reflection.
@@ -82,9 +82,18 @@ export const AdaptiveLessonPlayerMockup: React.FC = () => (
                 <text x="110" y="128" className="text-2xs font-bold text-slate-600">i</text>
                 <text x="138" y="128" className="text-2xs font-bold text-slate-600">r</text>
                 
-                <text x="35" y="45" className="text-xs text-slate-500">Incident Ray</text>
-                <text x="215" y="45" className="text-xs text-slate-500" textAnchor="end">Reflected Ray</text>
-                <text x="125" y="45" className="text-xs text-slate-500" textAnchor="middle">Normal</text>
+                <g>
+                    <circle cx="35" cy="40" r="3" fill="#6366f1" opacity="0.5"/>
+                    <text x="40" y="45" className="text-xs text-slate-500">Incident Ray</text>
+                </g>
+                 <g>
+                    <circle cx="215" cy="40" r="3" fill="#6366f1" opacity="0.5"/>
+                    <text x="210" y="45" className="text-xs text-slate-500" textAnchor="end">Reflected Ray</text>
+                </g>
+                 <g>
+                    <circle cx="125" cy="40" r="3" fill="#6366f1" opacity="0.5"/>
+                    <text x="130" y="45" className="text-xs text-slate-500">Normal</text>
+                </g>
             </g>
 
             <rect x="30" y="340" width="100" height="36" rx="8" className="fill-white stroke-slate-300" />
@@ -131,7 +140,7 @@ export const SchoolOSDashboardMockup: React.FC = () => (
                 <rect width="540" height="140" rx="12" className="fill-white stroke-slate-200" />
                 <text x="20" y="30" className="text-base font-bold text-slate-800">AI Insights</text>
                 <foreignObject x="20" y="45" width="500" height="100">
-                     <div className="font-sans text-sm" xmlns="http://www.w3.org/1999/xhtml">
+                     <div className="font-sans text-sm">
                         <p style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                             <span style={{ color: '#f97316' }}>●</span>
                             <span style={{ color: '#475569' }}>Class 8 Maths is trending <strong>5% below</strong> syllabus pace.</span>
@@ -237,9 +246,25 @@ export const ParentUIMockup: React.FC = () => (
                 <rect width="460" height="120" rx="12" className="fill-white stroke-slate-200" />
                 <text x="15" y="28" className="text-sm font-bold text-slate-800">MIGA's Performance Analysis</text>
                  <foreignObject x="15" y="40" width="430" height="80">
-                    <p className="font-sans text-xs text-slate-600" xmlns="http://www.w3.org/1999/xhtml">
+                    <p className="font-sans text-xs text-slate-600">
                         Rohan is showing excellent progress in Science, with a mastery of over 90% in Physics concepts. He seems to be finding 'Acids, Bases and Salts' a bit challenging. Consistent practice in this chapter would be beneficial.
                     </p>
                 </foreignObject>
             </g>
-            <g transform="translate(20, 1
+            <g transform="translate(20, 190)">
+                <rect width="220" height="190" rx="12" className="fill-white stroke-slate-200" />
+                <text x="15" y="28" className="text-sm font-bold text-slate-800">Strengths</text>
+                <rect x="15" y="45" width="190" height="20" rx="5" className="fill-emerald-100" />
+                <text x="25" y="59" className="text-xs text-emerald-700">✓  Strong in Physics concepts</text>
+                <rect x="15" y="70" width="190" height="20" rx="5" className="fill-emerald-100" />
+                <text x="25" y="84" className="text-xs text-emerald-700">✓  Good problem-solving speed</text>
+            </g>
+             <g transform="translate(260, 190)">
+                <rect width="220" height="190" rx="12" className="fill-white stroke-slate-200" />
+                 <text x="15" y="28" className="text-sm font-bold text-slate-800">Actionable Tips</text>
+                 <rect x="15" y="45" width="190" height="20" rx="5" className="fill-slate-100" />
+                 <text x="25" y="59" className="text-xs text-slate-700">💡 Review Acids & Bases</text>
+            </g>
+        </g>
+    </svg>
+);

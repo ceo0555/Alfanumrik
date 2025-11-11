@@ -4,6 +4,7 @@ import { SafalDiagnosticResult, RemediationGroup } from '../types';
 import { SAFAL_COMPETENCIES_BY_GRADE } from '../constants/safalCompetencies';
 import { generateRemediationGroups } from '../services/geminiService';
 import { SparklesIcon } from '../constants/icons';
+import Loader from './Loader';
 
 interface SafalDiagnosticsProps {
     schoolGrade: string | null;
@@ -132,6 +133,12 @@ const SafalDiagnostics: React.FC<SafalDiagnosticsProps> = ({ schoolGrade, onOpen
                             {isAnalyzing ? "AI is Analyzing..." : "AI: Create Remediation Groups"}
                         </button>
                     </div>
+
+                    {isAnalyzing && (
+                        <div className="mt-6">
+                            <Loader />
+                        </div>
+                    )}
 
                     {remediationGroups && (
                         <div className="mt-6 animate-fade-in">

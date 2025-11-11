@@ -34,6 +34,15 @@ export const transformLessonPackToSteps = (lessonPack: LessonPack): LessonStep[]
     });
   }
 
+  // 3. Matching Quiz
+  lessonPack.student_explanation?.matching_quizzes?.forEach(mq => {
+    addStep({
+      type: 'matching_quiz',
+      title: 'Match the Terms',
+      content: mq,
+    });
+  });
+
   // 4. Worked Examples
   lessonPack.student_explanation?.worked_examples?.forEach(ex => {
     addStep({

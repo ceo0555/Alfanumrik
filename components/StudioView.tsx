@@ -1,11 +1,11 @@
 import React, { useState, useMemo, Suspense } from 'react';
-import { LayersIcon, RefreshCwIcon, CalendarDaysIcon, BarChartIcon, SparklesIcon, ScholarCoinIcon } from './constants/icons';
+import { LayersIcon, RefreshCwIcon, CalendarDaysIcon, BarChartIcon, SparklesIcon } from './constants/icons';
 import FlashcardViewer from './FlashcardViewer';
 import ReviewQueue from './ReviewQueue';
 import { useStudentData } from '../contexts/StudentDataContext';
 import { FlashcardReviewItem, UserFlashcardItem, PracticeBlueprint } from '../types';
 import { View } from '../App';
-import ScholarWallet from './ScholarWallet';
+import Loader from './Loader';
 
 // Lazy load heavy components
 const Planner = React.lazy(() => import('../Planner'));
@@ -15,7 +15,6 @@ const ConceptExplainer = React.lazy(() => import('./ConceptExplainer'));
 interface StudioViewProps {
     setView: (view: View) => void;
     onStartPractice: (subject: string, blueprint: PracticeBlueprint) => void;
-    setPracticeMode: (mode: 'on-demand' | null) => void;
 }
 
 const FlashcardManager: React.FC = () => {
@@ -75,8 +74,8 @@ const FlashcardManager: React.FC = () => {
 };
 
 
-const StudioView: React.FC<StudioViewProps> = ({ setView, onStartPractice, setPracticeMode }) => {
-    const [activeTab, setActiveTab] = useState<'planner' | 'progress' | 'flashcards' | 'wallet' | 'tools'>('planner');
+const StudioView: React.FC<StudioViewProps> = ({ setView, onStartPractice }) => {
+    const [activeTab, setActiveTab] = useState<'planner' | 'progress' | 'flashcards' | 'tools'>('planner');
 
     const TabButton = ({ tabName, label, icon }: { tabName: typeof activeTab, label: string, icon: React.ReactNode }) => (
         <button
@@ -100,8 +99,6 @@ const StudioView: React.FC<StudioViewProps> = ({ setView, onStartPractice, setPr
                 return <ProgressDashboard setView={setView} />;
             case 'flashcards':
                 return <FlashcardManager />;
-            case 'wallet':
-                return <ScholarWallet setView={setView} setPracticeMode={setPracticeMode} />;
             case 'tools':
                 return <ConceptExplainer />;
             default:
@@ -116,13 +113,12 @@ const StudioView: React.FC<StudioViewProps> = ({ setView, onStartPractice, setPr
                     <TabButton tabName="planner" label="Planner" icon={<CalendarDaysIcon className="w-5 h-5" />} />
                     <TabButton tabName="progress" label="Progress" icon={<BarChartIcon className="w-5 h-5" />} />
                     <TabButton tabName="flashcards" label="Flashcards" icon={<LayersIcon className="w-5 h-5" />} />
-                    <TabButton tabName="wallet" label="Wallet" icon={<ScholarCoinIcon className="w-5 h-5" />} />
                     <TabButton tabName="tools" label="AI Tools" icon={<SparklesIcon className="w-5 h-5" />} />
                 </div>
             </div>
 
             <div className="min-h-[400px]">
-                <Suspense fallback={<div>Loading...</div>}>
+                <Suspense fallback={<div className="flex items-center justify-center pt-10"><Loader /></div>}>
                     {renderActiveTab()}
                 </Suspense>
             </div>
