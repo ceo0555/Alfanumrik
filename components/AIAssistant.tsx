@@ -1,12 +1,12 @@
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
-import { GoogleGenAI, LiveServerMessage, Modality, Blob, Chat, GenerateContentResponse, GroundingChunk } from '@google/genai';
+import { LiveServerMessage, Modality, Blob, Chat, GroundingChunk } from '@google/genai';
 import { MicrophoneIcon, StopIcon, SparklesIcon, XIcon, MessageSquareIcon } from '../constants/icons';
 import { useAuth } from '../contexts/AuthContext';
 import { useLiveAudio } from '../utils/useLiveAudio';
 import { decode, decodeAudioData } from '../utils/audio';
 import { ChatMessage, UserDktData, DktSkillState, TutorInterventionContext, QuestionPoolItem, QuickCheck } from '../types';
 import MarkdownRenderer from './MarkdownRenderer';
-import { getGeminiApiKey } from '../utils/env';
+import { createGeminiChat } from '../services/geminiService';
 
 
 // --- Text Chat Component (adapted from TutorCore) ---
@@ -30,11 +30,13 @@ const TextTutorView: React.FC<{ systemInstruction: string }> = ({ systemInstruct
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
-        const apiKey = getGeminiApiKey();
-        if (apiKey && activeProfile) {
-            const ai = new GoogleGenAI({ apiKey });
-            const chatInstance = ai.chats.create({
-                model: 'gemini-2.5-pro',
+        if (!activeProfile) {
+            setChat(null);
+            return;
+        }
+
+        try {
+            const chatInstance = createGeminiChat({
                 config: {
                     systemInstruction,
                     tools: [{ googleSearch: {} }],
@@ -43,8 +45,16 @@ const TextTutorView: React.FC<{ systemInstruction: string }> = ({ systemInstruct
             });
             setChat(chatInstance);
             setMessages([]);
-        } else if (!apiKey) {
-            setError("Gemini API key is not configured. This feature is disabled.");
+            setError(null);
+        } catch (err) {
+            console.error(err);
+            const message = err instanceof Error ? err.message : String(err);
+            if (message.includes('Gemini API key is not configured')) {
+                setError("Gemini API key is not configured. This feature is disabled.");
+            } else {
+                setError("Failed to initialize the chat session. Please try again later.");
+            }
+            setChat(null);
         }
     }, [activeProfile, systemInstruction]);
 

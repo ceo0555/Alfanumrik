@@ -1,4 +1,5 @@
-import { GoogleGenAI, Type, Modality, GenerateContentResponse, FunctionDeclaration } from "@google/genai";
+import { GoogleGenAI, Type, Modality, GenerateContentResponse, FunctionDeclaration, Chat } from "@google/genai";
+import type { CreateChatParameters } from "@google/genai";
 import { LessonPack, GroundingChunk, AssessmentResult, AdaptiveFollowUp, StudentExplanation, QuestionPoolItem, StructuredContent, Flashcard, InteractiveSimulation, UserProfile, UserProgressData, ParentalReport, InteractiveVideo, ClassAnalyticsData, UserDktData, PrerequisiteGraph, SafalDiagnosticResult, RemediationGroup, QuickFormativeAssessment, QfaResult, FacilityBooking, QuickCheck, CrossCurricularProject, PracticeBlueprint, PracticeResult, LabelData, SyllabusChapterTopic, StudentSubmission, Assignment, AllDktData, DktSkillState, SyllabusBlueprintUnit, PacingCalendarEvent, RemediationPack, ChatMessage, SyllabusUnit, PtmBrief, PaperBlueprint, AIProctoringReport, ExamSubmission, StudyTask, UserFlashcards, BusRoute, MatchingQuiz } from '../types';
 import { blobToBase64, fileToBase64 } from "../utils/fileHelpers";
 import { getGeminiApiKey, requireGeminiApiKey } from "../utils/env";
@@ -74,6 +75,18 @@ export interface ProgressData {
 
 
 const createGeminiClient = () => new GoogleGenAI({ apiKey: requireGeminiApiKey() });
+
+type CreateGeminiChatParams = Omit<CreateChatParameters, 'model'> & { model?: string };
+
+export const createGeminiChat = (params: CreateGeminiChatParams = {}): Chat => {
+    const ai = createGeminiClient();
+    const { model = 'gemini-2.5-pro', ...rest } = params;
+    const chatParams: CreateChatParameters = {
+        model,
+        ...(rest as Omit<CreateChatParameters, 'model'>),
+    };
+    return ai.chats.create(chatParams);
+};
 
 const getResponseText = (response: GenerateContentResponse): string => {
   if (!response.text) {
