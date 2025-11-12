@@ -15,6 +15,15 @@ View your app in AI Studio: https://ai.studio/apps/drive/11GyofuXFd3FYWddq1H5l4O
 
 1. Install dependencies:
    `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
+2. Provide a Gemini API key in [.env.local](.env.local). You can set any of these variables:
+   - `VITE_GEMINI_API_KEY`
+   - `GEMINI_API_KEY`
+   - `API_KEY`
+   - `VITE_API_KEY`
 3. Run the app:
    `npm run dev`
+
+### Gemini mock mode (optional)
+
+If you want to run the UI without calling the Gemini APIs, add `VITE_GEMINI_MOCK=true` (or `GEMINI_MOCK=true`) to your `.env.local`.  
+The app will surface structured placeholder data for every Gemini-powered feature while still logging actions to the console for troubleshooting.
