@@ -7,23 +7,11 @@ import { mockAfterSchoolPrograms as initialAfterSchoolPrograms, mockFacilityBook
 import { mockCalendarEvents as initialBoardPlannerEvents, communicationTemplates as initialCommunicationTemplates } from '../constants/boardPlannerData';
 import { codingModules as initialCodingModules, crossCurricularProjects as initialCrossCurricularProjects, mockPortfolios } from '../constants/codingModules';
 import { appEventBus } from '../utils/eventBus';
-import { getStorage } from '../utils/safeStorage';
+import remoteStorage from './remoteStorage';
 
+const storage = remoteStorage;
 
-const API_LATENCY = 300; // ms
-const storage = getStorage();
-
-// --- SIMULATED BACKEND API ---
-
-// This service mimics a backend API. In a real application, these functions
-// would make fetch() calls to a remote server. For now, they interact with
-// storage asynchronously to simulate network latency and a persistent data store.
-
-const simulateNetwork = <T>(data: T): Promise<T> => {
-  return new Promise(resolve => {
-    setTimeout(() => resolve(data), API_LATENCY);
-  });
-};
+const simulateNetwork = async <T>(data: T): Promise<T> => data;
 
 const generateDailyChallenge = (grade: string): DailyChallenge => {
     const todayStr = new Date().toISOString().split('T')[0];
@@ -97,6 +85,7 @@ export const fetchAllData = async (): Promise<{
   allGrades: Grade[];
 }> => {
   console.log("API: Fetching all user data...");
+  await storage.ensureHydrated();
   const profilesStr = storage.getItem('userProfiles') || '[]';
   const activeIdStr = storage.getItem('activeUserId');
   const progressStr = storage.getItem('allProgressData') || '{}';
@@ -262,6 +251,8 @@ export const fetchAllData = async (): Promise<{
     activeId = profiles.length > 0 ? profiles[0].id : null;
     storage.setItem('activeUserId', JSON.stringify(activeId));
   }
+
+  await storage.flushImmediate();
 
   return simulateNetwork({ profiles, activeId, progress, flashcards, userRole, allDktData, allAssignments, allAnnouncements, allSubmissions, allFlnProgress, teacherSchedules, teacherAssignments, attendanceRecords, quickFormativeAssessments, allNotifications, itemBank, busRoutes, printQuotas, feeStatus, afterSchoolPrograms, facilityBookings, boardPlannerEvents, crossCurricularProjects, codingModules, communicationTemplates, allPortfolios, schoolName, allBlueprints, allExamSessions, allExamSubmissions, allCourses, allGrades });
 };
