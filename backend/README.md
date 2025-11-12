@@ -24,7 +24,7 @@ The server starts on port `4000` by default. Update `registerApiRoutes` to expos
 - `DATABASE_URL` – Neon connection string (required)
 - `JWT_SECRET` – secret used to sign authentication tokens (required)
 - `JWT_TTL` – optional token lifetime (default `1h`)
-- `SERVICE_TOKEN` – optional bearer token expected from Vercel functions when proxying
+- `SERVICE_TOKEN` – optional bearer token expected from Vercel functions when proxying. If set, every request must include `Authorization: Bearer <SERVICE_TOKEN>`.
 
 ### Building & testing
 

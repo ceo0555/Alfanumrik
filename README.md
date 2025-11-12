@@ -54,7 +54,7 @@ DATABASE_URL="postgres://..." JWT_SECRET="super-secret" npm run dev
 
 For CI or production builds run `npm run backend:build` from the repository root or `npm run build` inside `backend/`.
 
-When proxying through Vercel Functions, configure both `BACKEND_URL` (e.g. `https://backend.example.com`) and `SERVICE_TOKEN`; the helper automatically forwards the token as a bearer header on every request.
+When proxying through Vercel Functions, configure both `BACKEND_URL` (e.g. `https://backend.example.com`) and `SERVICE_TOKEN`; the helper automatically forwards the token as a bearer header on every request. The backend rejects requests that do not supply the correct bearer token when `SERVICE_TOKEN` is set.
 
 ### Required environment variables
 
