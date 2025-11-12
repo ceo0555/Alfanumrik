@@ -42,6 +42,18 @@ The `/api` directory contains Vercel Serverless Functions that persist state to 
   - `/api/study-plans/[userId]`
   - `/api/notifications` & `/api/notifications/[id]`
 
+## Dedicated backend service
+
+The `/backend` workspace hosts an Express server for structured REST APIs (e.g. `/api/profiles`). It connects to the same Neon database via `DATABASE_URL`.
+
+```bash
+cd backend
+npm install
+DATABASE_URL="postgres://..." npm run dev
+```
+
+For CI or production builds run `npm run backend:build` from the repository root or `npm run build` inside `backend/`.
+
 ### Required environment variables
 
 | Variable        | Where to set it | Description |
