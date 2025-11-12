@@ -294,7 +294,10 @@ const createMockRemediationPack = (concept: string): RemediationPack => ({
   ],
 });
 
-const createMockCurriculumBlueprint = (grade: string, subject: string) => ({
+const createMockCurriculumBlueprint = (
+  grade: string,
+  subject: string
+): { blueprint: SyllabusBlueprintUnit[]; calendar: PacingCalendarEvent[] } => ({
   blueprint: [
     {
       unit_no: 1,
@@ -317,15 +320,15 @@ const createMockCurriculumBlueprint = (grade: string, subject: string) => ({
         },
       ],
     },
-  ],
+  ] as SyllabusBlueprintUnit[],
   calendar: [
     {
       week: 1,
       start_date: '2025-04-01',
-      activity_type: 'Teaching',
+      activity_type: 'Teaching' as PacingCalendarEvent['activity_type'],
       details: `Introduce mock overview for ${subject}.`,
     },
-  ],
+  ] as PacingCalendarEvent[],
 });
 
 const createMockPtmBrief = (studentName: string): PtmBrief => ({
@@ -399,8 +402,6 @@ const getDefaultMockResponse = <T>(operation: string): T => {
     case 'generateAdaptiveFollowUp':
     case 'generatePracticeQuiz':
     case 'generateFlashcards':
-    case 'generateRemediationGroups':
-    case 'generateQfaRemediation':
     case 'processOmniSearchQuery':
     case 'generateTransportOptimizationTips':
       return ([] as unknown) as T;
