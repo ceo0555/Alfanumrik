@@ -35,6 +35,12 @@ The `/api` directory contains Vercel Serverless Functions that persist state to 
 - `GET /api/bootstrap` returns all stored resources for fast client hydration.
 - `GET|PUT|DELETE /api/resources/[resource]` reads or replaces a single resource payload (e.g. `userProfiles`, `allAssignments`).
 - `POST /api/gemini/proxy` forwards Gemini requests with the API key kept on the server.
+- Domain-focused routes now wrap the shared resource store:
+  - `/api/profiles` & `/api/profiles/[id]`
+  - `/api/assignments` & `/api/assignments/[id]`
+  - `/api/submissions` & `/api/submissions/[id]`
+  - `/api/study-plans/[userId]`
+  - `/api/notifications` & `/api/notifications/[id]`
 
 ### Required environment variables
 
