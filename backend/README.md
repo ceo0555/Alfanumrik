@@ -7,7 +7,7 @@ This Express-based service provides structured REST endpoints that sit behind th
 ```bash
 cd backend
 npm install
-DATABASE_URL="postgres://..." npm run dev
+DATABASE_URL="postgres://..." JWT_SECRET="super-secret" npm run dev
 ```
 
 The server starts on port `4000` by default. Update `registerApiRoutes` to expose feature-specific routers.
@@ -19,6 +19,12 @@ The server starts on port `4000` by default. Update `registerApiRoutes` to expos
 - `src/types` – backend-specific shared types
 - `src/utils` – validation and error helpers
 
+### Environment variables
+
+- `DATABASE_URL` – Neon connection string (required)
+- `JWT_SECRET` – secret used to sign authentication tokens (required)
+- `JWT_TTL` – optional token lifetime (default `1h`)
+
 ### Building & testing
 
 ```bash
@@ -27,4 +33,13 @@ npm test
 ```
 
 CI should run `npm run backend:build` from the repository root to ensure the backend compiles before deployment.
+
+### Database migrations
+
+This scaffold uses plain SQL via the Neon serverless driver. For production readiness, adopt a migration framework:
+
+- **Prisma** – `npm install prisma @prisma/client` then `npx prisma init`; manage tables with `prisma migrate`.
+- **Drizzle** – `npm install drizzle-orm drizzle-kit` and define schema modules with generated SQL migrations.
+
+Store migration artifacts under `backend/migrations/` and wire `npm run backend:migrate` (custom script) into CI/CD before deploying new code.
 
