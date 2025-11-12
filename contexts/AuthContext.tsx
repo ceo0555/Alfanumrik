@@ -1,11 +1,10 @@
-import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef, ReactNode } from 'react';
 import { UserProfile, UserRole, AllProgressData, AllFlashcardsData, AllDktData, Assignment, Announcement, StudentSubmission, StudentFlnProgress, TeacherSchedule, AttendanceRecord, QuickFormativeAssessment, Notification, QuestionPoolItem, BusRoute, PrintQuota, FeeStatus, AfterSchoolProgram, FacilityBooking, BoardPlannerEvent, CrossCurricularProject, CodingModule, CommunicationTemplate, TeacherAssignment, StudentPortfolioProject, AllPortfolios, WidgetConfig, PaperBlueprint, ExamSession, ExamSubmission, Course, Grade, StudyTask, SyllabusChapterTopic } from '../types';
 import * as apiService from '../services/apiService';
 import type { View } from '../App';
 import { appEventBus } from '../utils/eventBus';
 
-interface AuthContextType {
-  // State
+interface AuthState {
   isLoading: boolean;
   error: string | null;
   userProfiles: UserProfile[];
@@ -43,8 +42,9 @@ interface AuthContextType {
   allGrades: Grade[];
   view: View;
   activeTopic: { chapter: SyllabusChapterTopic; topic: string } | null;
+}
 
-  // Handlers
+interface AuthActions {
   handleSetRole: (role: UserRole | null) => void;
   handleSaveUser: (userData: { name: string; grade: string } | { name: string; grade: string }[], id?: number) => void;
   handleSwitchUser: (id: number) => void;
@@ -53,7 +53,7 @@ interface AuthContextType {
   handleUpdateSingleTask: (taskId: string, updates: Partial<StudyTask>) => void;
   handleUpdateWidgets: (widgets: WidgetConfig[]) => void;
   handleUpdateScholarCoins: (newBalance: number) => void;
-  handleSaveAllDktData: (dktData: AllDktData) => void; // For StudentDataContext to persist DKT updates
+  handleSaveAllDktData: (dktData: AllDktData) => void;
   handleCreateAssignment: (assignmentData: Omit<Assignment, 'id'>) => void;
   handleAddTaskToStudentPlans: (studentIds: number[], task: Omit<StudyTask, 'id'>) => void;
   handleCreateAnnouncement: (announcementData: Omit<Announcement, 'id' | 'date'>) => void;
@@ -84,7 +84,10 @@ interface AuthContextType {
   _dangerouslySetAllProfiles: (profiles: UserProfile[]) => void;
 }
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+type AuthContextType = AuthState & AuthActions;
+
+const AuthStateContext = createContext<AuthState | undefined>(undefined);
+const AuthActionsContext = createContext<AuthActions | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [isLoading, setIsLoading] = useState(true);
@@ -124,8 +127,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [allGrades, setAllGrades] = useState<Grade[]>([]);
 
   // Add a state for view management
-  const [view, setView] = useState<View>('home');
-  const [activeTopic, setActiveTopic] = useState<{ chapter: SyllabusChapterTopic; topic: string } | null>(null);
+  const [view, setViewState] = useState<View>('home');
+  const [activeTopic, setActiveTopicState] = useState<{ chapter: SyllabusChapterTopic; topic: string } | null>(null);
+  const reloadTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const loadData = useCallback(async () => {
     try {
@@ -178,30 +182,50 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
     const handleDataChange = (data?: { store: string }) => {
         console.log(`[Real-Time Sync] Data changed in '${data?.store || 'unknown'}'. Refetching all data.`);
-        loadData();
+        if (reloadTimeoutRef.current) {
+          clearTimeout(reloadTimeoutRef.current);
+        }
+        reloadTimeoutRef.current = setTimeout(() => {
+          loadData();
+        }, 150);
     };
 
     appEventBus.on('data-changed', handleDataChange);
 
     return () => {
+        if (reloadTimeoutRef.current) {
+          clearTimeout(reloadTimeoutRef.current);
+          reloadTimeoutRef.current = null;
+        }
         appEventBus.off('data-changed', handleDataChange);
     };
 }, [loadData]);
 
-  const activeProfile = userProfiles.find(p => p.id === activeUserId) || null;
+  const activeProfile = useMemo(() => {
+    return userProfiles.find(p => p.id === activeUserId) || null;
+  }, [userProfiles, activeUserId]);
 
-  const handleSetRole = async (role: UserRole | null) => {
+  const handleSwitchUser = useCallback(async (id: number) => {
+    try {
+      const newActiveId = await apiService.saveActiveUserId(id);
+      setActiveUserId(newActiveId);
+    } catch (e) {
+      console.error("Failed to switch user:", e);
+    }
+  }, []);
+
+  const handleSetRole = useCallback(async (role: UserRole | null) => {
     try {
         await apiService.saveUserRole(role);
         setUserRole(role);
         // Reset active user when role changes to force selection
         handleSwitchUser(0);
     } catch (e) {
-        console.error("Failed to set user role:", e);
+      console.error("Failed to set user role:", e);
     }
-  };
+  }, [handleSwitchUser]);
   
-  const handleSaveUser = async (userData: { name: string; grade: string } | { name: string; grade: string }[], idToEdit?: number) => {
+  const handleSaveUser = useCallback(async (userData: { name: string; grade: string } | { name: string; grade: string }[], idToEdit?: number) => {
     try {
       const updatedProfiles = await apiService.saveUserProfile(userProfiles, userData, idToEdit);
       setUserProfiles(updatedProfiles);
@@ -213,7 +237,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     } catch (e) {
       console.error("Failed to save user profile:", e);
     }
-  };
+  }, [userProfiles, handleSwitchUser]);
 
   const handleCreateAssignment = useCallback(async (assignmentData: Omit<Assignment, 'id'>) => {
     const newAssignment: Assignment = { ...assignmentData, id: Date.now().toString() };
@@ -269,7 +293,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   }, [allNotifications]);
   
-  const handleCreateAnnouncement = async (announcementData: Omit<Announcement, 'id' | 'date'>) => {
+  const handleCreateAnnouncement = useCallback(async (announcementData: Omit<Announcement, 'id' | 'date'>) => {
     const newAnnouncement: Announcement = { 
         ...announcementData, 
         id: Date.now().toString(),
@@ -283,9 +307,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         console.error("Failed to save announcement", e);
         setAllAnnouncements(allAnnouncements); // Revert
     }
-  };
+  }, [allAnnouncements]);
   
-  const handleSaveSubmission = async (submissionData: Omit<StudentSubmission, 'id'>) => {
+  const handleSaveSubmission = useCallback(async (submissionData: Omit<StudentSubmission, 'id'>) => {
     const newSubmission: StudentSubmission = { ...submissionData, id: Date.now().toString() };
     const updatedSubmissions = [...allSubmissions, newSubmission];
     setAllSubmissions(updatedSubmissions); // Optimistic update
@@ -295,7 +319,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         console.error("Failed to save submission", e);
         setAllSubmissions(allSubmissions); // Revert
     }
-  };
+  }, [allSubmissions]);
 
   const handleUpdateSubmission = useCallback(async (updatedSubmission: StudentSubmission) => {
     const updatedSubmissions = allSubmissions.map(s => s.id === updatedSubmission.id ? updatedSubmission : s);
@@ -337,23 +361,14 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   }, [allSubmissions, allAssignments, allCourses, allGrades]);
 
-  const handleSaveAllFlnProgress = async (progress: StudentFlnProgress) => {
+  const handleSaveAllFlnProgress = useCallback(async (progress: StudentFlnProgress) => {
     setAllFlnProgress(progress); // Optimistic
     try {
         await apiService.saveAllFlnProgress(progress);
     } catch (e) {
         console.error("Failed to save FLN progress", e);
     }
-  };
-
-  const handleSwitchUser = async (id: number) => {
-    try {
-      const newActiveId = await apiService.saveActiveUserId(id);
-      setActiveUserId(newActiveId);
-    } catch (e) {
-      console.error("Failed to switch user:", e);
-    }
-  };
+  }, []);
 
   const updateActiveUserProfile = useCallback(async (updates: Partial<UserProfile>) => {
       if (!activeUserId) return;
@@ -467,14 +482,14 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   }, [attendanceRecords, teacherSchedules, userProfiles, handleCreateAssignment, handleAddNotification]);
   
-  const handleSaveQfas = async (qfas: QuickFormativeAssessment[]) => {
+  const handleSaveQfas = useCallback(async (qfas: QuickFormativeAssessment[]) => {
       setQuickFormativeAssessments(qfas); // Optimistic
       try {
           await apiService.saveQuickFormativeAssessments(qfas);
       } catch (e) {
           console.error("Failed to save QFAs:", e);
       }
-  };
+  }, []);
 
   const handleUpdateTeacherSchedule = useCallback(async (scheduleId: string, updates: { isTaught?: boolean; notes?: string }) => {
       const updatedSchedules = teacherSchedules.map(s => s.id === scheduleId ? { ...s, ...updates } : s);
@@ -559,33 +574,184 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     await apiService.saveAllGrades(grades);
   }, []);
 
-  const value: AuthContextType = {
-    isLoading, error, userProfiles, activeUserId, activeProfile, userRole, allProgressData, allFlashcards, allDktData,
-    allAssignments, allAnnouncements, allSubmissions, allFlnProgress, teacherSchedules, teacherAssignments,
-    attendanceRecords, quickFormativeAssessments, allNotifications, itemBank, busRoutes, printQuotas, feeStatus,
-    afterSchoolPrograms, facilityBookings, boardPlannerEvents, crossCurricularProjects, codingModules, communicationTemplates,
-    allPortfolios, schoolName, allBlueprints, allExamSessions, allExamSubmissions, allCourses, allGrades,
+  const setView = useCallback((nextView: View) => {
+    setViewState(nextView);
+  }, []);
+
+  const setActiveTopic = useCallback((topic: { chapter: SyllabusChapterTopic; topic: string } | null) => {
+    setActiveTopicState(topic);
+  }, []);
+
+  const stateValue = useMemo<AuthState>(() => ({
+    isLoading,
+    error,
+    userProfiles,
+    activeUserId,
+    activeProfile,
+    userRole,
+    allProgressData,
+    allFlashcards,
+    allDktData,
+    allAssignments,
+    allAnnouncements,
+    allSubmissions,
+    allFlnProgress,
+    teacherSchedules,
+    teacherAssignments,
+    attendanceRecords,
+    quickFormativeAssessments,
+    allNotifications,
+    itemBank,
+    busRoutes,
+    printQuotas,
+    feeStatus,
+    afterSchoolPrograms,
+    facilityBookings,
+    boardPlannerEvents,
+    crossCurricularProjects,
+    codingModules,
+    communicationTemplates,
+    allPortfolios,
+    schoolName,
+    allBlueprints,
+    allExamSessions,
+    allExamSubmissions,
+    allCourses,
+    allGrades,
     view,
     activeTopic,
-    handleSetRole, handleSaveUser, handleSwitchUser, updateActiveUserProfile, handleUpdateStudyPlan, handleUpdateSingleTask, handleUpdateWidgets, handleUpdateScholarCoins,
-    handleSaveAllDktData, handleCreateAssignment, handleAddTaskToStudentPlans, handleCreateAnnouncement, handleSaveSubmission, handleUpdateSubmission,
-    handleSaveAllFlnProgress, handleSaveAttendance, handleSaveQfas, handleUpdateTeacherSchedule, handleUpdateItemBank,
-    handleUpdateBusRoutes, handleUpdatePrintQuotas, handleUpdateFeeStatus, handleUpdateAfterSchoolPrograms,
-    handleUpdateFacilityBookings, handleUpdateBoardPlannerEvents, handleUpdateCrossCurricularProjects,
-    handleUpdatePortfolios, handleUpdateSchoolName, handleUpdateBlueprints, handleSetTutorLock,
-    handleSaveExamSessions, handleSaveExamSubmission, handleUpdateCourses, handleUpdateGrades,
+  }), [
+    isLoading,
+    error,
+    userProfiles,
+    activeUserId,
+    activeProfile,
+    userRole,
+    allProgressData,
+    allFlashcards,
+    allDktData,
+    allAssignments,
+    allAnnouncements,
+    allSubmissions,
+    allFlnProgress,
+    teacherSchedules,
+    teacherAssignments,
+    attendanceRecords,
+    quickFormativeAssessments,
+    allNotifications,
+    itemBank,
+    busRoutes,
+    printQuotas,
+    feeStatus,
+    afterSchoolPrograms,
+    facilityBookings,
+    boardPlannerEvents,
+    crossCurricularProjects,
+    codingModules,
+    communicationTemplates,
+    allPortfolios,
+    schoolName,
+    allBlueprints,
+    allExamSessions,
+    allExamSubmissions,
+    allCourses,
+    allGrades,
+    view,
+    activeTopic,
+  ]);
+
+  const actionsValue = useMemo<AuthActions>(() => ({
+    handleSetRole,
+    handleSaveUser,
+    handleSwitchUser,
+    updateActiveUserProfile,
+    handleUpdateStudyPlan,
+    handleUpdateSingleTask,
+    handleUpdateWidgets,
+    handleUpdateScholarCoins,
+    handleSaveAllDktData,
+    handleCreateAssignment,
+    handleAddTaskToStudentPlans,
+    handleCreateAnnouncement,
+    handleSaveSubmission,
+    handleUpdateSubmission,
+    handleSaveAllFlnProgress,
+    handleSaveAttendance,
+    handleSaveQfas,
+    handleUpdateTeacherSchedule,
+    handleUpdateItemBank,
+    handleUpdateBusRoutes,
+    handleUpdatePrintQuotas,
+    handleUpdateFeeStatus,
+    handleUpdateAfterSchoolPrograms,
+    handleUpdateFacilityBookings,
+    handleUpdateBoardPlannerEvents,
+    handleUpdateCrossCurricularProjects,
+    handleUpdatePortfolios,
+    handleUpdateSchoolName,
+    handleUpdateBlueprints,
+    handleSetTutorLock,
+    handleSaveExamSessions,
+    handleSaveExamSubmission,
+    handleUpdateCourses,
+    handleUpdateGrades,
     setView,
     setActiveTopic,
     _dangerouslySetAllProfiles: setUserProfiles,
-  };
+  }), [
+    handleSetRole,
+    handleSaveUser,
+    handleSwitchUser,
+    updateActiveUserProfile,
+    handleUpdateStudyPlan,
+    handleUpdateSingleTask,
+    handleUpdateWidgets,
+    handleUpdateScholarCoins,
+    handleSaveAllDktData,
+    handleCreateAssignment,
+    handleAddTaskToStudentPlans,
+    handleCreateAnnouncement,
+    handleSaveSubmission,
+    handleUpdateSubmission,
+    handleSaveAllFlnProgress,
+    handleSaveAttendance,
+    handleSaveQfas,
+    handleUpdateTeacherSchedule,
+    handleUpdateItemBank,
+    handleUpdateBusRoutes,
+    handleUpdatePrintQuotas,
+    handleUpdateFeeStatus,
+    handleUpdateAfterSchoolPrograms,
+    handleUpdateFacilityBookings,
+    handleUpdateBoardPlannerEvents,
+    handleUpdateCrossCurricularProjects,
+    handleUpdatePortfolios,
+    handleUpdateSchoolName,
+    handleUpdateBlueprints,
+    handleSetTutorLock,
+    handleSaveExamSessions,
+    handleSaveExamSubmission,
+    handleUpdateCourses,
+    handleUpdateGrades,
+    setView,
+    setActiveTopic,
+    setUserProfiles,
+  ]);
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  return (
+    <AuthStateContext.Provider value={stateValue}>
+      <AuthActionsContext.Provider value={actionsValue}>
+        {children}
+      </AuthActionsContext.Provider>
+    </AuthStateContext.Provider>
+  );
 };
 
-export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (context === undefined) {
+export const useAuth = (): AuthContextType => {
+  const state = useContext(AuthStateContext);
+  const actions = useContext(AuthActionsContext);
+  if (state === undefined || actions === undefined) {
     throw new Error('useAuth must be used within an AuthProvider');
   }
-  return context;
+  return useMemo(() => ({ ...state, ...actions }), [state, actions]);
 };

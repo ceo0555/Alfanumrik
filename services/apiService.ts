@@ -7,15 +7,17 @@ import { mockAfterSchoolPrograms as initialAfterSchoolPrograms, mockFacilityBook
 import { mockCalendarEvents as initialBoardPlannerEvents, communicationTemplates as initialCommunicationTemplates } from '../constants/boardPlannerData';
 import { codingModules as initialCodingModules, crossCurricularProjects as initialCrossCurricularProjects, mockPortfolios } from '../constants/codingModules';
 import { appEventBus } from '../utils/eventBus';
+import { getStorage } from '../utils/safeStorage';
 
 
 const API_LATENCY = 300; // ms
+const storage = getStorage();
 
 // --- SIMULATED BACKEND API ---
 
 // This service mimics a backend API. In a real application, these functions
 // would make fetch() calls to a remote server. For now, they interact with
-// localStorage asynchronously to simulate network latency and a persistent data store.
+// storage asynchronously to simulate network latency and a persistent data store.
 
 const simulateNetwork = <T>(data: T): Promise<T> => {
   return new Promise(resolve => {
@@ -95,38 +97,38 @@ export const fetchAllData = async (): Promise<{
   allGrades: Grade[];
 }> => {
   console.log("API: Fetching all user data...");
-  const profilesStr = localStorage.getItem('userProfiles') || '[]';
-  const activeIdStr = localStorage.getItem('activeUserId');
-  const progressStr = localStorage.getItem('allProgressData') || '{}';
-  const flashcardsStr = localStorage.getItem('allFlashcards') || '{}';
-  const userRoleStr = localStorage.getItem('userRole');
-  const dktDataStr = localStorage.getItem('allDktData') || '{}';
-  const assignmentsStr = localStorage.getItem('allAssignments') || '[]';
-  const announcementsStr = localStorage.getItem('allAnnouncements') || '[]';
-  const submissionsStr = localStorage.getItem('allSubmissions') || '[]';
-  const flnProgressStr = localStorage.getItem('allFlnProgress') || '{}';
-  const teacherSchedulesStr = localStorage.getItem('teacherSchedules');
-  const teacherAssignmentsStr = localStorage.getItem('teacherAssignments');
-  const attendanceStr = localStorage.getItem('attendanceRecords') || '{}';
-  const qfasStr = localStorage.getItem('quickFormativeAssessments') || '[]';
-  const notificationsStr = localStorage.getItem('allNotifications') || '[]';
-  const itemBankStr = localStorage.getItem('itemBank');
-  const busRoutesStr = localStorage.getItem('busRoutes');
-  const printQuotasStr = localStorage.getItem('printQuotas');
-  const feeStatusStr = localStorage.getItem('feeStatus');
-  const afterSchoolProgramsStr = localStorage.getItem('afterSchoolPrograms');
-  const facilityBookingsStr = localStorage.getItem('facilityBookings');
-  const boardPlannerEventsStr = localStorage.getItem('boardPlannerEvents');
-  const crossCurricularProjectsStr = localStorage.getItem('crossCurricularProjects');
-  const codingModulesStr = localStorage.getItem('codingModules');
-  const communicationTemplatesStr = localStorage.getItem('communicationTemplates');
-  const portfoliosStr = localStorage.getItem('allPortfolios');
-  const schoolNameStr = localStorage.getItem('schoolName');
-  const allBlueprintsStr = localStorage.getItem('allBlueprints') || '[]';
-  const allExamSessionsStr = localStorage.getItem('allExamSessions') || '[]';
-  const allExamSubmissionsStr = localStorage.getItem('allExamSubmissions') || '[]';
-  const allCoursesStr = localStorage.getItem('allCourses') || '[]';
-  const allGradesStr = localStorage.getItem('allGrades') || '[]';
+  const profilesStr = storage.getItem('userProfiles') || '[]';
+  const activeIdStr = storage.getItem('activeUserId');
+  const progressStr = storage.getItem('allProgressData') || '{}';
+  const flashcardsStr = storage.getItem('allFlashcards') || '{}';
+  const userRoleStr = storage.getItem('userRole');
+  const dktDataStr = storage.getItem('allDktData') || '{}';
+  const assignmentsStr = storage.getItem('allAssignments') || '[]';
+  const announcementsStr = storage.getItem('allAnnouncements') || '[]';
+  const submissionsStr = storage.getItem('allSubmissions') || '[]';
+  const flnProgressStr = storage.getItem('allFlnProgress') || '{}';
+  const teacherSchedulesStr = storage.getItem('teacherSchedules');
+  const teacherAssignmentsStr = storage.getItem('teacherAssignments');
+  const attendanceStr = storage.getItem('attendanceRecords') || '{}';
+  const qfasStr = storage.getItem('quickFormativeAssessments') || '[]';
+  const notificationsStr = storage.getItem('allNotifications') || '[]';
+  const itemBankStr = storage.getItem('itemBank');
+  const busRoutesStr = storage.getItem('busRoutes');
+  const printQuotasStr = storage.getItem('printQuotas');
+  const feeStatusStr = storage.getItem('feeStatus');
+  const afterSchoolProgramsStr = storage.getItem('afterSchoolPrograms');
+  const facilityBookingsStr = storage.getItem('facilityBookings');
+  const boardPlannerEventsStr = storage.getItem('boardPlannerEvents');
+  const crossCurricularProjectsStr = storage.getItem('crossCurricularProjects');
+  const codingModulesStr = storage.getItem('codingModules');
+  const communicationTemplatesStr = storage.getItem('communicationTemplates');
+  const portfoliosStr = storage.getItem('allPortfolios');
+  const schoolNameStr = storage.getItem('schoolName');
+  const allBlueprintsStr = storage.getItem('allBlueprints') || '[]';
+  const allExamSessionsStr = storage.getItem('allExamSessions') || '[]';
+  const allExamSubmissionsStr = storage.getItem('allExamSubmissions') || '[]';
+  const allCoursesStr = storage.getItem('allCourses') || '[]';
+  const allGradesStr = storage.getItem('allGrades') || '[]';
 
 
   let profiles: UserProfile[] = JSON.parse(profilesStr);
@@ -184,8 +186,8 @@ export const fetchAllData = async (): Promise<{
         currentStreak: 0, lastStreakDate: '', achievements: [], xp: 0, level: 1, scholarCoins: 0, tutorSessionUnlocked: false,
       };
       profiles = [demoStudent, demoParent, demoTeacher, demoPrincipal];
-      localStorage.setItem('userProfiles', JSON.stringify(profiles));
-      localStorage.setItem('teacherAssignments', JSON.stringify(initialTeacherAssignments));
+      storage.setItem('userProfiles', JSON.stringify(profiles));
+      storage.setItem('teacherAssignments', JSON.stringify(initialTeacherAssignments));
   }
 
 
@@ -252,13 +254,13 @@ export const fetchAllData = async (): Promise<{
   if (hasMigrated) {
     console.log("Migration to FSRS format complete.");
     console.log("Migration validation sample (up to 5 cards):", migratedSample);
-    localStorage.setItem('allFlashcards', JSON.stringify(flashcards));
+    storage.setItem('allFlashcards', JSON.stringify(flashcards));
   }
 
 
   if (activeId && !profiles.some(p => p.id === activeId)) {
     activeId = profiles.length > 0 ? profiles[0].id : null;
-    localStorage.setItem('activeUserId', JSON.stringify(activeId));
+    storage.setItem('activeUserId', JSON.stringify(activeId));
   }
 
   return simulateNetwork({ profiles, activeId, progress, flashcards, userRole, allDktData, allAssignments, allAnnouncements, allSubmissions, allFlnProgress, teacherSchedules, teacherAssignments, attendanceRecords, quickFormativeAssessments, allNotifications, itemBank, busRoutes, printQuotas, feeStatus, afterSchoolPrograms, facilityBookings, boardPlannerEvents, crossCurricularProjects, codingModules, communicationTemplates, allPortfolios, schoolName, allBlueprints, allExamSessions, allExamSubmissions, allCourses, allGrades });
@@ -340,7 +342,7 @@ export const saveUserProfile = async (
     updatedProfiles.push(newUser);
   }
 
-  localStorage.setItem('userProfiles', JSON.stringify(updatedProfiles));
+  storage.setItem('userProfiles', JSON.stringify(updatedProfiles));
   appEventBus.emit('data-changed', { store: 'userProfiles' });
   return simulateNetwork(updatedProfiles);
 };
@@ -351,7 +353,7 @@ export const saveUserProfile = async (
  */
 export const saveActiveUserId = async (id: number): Promise<number> => {
   console.log(`API: Setting active user to ${id}...`);
-  localStorage.setItem('activeUserId', JSON.stringify(id));
+  storage.setItem('activeUserId', JSON.stringify(id));
   appEventBus.emit('data-changed', { store: 'activeUserId' });
   return simulateNetwork(id);
 };
@@ -362,7 +364,7 @@ export const saveActiveUserId = async (id: number): Promise<number> => {
  */
 export const saveAllProgress = async (progress: AllProgressData): Promise<AllProgressData> => {
   console.log("API: Saving all progress data...");
-  localStorage.setItem('allProgressData', JSON.stringify(progress));
+  storage.setItem('allProgressData', JSON.stringify(progress));
   appEventBus.emit('data-changed', { store: 'allProgressData' });
   return simulateNetwork(progress);
 };
@@ -372,7 +374,7 @@ export const saveAllProgress = async (progress: AllProgressData): Promise<AllPro
  */
 export const saveAllDktData = async (dktData: AllDktData): Promise<AllDktData> => {
     console.log("API: Saving all DKT data...");
-    localStorage.setItem('allDktData', JSON.stringify(dktData));
+    storage.setItem('allDktData', JSON.stringify(dktData));
     appEventBus.emit('data-changed', { store: 'allDktData' });
     return simulateNetwork(dktData);
 };
@@ -383,7 +385,7 @@ export const saveAllDktData = async (dktData: AllDktData): Promise<AllDktData> =
  */
 export const saveAllFlashcards = async (flashcards: AllFlashcardsData): Promise<AllFlashcardsData> => {
   console.log("API: Saving all flashcards data...");
-  localStorage.setItem('allFlashcards', JSON.stringify(flashcards));
+  storage.setItem('allFlashcards', JSON.stringify(flashcards));
   appEventBus.emit('data-changed', { store: 'allFlashcards' });
   return simulateNetwork(flashcards);
 };
@@ -393,7 +395,7 @@ export const saveAllFlashcards = async (flashcards: AllFlashcardsData): Promise<
  */
 export const saveAllFlnProgress = async (progress: StudentFlnProgress): Promise<StudentFlnProgress> => {
   console.log("API: Saving all FLN progress data...");
-  localStorage.setItem('allFlnProgress', JSON.stringify(progress));
+  storage.setItem('allFlnProgress', JSON.stringify(progress));
   appEventBus.emit('data-changed', { store: 'allFlnProgress' });
   return simulateNetwork(progress);
 };
@@ -403,7 +405,7 @@ export const saveAllFlnProgress = async (progress: StudentFlnProgress): Promise<
  */
 export const saveAllAssignments = async (assignments: Assignment[]): Promise<Assignment[]> => {
   console.log("API: Saving all assignments data...");
-  localStorage.setItem('allAssignments', JSON.stringify(assignments));
+  storage.setItem('allAssignments', JSON.stringify(assignments));
   appEventBus.emit('data-changed', { store: 'allAssignments' });
   return simulateNetwork(assignments);
 };
@@ -413,7 +415,7 @@ export const saveAllAssignments = async (assignments: Assignment[]): Promise<Ass
  */
 export const saveAllAnnouncements = async (announcements: Announcement[]): Promise<Announcement[]> => {
   console.log("API: Saving all announcements...");
-  localStorage.setItem('allAnnouncements', JSON.stringify(announcements));
+  storage.setItem('allAnnouncements', JSON.stringify(announcements));
   appEventBus.emit('data-changed', { store: 'allAnnouncements' });
   return simulateNetwork(announcements);
 };
@@ -423,7 +425,7 @@ export const saveAllAnnouncements = async (announcements: Announcement[]): Promi
  */
 export const saveAllSubmissions = async (submissions: StudentSubmission[]): Promise<StudentSubmission[]> => {
     console.log("API: Saving all student submissions...");
-    localStorage.setItem('allSubmissions', JSON.stringify(submissions));
+    storage.setItem('allSubmissions', JSON.stringify(submissions));
     appEventBus.emit('data-changed', { store: 'allSubmissions' });
     return simulateNetwork(submissions);
 };
@@ -436,7 +438,7 @@ export const updateUserProfileData = async (
   updates: Partial<UserProfile>
 ): Promise<UserProfile> => {
     console.log(`API: Updating profile for user ${userId}...`);
-    const profilesStr = localStorage.getItem('userProfiles') || '[]';
+    const profilesStr = storage.getItem('userProfiles') || '[]';
     let profiles: UserProfile[] = JSON.parse(profilesStr);
     let updatedProfile: UserProfile | null = null;
     const updatedProfiles = profiles.map(p => {
@@ -449,7 +451,7 @@ export const updateUserProfileData = async (
 
     if (!updatedProfile) throw new Error("User not found for update");
     
-    localStorage.setItem('userProfiles', JSON.stringify(updatedProfiles));
+    storage.setItem('userProfiles', JSON.stringify(updatedProfiles));
     appEventBus.emit('data-changed', { store: 'userProfiles' });
     return simulateNetwork(updatedProfile);
 };
@@ -460,9 +462,9 @@ export const updateUserProfileData = async (
 export const saveUserRole = async (role: UserRole | null): Promise<UserRole | null> => {
     console.log(`API: Setting user role to ${role}...`);
     if (role) {
-        localStorage.setItem('userRole', JSON.stringify(role));
+        storage.setItem('userRole', JSON.stringify(role));
     } else {
-        localStorage.removeItem('userRole');
+        storage.removeItem('userRole');
     }
     appEventBus.emit('data-changed', { store: 'userRole' });
     return simulateNetwork(role);
@@ -472,21 +474,21 @@ export const saveUserRole = async (role: UserRole | null): Promise<UserRole | nu
 
 export const saveAttendanceRecords = async (records: AttendanceRecord): Promise<AttendanceRecord> => {
     console.log("API: Saving attendance records...");
-    localStorage.setItem('attendanceRecords', JSON.stringify(records));
+    storage.setItem('attendanceRecords', JSON.stringify(records));
     appEventBus.emit('data-changed', { store: 'attendanceRecords' });
     return simulateNetwork(records);
 };
 
 export const saveQuickFormativeAssessments = async (assessments: QuickFormativeAssessment[]): Promise<QuickFormativeAssessment[]> => {
     console.log("API: Saving quick formative assessments...");
-    localStorage.setItem('quickFormativeAssessments', JSON.stringify(assessments));
+    storage.setItem('quickFormativeAssessments', JSON.stringify(assessments));
     appEventBus.emit('data-changed', { store: 'quickFormativeAssessments' });
     return simulateNetwork(assessments);
 };
 
 export const saveTeacherSchedules = async (schedules: TeacherSchedule[]): Promise<TeacherSchedule[]> => {
     console.log("API: Saving teacher schedules...");
-    localStorage.setItem('teacherSchedules', JSON.stringify(schedules));
+    storage.setItem('teacherSchedules', JSON.stringify(schedules));
     appEventBus.emit('data-changed', { store: 'teacherSchedules' });
     return simulateNetwork(schedules);
 };
@@ -494,21 +496,21 @@ export const saveTeacherSchedules = async (schedules: TeacherSchedule[]): Promis
 // --- EXAM SUITE ---
 export const saveItemBank = async (itemBank: QuestionPoolItem[]): Promise<QuestionPoolItem[]> => {
     console.log("API: Saving item bank...");
-    localStorage.setItem('itemBank', JSON.stringify(itemBank));
+    storage.setItem('itemBank', JSON.stringify(itemBank));
     appEventBus.emit('data-changed', { store: 'itemBank' });
     return simulateNetwork(itemBank);
 };
 
 export const saveAllExamSessions = async (sessions: ExamSession[]): Promise<ExamSession[]> => {
     console.log("API: Saving all exam sessions...");
-    localStorage.setItem('allExamSessions', JSON.stringify(sessions));
+    storage.setItem('allExamSessions', JSON.stringify(sessions));
     appEventBus.emit('data-changed', { store: 'allExamSessions' });
     return simulateNetwork(sessions);
 };
 
 export const saveAllExamSubmissions = async (submissions: ExamSubmission[]): Promise<ExamSubmission[]> => {
     console.log("API: Saving all exam submissions...");
-    localStorage.setItem('allExamSubmissions', JSON.stringify(submissions));
+    storage.setItem('allExamSubmissions', JSON.stringify(submissions));
     appEventBus.emit('data-changed', { store: 'allExamSubmissions' });
     return simulateNetwork(submissions);
 };
@@ -516,7 +518,7 @@ export const saveAllExamSubmissions = async (submissions: ExamSubmission[]): Pro
 // --- NOTIFICATIONS ---
 export const saveAllNotifications = async (notifications: Notification[]): Promise<Notification[]> => {
     console.log("API: Saving all notifications...");
-    localStorage.setItem('allNotifications', JSON.stringify(notifications));
+    storage.setItem('allNotifications', JSON.stringify(notifications));
     appEventBus.emit('data-changed', { store: 'allNotifications' });
     return simulateNetwork(notifications);
 };
@@ -524,19 +526,19 @@ export const saveAllNotifications = async (notifications: Notification[]): Promi
 // --- FINANCE & OPS ---
 export const saveAllBusRoutes = async (routes: BusRoute[]): Promise<BusRoute[]> => {
     console.log("API: Saving bus routes...");
-    localStorage.setItem('busRoutes', JSON.stringify(routes));
+    storage.setItem('busRoutes', JSON.stringify(routes));
     appEventBus.emit('data-changed', { store: 'busRoutes' });
     return simulateNetwork(routes);
 };
 export const saveAllPrintQuotas = async (quotas: PrintQuota[]): Promise<PrintQuota[]> => {
     console.log("API: Saving print quotas...");
-    localStorage.setItem('printQuotas', JSON.stringify(quotas));
+    storage.setItem('printQuotas', JSON.stringify(quotas));
     appEventBus.emit('data-changed', { store: 'printQuotas' });
     return simulateNetwork(quotas);
 };
 export const saveAllFeeStatus = async (statuses: FeeStatus[]): Promise<FeeStatus[]> => {
     console.log("API: Saving fee statuses...");
-    localStorage.setItem('feeStatus', JSON.stringify(statuses));
+    storage.setItem('feeStatus', JSON.stringify(statuses));
     appEventBus.emit('data-changed', { store: 'feeStatus' });
     return simulateNetwork(statuses);
 };
@@ -544,13 +546,13 @@ export const saveAllFeeStatus = async (statuses: FeeStatus[]): Promise<FeeStatus
 // --- GROWTH ---
 export const saveAllAfterSchoolPrograms = async (programs: AfterSchoolProgram[]): Promise<AfterSchoolProgram[]> => {
     console.log("API: Saving after school programs...");
-    localStorage.setItem('afterSchoolPrograms', JSON.stringify(programs));
+    storage.setItem('afterSchoolPrograms', JSON.stringify(programs));
     appEventBus.emit('data-changed', { store: 'afterSchoolPrograms' });
     return simulateNetwork(programs);
 };
 export const saveAllFacilityBookings = async (bookings: FacilityBooking[]): Promise<FacilityBooking[]> => {
     console.log("API: Saving facility bookings...");
-    localStorage.setItem('facilityBookings', JSON.stringify(bookings));
+    storage.setItem('facilityBookings', JSON.stringify(bookings));
     appEventBus.emit('data-changed', { store: 'facilityBookings' });
     return simulateNetwork(bookings);
 };
@@ -558,7 +560,7 @@ export const saveAllFacilityBookings = async (bookings: FacilityBooking[]): Prom
 // --- BOARD PLANNER ---
 export const saveAllBoardPlannerEvents = async (events: BoardPlannerEvent[]): Promise<BoardPlannerEvent[]> => {
     console.log("API: Saving board planner events...");
-    localStorage.setItem('boardPlannerEvents', JSON.stringify(events));
+    storage.setItem('boardPlannerEvents', JSON.stringify(events));
     appEventBus.emit('data-changed', { store: 'boardPlannerEvents' });
     return simulateNetwork(events);
 };
@@ -566,14 +568,14 @@ export const saveAllBoardPlannerEvents = async (events: BoardPlannerEvent[]): Pr
 // --- AI & CODING ---
 export const saveAllCrossCurricularProjects = async (projects: CrossCurricularProject[]): Promise<CrossCurricularProject[]> => {
     console.log("API: Saving cross-curricular projects...");
-    localStorage.setItem('crossCurricularProjects', JSON.stringify(projects));
+    storage.setItem('crossCurricularProjects', JSON.stringify(projects));
     appEventBus.emit('data-changed', { store: 'crossCurricularProjects' });
     return simulateNetwork(projects);
 };
 
 export const saveAllPortfolios = async (portfolios: AllPortfolios): Promise<AllPortfolios> => {
     console.log("API: Saving all portfolios...");
-    localStorage.setItem('allPortfolios', JSON.stringify(portfolios));
+    storage.setItem('allPortfolios', JSON.stringify(portfolios));
     appEventBus.emit('data-changed', { store: 'allPortfolios' });
     return simulateNetwork(portfolios);
 };
@@ -581,14 +583,14 @@ export const saveAllPortfolios = async (portfolios: AllPortfolios): Promise<AllP
 // --- NEW PERSISTENCE FOR SCHOOL OS ---
 export const saveSchoolName = async (name: string): Promise<string> => {
     console.log("API: Saving school name...");
-    localStorage.setItem('schoolName', JSON.stringify(name));
+    storage.setItem('schoolName', JSON.stringify(name));
     appEventBus.emit('data-changed', { store: 'schoolName' });
     return simulateNetwork(name);
 }
 
 export const saveAllBlueprints = async (blueprints: PaperBlueprint[]): Promise<PaperBlueprint[]> => {
     console.log("API: Saving all paper blueprints...");
-    localStorage.setItem('allBlueprints', JSON.stringify(blueprints));
+    storage.setItem('allBlueprints', JSON.stringify(blueprints));
     appEventBus.emit('data-changed', { store: 'allBlueprints' });
     return simulateNetwork(blueprints);
 }
@@ -596,14 +598,14 @@ export const saveAllBlueprints = async (blueprints: PaperBlueprint[]): Promise<P
 // --- NEW LMS PERSISTENCE ---
 export const saveAllCourses = async (courses: Course[]): Promise<Course[]> => {
     console.log("API: Saving all courses...");
-    localStorage.setItem('allCourses', JSON.stringify(courses));
+    storage.setItem('allCourses', JSON.stringify(courses));
     appEventBus.emit('data-changed', { store: 'allCourses' });
     return simulateNetwork(courses);
 };
 
 export const saveAllGrades = async (grades: Grade[]): Promise<Grade[]> => {
     console.log("API: Saving all grades...");
-    localStorage.setItem('allGrades', JSON.stringify(grades));
+    storage.setItem('allGrades', JSON.stringify(grades));
     appEventBus.emit('data-changed', { store: 'allGrades' });
     return simulateNetwork(grades);
 };
