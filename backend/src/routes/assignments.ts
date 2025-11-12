@@ -14,11 +14,31 @@ const upsertAssignmentSchema = z.object({
 
 export const assignmentsRouter = Router();
 
+const mapAssignment = (row: any): Assignment => ({
+  id: row.id,
+  title: row.title,
+  instructions: row.instructions,
+  dueDate: row.dueDate ?? row.due_date,
+  grade: row.grade,
+  createdAt: row.createdAt ?? row.created_at,
+});
+
 assignmentsRouter.get('/', async (_req, res) => {
-  const data = await db.query<Assignment>(
-    'SELECT id, title, instructions, due_date as "dueDate", grade, created_at as "createdAt" FROM assignments ORDER BY created_at DESC'
+  const data = await db.query(
+    'SELECT id, title, instructions, due_date AS "dueDate", grade, created_at AS "createdAt" FROM assignments ORDER BY created_at DESC'
   );
-  res.json({ data });
+  res.json({ data: data.map(mapAssignment) });
+});
+
+assignmentsRouter.get('/:id', async (req, res) => {
+  const data = await db.query(
+    'SELECT id, title, instructions, due_date AS "dueDate", grade, created_at AS "createdAt" FROM assignments WHERE id = $1',
+    [req.params.id]
+  );
+  if (!data.length) {
+    return res.status(404).json({ error: 'Assignment not found' });
+  }
+  res.json({ data: mapAssignment(data[0]) });
 });
 
 assignmentsRouter.post('/', requireAuth(['teacher', 'admin']), validateBody(upsertAssignmentSchema), async (req, res) => {

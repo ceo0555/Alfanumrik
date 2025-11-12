@@ -1,62 +1,34 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { getResource, setResource } from '../resourceStore';
-import { parseJsonBody } from '../_utils';
-import type { Assignment } from '../../types';
-
-const RESOURCE_KEY = 'allAssignments';
-
-const readAssignments = async (): Promise<Assignment[]> => {
-  const assignments = await getResource<Assignment[]>(RESOURCE_KEY);
-  return Array.isArray(assignments) ? assignments : [];
-};
-
-const writeAssignments = (assignments: Assignment[]) =>
-  setResource<Assignment[]>(RESOURCE_KEY, assignments);
-
-const resolveId = (value: string | string[] | undefined): string | null => {
-  const slug = Array.isArray(value) ? value[0] : value;
-  return slug ?? null;
-};
+import { backendFetch } from '../_backendClient';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
-    const id = resolveId(req.query.id);
+    const id = Array.isArray(req.query.id) ? req.query.id[0] : req.query.id;
     if (!id) {
       return res.status(400).json({ error: 'Invalid assignment id.' });
     }
 
-    const assignments = await readAssignments();
-    const index = assignments.findIndex((assignment) => assignment.id === id);
-
     if (req.method === 'GET') {
-      if (index === -1) {
-        return res.status(404).json({ error: 'Assignment not found.' });
-      }
-      return res.status(200).json({ data: assignments[index] });
+      const result = await backendFetch<{ data: unknown }>(`/api/assignments/${id}`, { method: 'GET' });
+      return res.status(result.status).json(result.data);
     }
 
     if (req.method === 'PUT') {
-      if (index === -1) {
-        return res.status(404).json({ error: 'Assignment not found.' });
-      }
-      const body = parseJsonBody<{ assignment?: Partial<Assignment> }>(req);
-      const incoming = body.assignment;
-      if (!incoming || typeof incoming !== 'object') {
-        return res.status(400).json({ error: 'Invalid payload. Expecting { assignment: {...} }' });
-      }
-      const updated = { ...assignments[index], ...incoming, id };
-      assignments[index] = updated;
-      await writeAssignments(assignments);
-      return res.status(200).json({ data: updated });
+      const body =
+        typeof req.body === 'string' ? req.body : JSON.stringify(req.body ?? {});
+      const result = await backendFetch<{ data: unknown }>(`/api/assignments/${id}`, {
+        method: 'PUT',
+        body,
+        headers: { 'Content-Type': 'application/json' },
+      });
+      return res.status(result.status).json(result.data);
     }
 
     if (req.method === 'DELETE') {
-      if (index === -1) {
-        return res.status(404).json({ error: 'Assignment not found.' });
-      }
-      assignments.splice(index, 1);
-      await writeAssignments(assignments);
-      return res.status(204).end();
+      const result = await backendFetch<unknown>(`/api/assignments/${id}`, {
+        method: 'DELETE',
+      });
+      return res.status(result.status).json(result.data);
     }
 
     return res.status(405).json({ error: 'Method not allowed' });

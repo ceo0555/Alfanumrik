@@ -49,10 +49,12 @@ The `/backend` workspace hosts an Express server for structured REST APIs (e.g. 
 ```bash
 cd backend
 npm install
-DATABASE_URL="postgres://..." npm run dev
+DATABASE_URL="postgres://..." JWT_SECRET="super-secret" npm run dev
 ```
 
 For CI or production builds run `npm run backend:build` from the repository root or `npm run build` inside `backend/`.
+
+When proxying through Vercel Functions, configure both `BACKEND_URL` (e.g. `https://backend.example.com`) and `SERVICE_TOKEN`; the helper automatically forwards the token as a bearer header on every request.
 
 ### Required environment variables
 
@@ -62,6 +64,7 @@ For CI or production builds run `npm run backend:build` from the repository root
 | `GEMINI_API_KEY`| Vercel Project → Settings → Environment Variables | Google Gemini secret (kept server-side) |
 | `JWT_SECRET`    | Backend service / Vercel | Secret used to sign auth tokens |
 | `JWT_TTL`       | Backend service / Vercel | Optional JWT lifetime (e.g. `1h`) |
+| `SERVICE_TOKEN` | Vercel Functions → Backend | Shared bearer token for service-to-service calls |
 
 For local development you can use `vercel dev` so that `/api/*` routes resolve to the serverless functions. When using `npm run dev` you will need a proxy (or rely on mock mode) because Vite alone will not execute the functions.
 

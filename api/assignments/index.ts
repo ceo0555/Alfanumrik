@@ -1,47 +1,22 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { getResource, setResource } from '../resourceStore';
-import { parseJsonBody, generateStringId } from '../_utils';
-import type { Assignment } from '../../types';
-
-const RESOURCE_KEY = 'allAssignments';
-
-const readAssignments = async (): Promise<Assignment[]> => {
-  const assignments = await getResource<Assignment[]>(RESOURCE_KEY);
-  return Array.isArray(assignments) ? assignments : [];
-};
-
-const writeAssignments = (assignments: Assignment[]) =>
-  setResource<Assignment[]>(RESOURCE_KEY, assignments);
+import { backendFetch } from '../_backendClient';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     if (req.method === 'GET') {
-      const assignments = await readAssignments();
-      return res.status(200).json({ data: assignments });
+      const result = await backendFetch<{ data: unknown }>('/api/assignments', { method: 'GET' });
+      return res.status(result.status).json(result.data);
     }
 
     if (req.method === 'POST') {
-      const body = parseJsonBody<{ assignment?: Partial<Assignment> }>(req);
-      const incoming = body.assignment;
-      if (!incoming || typeof incoming !== 'object') {
-        return res.status(400).json({ error: 'Invalid payload. Expecting { assignment: {...} }' });
-      }
-
-      const assignments = await readAssignments();
-      const id = typeof incoming.id === 'string' ? incoming.id : generateStringId('assignment');
-      const assignment: Assignment = {
-        status: 'draft',
-        assignedStudentIds: [],
-        content: [],
-        dueDate: new Date().toISOString(),
-        createdAt: new Date().toISOString(),
-        ...incoming,
-        id,
-      } as Assignment;
-
-      assignments.push(assignment);
-      await writeAssignments(assignments);
-      return res.status(201).json({ data: assignment });
+      const body =
+        typeof req.body === 'string' ? req.body : JSON.stringify(req.body ?? {});
+      const result = await backendFetch<{ data: unknown }>('/api/assignments', {
+        method: 'POST',
+        body,
+        headers: { 'Content-Type': 'application/json' },
+      });
+      return res.status(result.status).json(result.data);
     }
 
     return res.status(405).json({ error: 'Method not allowed' });
