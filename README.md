@@ -32,6 +32,10 @@ The app will surface structured placeholder data for every Gemini-powered featur
 
 The `/api` directory contains Vercel Serverless Functions that persist state to Neon PostgreSQL and proxy Gemini requests.
 
+- `GET /api/bootstrap` returns all stored resources for fast client hydration.
+- `GET|PUT|DELETE /api/resources/[resource]` reads or replaces a single resource payload (e.g. `userProfiles`, `allAssignments`).
+- `POST /api/gemini/proxy` forwards Gemini requests with the API key kept on the server.
+
 ### Required environment variables
 
 | Variable        | Where to set it | Description |
