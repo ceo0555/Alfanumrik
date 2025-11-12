@@ -9,25 +9,25 @@ const StudentsTab = React.lazy(() => import('./school/StudentsTab'));
 const AssignmentsTab = React.lazy(() => import('./school/AssignmentsTab'));
 const ReportsTab = React.lazy(() => import('./school/ReportsTab'));
 const AnnouncementsTab = React.lazy(() => import('./school/AnnouncementsTab'));
-const PaperBuilder = React.lazy(() => import('../PaperBuilder'));
-const DiagnosticsDashboard = React.lazy(() => import('../DiagnosticsDashboard'));
-const CodingModuleDashboard = React.lazy(() => import('../CodingModuleDashboard'));
-const BoardPlanner = React.lazy(() => import('../BoardPlanner'));
-const ClassroomCore = React.lazy(() => import('../ClassroomCore'));
-const FinanceOpsDashboard = React.lazy(() => import('../FinanceOpsDashboard'));
-const GrowthDashboard = React.lazy(() => import('../GrowthDashboard'));
+const PaperBuilder = React.lazy(() => import('./PaperBuilder'));
+const DiagnosticsDashboard = React.lazy(() => import('./DiagnosticsDashboard'));
+const CodingModuleDashboard = React.lazy(() => import('./CodingModuleDashboard'));
+const BoardPlanner = React.lazy(() => import('./BoardPlanner'));
+const ClassroomCore = React.lazy(() => import('./ClassroomCore'));
+const FinanceOpsDashboard = React.lazy(() => import('./FinanceOpsDashboard'));
+const GrowthDashboard = React.lazy(() => import('./GrowthDashboard'));
 const CurriculumPlanner = React.lazy(() => import('./school/CurriculumPlanner'));
-const ExamsTab = React.lazy(() => import('./ExamsTab'));
-const LmsDashboard = React.lazy(() => import('../lms/LmsDashboard'));
+const ExamsTab = React.lazy(() => import('./school/ExamsTab'));
+const LmsDashboard = React.lazy(() => import('./lms/LmsDashboard'));
 
 
 // Lazy load modals
 const BrandingModal = React.lazy(() => import('./school/BrandingModal'));
-const BulkOnboardModal = React.lazy(() => import('../BulkOnboardModal'));
-const CreateAssignmentModal = React.lazy(() => import('../CreateAssignmentModal'));
-const ReportCardModal = React.lazy(() => import('../ReportCardModal'));
-const CreateAnnouncementModal = React.lazy(() => import('../CreateAnnouncementModal'));
-const GradingModal = React.lazy(() => import('../GradingModal'));
+const BulkOnboardModal = React.lazy(() => import('./BulkOnboardModal'));
+const CreateAssignmentModal = React.lazy(() => import('./CreateAssignmentModal'));
+const ReportCardModal = React.lazy(() => import('./ReportCardModal'));
+const CreateAnnouncementModal = React.lazy(() => import('./CreateAnnouncementModal'));
+const GradingModal = React.lazy(() => import('./GradingModal'));
 
 const SchoolLogo = ({ className }: { className?: string }) => (
     <div className={`p-2 bg-slate-700 rounded-lg ${className}`}>

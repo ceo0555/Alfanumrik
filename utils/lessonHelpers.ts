@@ -1,4 +1,4 @@
-import { LessonPack, LessonStep } from '../types';
+import { LessonPack, LessonStep, AdaptiveFollowUp } from '../types';
 
 export const transformLessonPackToSteps = (lessonPack: LessonPack): LessonStep[] => {
   const steps: LessonStep[] = [];
@@ -141,10 +141,10 @@ export const transformLessonPackToSteps = (lessonPack: LessonPack): LessonStep[]
   }
 
   // Handle a case where an adaptive plan is passed in directly
-  if ('adaptivePlan' in lessonPack && Array.isArray((lessonPack as any).adaptivePlan)) {
-    const plan = (lessonPack as any).adaptivePlan;
+    if ('adaptivePlan' in lessonPack && Array.isArray((lessonPack as { adaptivePlan: AdaptiveFollowUp[] }).adaptivePlan)) {
+      const plan = (lessonPack as { adaptivePlan: AdaptiveFollowUp[] }).adaptivePlan;
     if (plan.length > 0) {
-        plan.forEach(item => {
+          plan.forEach((item: AdaptiveFollowUp) => {
             addStep({
                 type: 'adaptive_follow_up',
                 title: 'Adaptive Follow-up',

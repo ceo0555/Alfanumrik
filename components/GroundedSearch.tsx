@@ -5,6 +5,7 @@ import { SearchIcon, SparklesIcon } from '../constants/icons';
 import { GoogleGenAI } from '@google/genai';
 import MarkdownRenderer from './MarkdownRenderer';
 import Loader from './Loader';
+import { getGeminiApiKey } from '../utils/env';
 
 const GroundedSearch: React.FC = () => {
   const [query, setQuery] = useState('');
@@ -26,10 +27,11 @@ const GroundedSearch: React.FC = () => {
       const complexity = await analyzeQueryComplexity(query);
       setAnalysis(complexity);
 
-      if (!process.env.API_KEY) {
-        throw new Error("API_KEY not found.");
-      }
-      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+        const apiKey = getGeminiApiKey();
+        if (!apiKey) {
+          throw new Error("Gemini API key is not configured.");
+        }
+        const ai = new GoogleGenAI({ apiKey });
       
       let prompt: string;
       let model: string;

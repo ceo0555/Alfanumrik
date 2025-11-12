@@ -853,11 +853,14 @@ export interface ChatMessage {
 }
 
 export interface GroundingSource {
-  uri: string;
-  title: string;
+  uri?: string;
+  title?: string;
+  snippet?: string;
 }
 
 export interface GroundingChunk {
+  maps?: unknown;
+  retrievedContext?: unknown;
   web?: GroundingSource;
 }
 

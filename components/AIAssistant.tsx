@@ -6,6 +6,7 @@ import { useLiveAudio } from '../utils/useLiveAudio';
 import { decode, decodeAudioData } from '../utils/audio';
 import { ChatMessage, UserDktData, DktSkillState, TutorInterventionContext, QuestionPoolItem, QuickCheck } from '../types';
 import MarkdownRenderer from './MarkdownRenderer';
+import { getGeminiApiKey } from '../utils/env';
 
 
 // --- Text Chat Component (adapted from TutorCore) ---
@@ -29,8 +30,9 @@ const TextTutorView: React.FC<{ systemInstruction: string }> = ({ systemInstruct
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
-        if (process.env.API_KEY && activeProfile) {
-            const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+        const apiKey = getGeminiApiKey();
+        if (apiKey && activeProfile) {
+            const ai = new GoogleGenAI({ apiKey });
             const chatInstance = ai.chats.create({
                 model: 'gemini-2.5-pro',
                 config: {
@@ -41,8 +43,8 @@ const TextTutorView: React.FC<{ systemInstruction: string }> = ({ systemInstruct
             });
             setChat(chatInstance);
             setMessages([]);
-        } else if (!process.env.API_KEY) {
-            setError("API_KEY not found. This feature is disabled.");
+        } else if (!apiKey) {
+            setError("Gemini API key is not configured. This feature is disabled.");
         }
     }, [activeProfile, systemInstruction]);
 
@@ -184,7 +186,8 @@ const LiveTutorView: React.FC<{ systemInstruction: string; studentName: string; 
         if (message.serverContent?.outputTranscription) currentOutputTranscriptionRef.current += message.serverContent.outputTranscription.text;
         else if (message.serverContent?.inputTranscription) currentInputTranscriptionRef.current += message.serverContent.inputTranscription.text;
 
-        const base64EncodedAudioString = message.serverContent?.modelTurn?.parts[0]?.inlineData?.data;
+        const modelTurnParts = message.serverContent?.modelTurn?.parts ?? [];
+        const base64EncodedAudioString = modelTurnParts[0]?.inlineData?.data;
         if (base64EncodedAudioString && outputAudioContextRef.current) {
             const context = outputAudioContextRef.current;
             nextStartTimeRef.current = Math.max(nextStartTimeRef.current, context.currentTime);
