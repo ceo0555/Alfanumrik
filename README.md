@@ -69,3 +69,7 @@ When proxying through Vercel Functions, configure both `BACKEND_URL` (e.g. `http
 For local development you can use `vercel dev` so that `/api/*` routes resolve to the serverless functions. When using `npm run dev` you will need a proxy (or rely on mock mode) because Vite alone will not execute the functions.
 
 To call the dedicated backend from Vercel Functions, set `BACKEND_URL` (and optionally a service token) in the function environment and proxy requests with `fetch`. Alternatively deploy the Express service separately (Render, Fly.io, AWS) and expose consistent REST routes.
+
+### Interaction event logging
+
+Use `apiService.logInteractionEvent` or call `POST /api/events` to record granular learner interactions; the request is proxied to the backend and stored in the `interaction_events` table for analytics and adaptive modeling.

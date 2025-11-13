@@ -1,4 +1,4 @@
-import { UserProfile, AllProgressData, AllFlashcardsData, UserRole, DailyChallenge, UserFlashcards, UserFlashcardItem, SrsData, AllDktData, Assignment, Announcement, StudentSubmission, StudentFlnProgress, TeacherSchedule, AttendanceRecord, QuickFormativeAssessment, Notification, QuestionPoolItem, BusRoute, PrintQuota, FeeStatus, AfterSchoolProgram, FacilityBooking, BoardPlannerEvent, CrossCurricularProject, CodingModule, CommunicationTemplate, TeacherAssignment, StudentPortfolioProject, AllPortfolios, PaperBlueprint, ExamSession, ExamSubmission, Course, Grade } from '../types';
+import { UserProfile, AllProgressData, AllFlashcardsData, UserRole, DailyChallenge, UserFlashcards, UserFlashcardItem, SrsData, AllDktData, Assignment, Announcement, StudentSubmission, StudentFlnProgress, TeacherSchedule, AttendanceRecord, QuickFormativeAssessment, Notification, QuestionPoolItem, BusRoute, PrintQuota, FeeStatus, AfterSchoolProgram, FacilityBooking, BoardPlannerEvent, CrossCurricularProject, CodingModule, CommunicationTemplate, TeacherAssignment, StudentPortfolioProject, AllPortfolios, PaperBlueprint, ExamSession, ExamSubmission, Course, Grade, InteractionEventInput } from '../types';
 import { curriculum } from '../constants/curriculum';
 import { mockTeacherAssignments as initialTeacherAssignments, mockTeacherSchedule as initialTeacherSchedule } from '../constants/schoolData';
 import { mockItemBank as initialItemBank } from '../constants/itemBank';
@@ -754,4 +754,12 @@ export const saveAllGrades = async (grades: Grade[]): Promise<Grade[]> => {
     await writeResource('allGrades', grades);
     appEventBus.emit('data-changed', { store: 'allGrades' });
     return simulateNetwork(grades);
+};
+
+export const logInteractionEvent = async (event: InteractionEventInput): Promise<void> => {
+  await fetch('/api/events', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ event }),
+  });
 };

@@ -9,7 +9,7 @@
     "start": "node dist/main.js",
     "lint": "eslint \"src/**/*.{ts,tsx}\"",
     "test": "vitest run",
-    "migrate:sql": "psql \"$DATABASE_URL\" -f migrations/0001_init.sql"
+    "migrate:sql": "node ./scripts/run-migrations.mjs"
   },
   "dependencies": {
     "cors": "^2.8.5",

@@ -44,3 +44,34 @@ This scaffold uses plain SQL via the Neon serverless driver. For production read
 
 Store migration artifacts under `backend/migrations/` and wire `npm run backend:migrate` (custom script) into CI/CD before deploying new code.
 
+To run the bundled SQL migrations with `psql`:
+
+```bash
+npm run migrate:sql
+```
+
+> Note: `psql` must be available on your PATH.
+
+### Interaction event logging
+
+Use the `POST /api/events` endpoint to log detailed student interactions:
+
+```json
+{
+  "event": {
+    "userId": "c4b05c66-4ef2-4c65-b49d-3e21b7aa9948",
+    "profileId": 101,
+    "eventType": "quiz_submitted",
+    "contentId": "math-7-fractions-quiz-1",
+    "skillIds": ["fractions.reduction", "fractions.addition"],
+    "success": true,
+    "score": 0.82,
+    "durationMs": 34000,
+    "payload": { "questionId": "math-7-fractions-quiz-1-q3" },
+    "occurredAt": "2025-01-01T12:34:56Z"
+  }
+}
+```
+
+Events populate the `interaction_events` table and power mastery-model training, analytics, and recommendation engines.
+

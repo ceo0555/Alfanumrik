@@ -1003,6 +1003,20 @@ export interface FlashcardReviewItem extends UserFlashcardItem {
   id: string;
 }
 
+export interface InteractionEventInput {
+  userId?: string;
+  profileId?: number;
+  sessionId?: string;
+  eventType: string;
+  contentId?: string;
+  skillIds?: string[];
+  success?: boolean;
+  score?: number;
+  durationMs?: number;
+  payload?: Record<string, unknown>;
+  occurredAt?: string;
+}
+
 // --- PARENT DASHBOARD TYPES ---
 export interface ParentalReport {
   summary: string;
