@@ -16,7 +16,7 @@ const profileSchema = z.object({
 export const profilesRouter = Router();
 
 const mapProfile = (row: any): UserProfile => ({
-  id: Number(row.id),
+  id: row.id,
   name: row.name,
   grade: row.grade,
   lastSubject: row.last_subject,
