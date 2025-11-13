@@ -30,6 +30,12 @@ const GEMINI_KEY_CANDIDATES = [
   'GEMINI_API_KEY',
 ];
 
+const GEMINI_MOCK_KEYS = [
+  'VITE_GEMINI_MOCK',
+  'GEMINI_MOCK',
+  'GEMINI_MOCK_MODE',
+];
+
 export const getGeminiApiKey = (): string | undefined => {
   for (const key of GEMINI_KEY_CANDIDATES) {
     const value = readEnvValue(key);
@@ -49,3 +55,25 @@ export const requireGeminiApiKey = (): string => {
 };
 
 export const hasGeminiApiKey = (): boolean => Boolean(getGeminiApiKey());
+
+const isTruthy = (value: string | undefined): boolean => {
+  if (!value) return false;
+  switch (value.toLowerCase()) {
+    case '1':
+    case 'true':
+    case 'yes':
+    case 'on':
+      return true;
+    default:
+      return false;
+  }
+};
+
+export const isGeminiMockModeEnabled = (): boolean => {
+  for (const key of GEMINI_MOCK_KEYS) {
+    if (isTruthy(readEnvValue(key))) {
+      return true;
+    }
+  }
+  return false;
+};

@@ -1,7 +1,7 @@
 import { GoogleGenAI, Type, Modality, GenerateContentResponse, FunctionDeclaration } from "@google/genai";
 import { LessonPack, GroundingChunk, AssessmentResult, AdaptiveFollowUp, StudentExplanation, QuestionPoolItem, StructuredContent, Flashcard, InteractiveSimulation, UserProfile, UserProgressData, ParentalReport, InteractiveVideo, ClassAnalyticsData, UserDktData, PrerequisiteGraph, SafalDiagnosticResult, RemediationGroup, QuickFormativeAssessment, QfaResult, FacilityBooking, QuickCheck, CrossCurricularProject, PracticeBlueprint, PracticeResult, LabelData, SyllabusChapterTopic, StudentSubmission, Assignment, AllDktData, DktSkillState, SyllabusBlueprintUnit, PacingCalendarEvent, RemediationPack, ChatMessage, SyllabusUnit, PtmBrief, PaperBlueprint, AIProctoringReport, ExamSubmission, StudyTask, UserFlashcards, BusRoute, MatchingQuiz } from '../types';
 import { blobToBase64, fileToBase64 } from "../utils/fileHelpers";
-import { getGeminiApiKey, requireGeminiApiKey } from "../utils/env";
+import { getGeminiApiKey, requireGeminiApiKey, hasGeminiApiKey, isGeminiMockModeEnabled } from "../utils/env";
 import { get, set } from '../utils/db';
 import { cbseSyllabus } from '../constants/syllabus';
 
@@ -75,6 +75,421 @@ export interface ProgressData {
 
 const createGeminiClient = () => new GoogleGenAI({ apiKey: requireGeminiApiKey() });
 
+const GEMINI_LOG_PREFIX = '[Gemini]';
+const useGeminiMock = !hasGeminiApiKey() && isGeminiMockModeEnabled();
+
+const logGeminiInfo = (operation: string, message: string) => {
+  console.info(`${GEMINI_LOG_PREFIX} ${operation}: ${message}`);
+};
+
+const logGeminiError = (operation: string, error: unknown) => {
+  console.error(`${GEMINI_LOG_PREFIX} ${operation} failed`, error);
+};
+
+const randomId = (prefix: string) => `${prefix}-${Math.random().toString(36).slice(2, 8)}`;
+
+const createMockQuestion = (overrides: Partial<QuestionPoolItem> = {}): QuestionPoolItem => ({
+  q_id: overrides.q_id ?? randomId('mock-q'),
+  type: overrides.type ?? 'MCQ',
+  marks: overrides.marks ?? 1,
+  difficulty: overrides.difficulty ?? 'E',
+  bloom: overrides.bloom ?? 'Remember',
+  question: overrides.question ?? 'This is a mock question generated in mock mode.',
+  options: overrides.options ?? ['Option A', 'Option B', 'Option C', 'Option D'],
+  answer: overrides.answer ?? 'Option A',
+  rubric: overrides.rubric ?? 'Award full marks for Option A.',
+  competency: overrides.competency ?? 'Demonstrate Knowledge',
+  dok: overrides.dok ?? 1,
+  distractor_rationale: overrides.distractor_rationale,
+  source: overrides.source,
+  source_passage: overrides.source_passage,
+  sub_questions: overrides.sub_questions,
+  tags: overrides.tags,
+  imageUrl: overrides.imageUrl,
+  requiresDrawing: overrides.requiresDrawing,
+  status: overrides.status,
+});
+
+const createMockQuickCheck = (topic: string): QuickCheck => ({
+  question: `Quick check: What is one key idea about ${topic}?`,
+  options: ['It is important', 'It is irrelevant'],
+  correct_answer: 'It is important',
+  explanation: `In mock mode, remember that ${topic} is important.`,
+});
+
+const createMockStructuredParagraph = (text: string): StructuredContent => ({
+  type: 'paragraph',
+  content: text,
+});
+
+const createMockLessonPack = (chapter: SyllabusChapterTopic | null, topic: string): LessonPack => {
+  const topicId = chapter ? `${chapter.topic_id}|${topic}` : `mock-${topic.toLowerCase().replace(/\s+/g, '-')}`;
+  return {
+    topic_id: topicId,
+    topic_name: topic,
+    student_explanation: {
+      core_explanation: [
+        { type: 'heading', level: 2, content: topic },
+        createMockStructuredParagraph(`This is a mock explanation for ${topic}. Use it for development or testing.`),
+        { type: 'list', items: [`Key fact about ${topic}`, `Another point about ${topic}`] },
+      ],
+      quick_check: createMockQuickCheck(topic),
+      worked_examples: [
+        {
+          prompt: `Example problem related to ${topic}.`,
+          solution: 'Demonstrate the key steps in mock mode.',
+          why_it_works: 'Because this is a simulated environment.',
+        },
+      ],
+      guided_practice: [
+        {
+          question: `Try solving a simple scenario for ${topic}.`,
+          hint: 'Focus on the main idea presented above.',
+          stepwise_solution: 'Step 1: Identify the concept. Step 2: Apply it in a simple way.',
+        },
+      ],
+      independent_practice: [
+        {
+          question: `Practice question for ${topic}.`,
+          answer_key: 'Refer back to the mock explanation.',
+        },
+      ],
+      HOTS: [
+        {
+          question: `How could ${topic} be used in the real world?`,
+          exemplar_answer: `Consider the implications of ${topic} in everyday scenarios.`,
+        },
+      ],
+      common_errors_and_fixes: [
+        {
+          error: `Ignoring the definition of ${topic}.`,
+          fix: `Revisit the key explanation provided and connect it to examples.`,
+        },
+      ],
+      fill_in_the_blanks: [
+        {
+          sentence_parts: [`${topic} helps students`, 'understand ___ concepts'],
+          options: ['core', 'unrelated'],
+          correct_answer: 'core',
+        },
+      ],
+      interactive_simulations: [
+        {
+          description: `Imagine an interactive simulation that demonstrates ${topic}.`,
+          concept_link: `simulation-${topic.toLowerCase()}`,
+        },
+      ],
+      interactive_videos: [
+        {
+          title: `Mock video for ${topic}`,
+          video_url: 'https://example.com/mock-video.mp4',
+          script: [
+            {
+              timestamp: 5,
+              question_text: `What is a takeaway about ${topic}?`,
+              options: ['Option A', 'Option B'],
+              correct_answer: 'Option A',
+              feedback_correct: 'Correct! You understood the mock concept.',
+              feedback_incorrect: 'Review the mock explanation once more.',
+            },
+          ],
+        },
+      ],
+      real_world_applications: [`In real usage, ${topic} would connect to authentic examples.`],
+      matching_quizzes: [
+        {
+          instruction: 'Match the term to its mock definition.',
+          pairs: [
+            {
+              term: `${topic} Term`,
+              definition: `A mock description to explain ${topic}.`,
+            },
+          ],
+        },
+      ],
+    },
+    assessment_blueprint: {
+      question_pool: [
+        createMockQuestion({
+          question: `Assessment question that reinforces ${topic}.`,
+        }),
+      ],
+    },
+    teacher_notes: {
+      TLM_list: [`Display charts or props representing ${topic}.`],
+      differentiation: ['Offer concrete examples before abstractions.'],
+      remediation_plan: ['Review the basics and allow for additional practice.'],
+      safety_notes: ['No safety considerations in mock mode.'],
+    },
+  };
+};
+
+const createMockAdaptiveFollowUps = (results: AssessmentResult[]): AdaptiveFollowUp[] => {
+  if (results.length === 0) {
+    return [];
+  }
+  const focusQuestion = results[0].question_text || 'the concept';
+  return [
+    {
+      concept: `Understanding ${focusQuestion}`,
+      explanation: `This mock explanation revisits the core ideas behind ${focusQuestion}.`,
+      practice_question: {
+        question: `Try explaining ${focusQuestion} in your own words.`,
+        answer_key: 'Student should highlight the main steps or ideas mentioned earlier.',
+      },
+      review_suggestion: 'Review the key notes and worked examples provided in the mock lesson.',
+    },
+  ];
+};
+
+const createMockFlashcards = (topic: string): Flashcard[] => [
+  {
+    term: `${topic} - Core Idea`,
+    definition: `This mock flashcard highlights the main point about ${topic}.`,
+  },
+  {
+    term: `${topic} - Example`,
+    definition: `Provide a simple example that illustrates ${topic}.`,
+  },
+  {
+    term: `${topic} - Remember`,
+    definition: `Remember to connect ${topic} to prior knowledge.`,
+  },
+];
+
+const createMockRemediationGroups = (label: string): RemediationGroup[] => [
+  {
+    competency: label,
+    students: ['Student A', 'Student B'],
+    suggestedTask: `Facilitate a brief mock discussion to revisit ${label}.`,
+  },
+];
+
+const createMockParentalReport = (studentName: string): ParentalReport => ({
+  summary: `This is a mock summary for ${studentName}.`,
+  strengths: ['Engages well during lessons', 'Shows curiosity in mock mode'],
+  focusAreas: ['Review foundational concepts regularly'],
+  actionableTips: [
+    { icon: 'BookIcon', tip: 'Set aside 15 minutes daily to review notes.' },
+    { icon: 'WandIcon', tip: 'Ask the student to explain a concept aloud.' },
+  ],
+});
+
+const createMockParentalInsight = (query: string): string =>
+  `Mock insight responding to: "${query}". Encourage balanced routines and consistent study habits.`;
+
+const createMockRemediationPack = (concept: string): RemediationPack => ({
+  concept,
+  re_explanation: [
+    createMockStructuredParagraph(`This mock explanation revisits the essentials of ${concept}.`),
+  ],
+  worked_example: {
+    prompt: `Worked example for ${concept}.`,
+    solution: 'Demonstrate the method in a few clear steps.',
+    why_it_works: 'Because it reinforces the key relationships in the concept.',
+  },
+  scaffolded_practice: [
+    createMockQuestion({ question: `Entry-level practice on ${concept}.`, difficulty: 'E' }),
+    createMockQuestion({ question: `Follow-up practice on ${concept}.`, difficulty: 'M' }),
+  ],
+});
+
+const createMockCurriculumBlueprint = (
+  grade: string,
+  subject: string
+): { blueprint: SyllabusBlueprintUnit[]; calendar: PacingCalendarEvent[] } => ({
+  blueprint: [
+    {
+      unit_no: 1,
+      unit_name: `Mock Unit for ${subject}`,
+      weightage_marks: 20,
+      allocated_hours: 10,
+      chapters_or_topics: [
+        {
+          topic_id: `G${grade}-${subject}-U1T1`,
+          topic_name: `${subject} Topic 1`,
+          learning_outcomes: ['Understand the basics in mock mode.'],
+          bloom_levels: ['Remember'],
+          prerequisites: [],
+          common_misconceptions: ['Assuming mock data behaves like production data.'],
+          cross_links: [],
+          estimated_time_mins: 60,
+          marking_scheme_mapping: { K: 5, U: 5, A: 5, HOTS: 5 },
+          allocated_hours: 5,
+          data_driven_rationale: 'Allocated to ensure development environments remain functional.',
+        },
+      ],
+    },
+  ] as SyllabusBlueprintUnit[],
+  calendar: [
+    {
+      week: 1,
+      start_date: '2025-04-01',
+      activity_type: 'Teaching' as PacingCalendarEvent['activity_type'],
+      details: `Introduce mock overview for ${subject}.`,
+    },
+  ] as PacingCalendarEvent[],
+});
+
+const createMockPtmBrief = (studentName: string): PtmBrief => ({
+  summary: `Mock briefing for ${studentName}.`,
+  strengths: ['Shows consistency in mock assessments'],
+  focusAreas: ['Continue practicing retrieval techniques'],
+  behavioralObservations: ['Participates positively in mock activities'],
+  suggestedTalkingPoints: [
+    `Discuss how ${studentName} can apply strategies from mock sessions.`,
+  ],
+  closingRemark: 'Looking forward to continued growth in the live environment.',
+});
+
+const createMockAIProctoringReport = (): AIProctoringReport => ({
+  summary: 'Mock proctoring report with no suspicious activity detected.',
+  suspiciousClusters: [],
+  highInfractionStudents: [],
+});
+
+const createMockWeeklyStudyPlan = (topic?: string): StudyTask[] => [
+  {
+    id: randomId('mock-task'),
+    type: 'next_lesson',
+    title: `Review the mock lesson${topic ? ` on ${topic}` : ''}`,
+    subtitle: '15 minutes',
+    dueDate: new Date().toISOString().split('T')[0],
+    data: {},
+  },
+];
+
+const createMockCrossCurricularProject = (grade: string, subject: string): CrossCurricularProject => ({
+  id: randomId('mock-project'),
+  title: `Mock ${subject} Project`,
+  subject,
+  grade,
+  description: 'This is a mock cross-curricular project idea generated in development mode.',
+  objectives: ['Encourage creative thinking', 'Connect multiple disciplines'],
+  tasks: ['Brainstorm mock ideas', 'Prepare a simple presentation'],
+  evidence: 'Collect reflections from the mock activity.',
+});
+
+const createMockDeconstructedSyllabus = (): { structuredSyllabus: SyllabusUnit[]; prerequisiteGraph: PrerequisiteGraph } => ({
+  structuredSyllabus: [
+    {
+      unit_no: 1,
+      unit_name: 'Mock Unit',
+      weightage_marks: 10,
+      lesson_hours: 5,
+      chapters_or_topics: [
+        {
+          topic_id: 'G10-Science-MockTopic',
+          topic_name: 'Mock Topic',
+          learning_outcomes: ['Understand mock concept'],
+          bloom_levels: ['Remember'],
+          prerequisites: [],
+          common_misconceptions: ['Thinking mock equals production'],
+          cross_links: [],
+          estimated_time_mins: 45,
+          marking_scheme_mapping: { K: 3, U: 2, A: 3, HOTS: 2 },
+        },
+      ],
+    },
+  ],
+  prerequisiteGraph: {
+    'G10-Science-MockTopic': [],
+  },
+});
+
+const getDefaultMockResponse = <T>(operation: string): T => {
+  switch (operation) {
+    case 'generateAdaptiveFollowUp':
+    case 'generatePracticeQuiz':
+    case 'generateFlashcards':
+    case 'processOmniSearchQuery':
+    case 'generateTransportOptimizationTips':
+      return ([] as unknown) as T;
+    case 'generateRemediationGroups':
+      return createMockRemediationGroups('Mock competency') as unknown as T;
+    case 'generateQfaRemediation':
+      return createMockRemediationGroups('Mock exit ticket focus') as unknown as T;
+    case 'generatePracticeExam':
+      return [createMockQuestion(), createMockQuestion({ difficulty: 'M', dok: 2 })] as unknown as T;
+    case 'generateAdaptiveQuestion':
+    case 'generateCbeQuestion':
+      return createMockQuestion() as unknown as T;
+    case 'analyzeQueryComplexity':
+      return 'simple' as unknown as T;
+    case 'checkFlashcardAnswer':
+      return { isCorrect: true, feedback: 'Mock feedback generated without Gemini.' } as unknown as T;
+    case 'generateParentalReport':
+      return createMockParentalReport('Student') as unknown as T;
+    case 'generateParentalInsight':
+      return createMockParentalInsight('mock query') as unknown as T;
+    case 'generateSimulationExplanation':
+    case 'explainConceptInDepth':
+    case 'generateConceptDeepDive':
+    case 'explainTextSnippet':
+    case 'generatePracticeReportSummary':
+    case 'generateStudentReportCardSummary':
+    case 'generateRentalAgreement':
+    case 'generateTeacherWeeklyReport':
+      return `Mock response for ${operation}.` as unknown as T;
+    case 'generateCrossCurricularProjectIdea':
+      return createMockCrossCurricularProject('10', 'Science') as unknown as T;
+    case 'analyzeScratchpadForHint':
+      return 'Mock hint: revisit the key step you wrote last.' as unknown as T;
+    case 'analyzeScratchpadForErrorAnalysis':
+      return 'calculation_error' as unknown as T;
+    case 'generateVideoForConcept':
+      return 'https://example.com/mock-video.mp4' as unknown as T;
+    case 'generateLessonPackFromTopic':
+      return createMockLessonPack(null, 'Mock Topic') as unknown as T;
+    case 'generateMicroRemediation':
+      return {
+        explanation: [createMockStructuredParagraph('This mock remediation revisits the target concept.')],
+        quick_check: createMockQuickCheck('the concept'),
+      } as unknown as T;
+    case 'gradeShortAnswer':
+      return { awardedMarks: 0, feedback: 'Mock grading - no API key.' } as unknown as T;
+    case 'gradeVerbalExplanation':
+      return { transcript: 'Mock transcript generated in offline mode.', awardedMarks: 0, feedback: 'Mock grading - review your explanation.' } as unknown as T;
+    case 'gradeHandwrittenAnswer':
+      return { transcribedText: 'Mock transcription', awardedMarks: 0, feedback: 'Mock feedback for handwritten answer.' } as unknown as T;
+    case 'generateRemediationPack':
+      return createMockRemediationPack('Mock Concept') as unknown as T;
+    case 'generateCurriculumBlueprint':
+      return createMockCurriculumBlueprint('10', 'Science') as unknown as T;
+    case 'generatePtmBrief':
+      return createMockPtmBrief('Student') as unknown as T;
+    case 'generateExamAnalyticsReport':
+      return createMockAIProctoringReport() as unknown as T;
+    case 'generateWeeklyStudyPlan':
+      return createMockWeeklyStudyPlan() as unknown as T;
+    case 'deconstructSyllabus':
+      return createMockDeconstructedSyllabus() as unknown as T;
+    default:
+      return (`[Mock response for ${operation}]` as unknown) as T;
+  }
+};
+
+const withGemini = async <T>(
+  operation: string,
+  executor: () => Promise<T>,
+  mockFactory?: () => T | Promise<T>
+): Promise<T> => {
+  if (useGeminiMock) {
+    const result = await Promise.resolve(
+      mockFactory ? mockFactory() : getDefaultMockResponse<T>(operation)
+    );
+    logGeminiInfo(operation, 'Mock mode active, returning stub response.');
+    return result;
+  }
+
+  try {
+    return await executor();
+  } catch (error) {
+    logGeminiError(operation, error);
+    throw error;
+  }
+};
+
 const getResponseText = (response: GenerateContentResponse): string => {
   if (!response.text) {
     throw new Error("Gemini response did not include text content.");
@@ -124,13 +539,16 @@ export const fetchTopicContent = async (
         console.error("Could not read from IndexedDB cache", e);
     }
 
-      onProgress?.({ progress: 0, message: 'Generating your lesson...', step: 0, totalSteps: 1 });
-      console.log(`Generating new lesson pack for topic: ${topic}`);
-      
-      const [grade, subject] = chapter.topic_id.split('-').slice(0, 2).map(s => s.replace('G', ''));
-      const ai = createGeminiClient();
-    
-    const prompt = `
+    return withGemini(
+        'fetchTopicContent',
+        async () => {
+            onProgress?.({ progress: 0, message: 'Generating your lesson...', step: 0, totalSteps: 1 });
+            console.log(`Generating new lesson pack for topic: ${topic}`);
+            
+            const [grade, subject] = chapter.topic_id.split('-').slice(0, 2).map(s => s.replace('G', ''));
+            const ai = createGeminiClient();
+        
+      const prompt = `
       ROLE
       You are a senior CBSE curriculum designer and pedagogy expert. Your instructions are CRITICAL and must be followed with extreme precision.
 
@@ -166,118 +584,125 @@ export const fetchTopicContent = async (
       OUTPUT FORMAT
       - Output ONLY a single raw JSON object for the content module, containing 'student_explanation', 'assessment_blueprint', and 'teacher_notes'.
     `;
-    
-    const interactiveVideoSchema = {
-        type: Type.OBJECT, properties: { title: { type: Type.STRING }, video_url: { type: Type.STRING }, script: { type: Type.ARRAY, items: { type: Type.OBJECT, properties: { timestamp: { type: Type.NUMBER }, question_text: { type: Type.STRING }, options: { type: Type.ARRAY, items: { type: Type.STRING } }, correct_answer: { type: Type.STRING }, feedback_correct: { type: Type.STRING }, feedback_incorrect: { type: Type.STRING }, branch_on_incorrect: { type: Type.NUMBER }, }, required: ['timestamp', 'question_text', 'options', 'correct_answer', 'feedback_correct', 'feedback_incorrect'] } } }, required: ['title', 'video_url', 'script']
-    };
+      
+      const interactiveVideoSchema = {
+          type: Type.OBJECT, properties: { title: { type: Type.STRING }, video_url: { type: Type.STRING }, script: { type: Type.ARRAY, items: { type: Type.OBJECT, properties: { timestamp: { type: Type.NUMBER }, question_text: { type: Type.STRING }, options: { type: Type.ARRAY, items: { type: Type.STRING } }, correct_answer: { type: Type.STRING }, feedback_correct: { type: Type.STRING }, feedback_incorrect: { type: Type.STRING }, branch_on_incorrect: { type: Type.NUMBER }, }, required: ['timestamp', 'question_text', 'options', 'correct_answer', 'feedback_correct', 'feedback_incorrect'] } } }, required: ['title', 'video_url', 'script']
+      };
 
-    const studentExplanationSchema = {
-        type: Type.OBJECT,
-        properties: {
-            core_explanation: { type: Type.ARRAY, items: { type: Type.OBJECT, properties: { 
-                type: { type: Type.STRING }, 
-                level: { type: Type.NUMBER }, 
-                content: { type: Type.STRING }, 
-                items: { type: Type.ARRAY, items: { type: Type.STRING } }, 
-                term: { type: Type.STRING }, 
-                definition: { type: Type.STRING },
-                imageUrl: { type: Type.STRING },
-                altText: { type: Type.STRING },
-                hotspots: { type: Type.ARRAY, items: { type: Type.OBJECT, properties: {
-                    x: { type: Type.NUMBER },
-                    y: { type: Type.NUMBER },
-                    label: { type: Type.STRING },
-                    details: { type: Type.STRING },
-                }, required: ['x', 'y', 'label', 'details'] } },
-            }, required: ['type'] } },
-            quick_check: { type: Type.OBJECT, properties: { question: { type: Type.STRING }, options: { type: Type.ARRAY, items: { type: Type.STRING } }, correct_answer: { type: Type.STRING }, explanation: { type: Type.STRING } }, required: ['question', 'options', 'correct_answer', 'explanation'] },
-            worked_examples: { type: Type.ARRAY, items: { type: Type.OBJECT, properties: { prompt: { type: Type.STRING }, solution: { type: Type.STRING }, why_it_works: { type: Type.STRING } }, required: ['prompt', 'solution', 'why_it_works'] } },
-            guided_practice: { type: Type.ARRAY, items: { type: Type.OBJECT, properties: { question: { type: Type.STRING }, hint: { type: Type.STRING }, stepwise_solution: { type: Type.STRING } }, required: ['question', 'hint', 'stepwise_solution'] } },
-            independent_practice: { type: Type.ARRAY, items: { type: Type.OBJECT, properties: { question: { type: Type.STRING }, answer_key: { type: Type.STRING } }, required: ['question', 'answer_key'] } },
-            HOTS: { type: Type.ARRAY, items: { type: Type.OBJECT, properties: { question: { type: Type.STRING }, exemplar_answer: { type: Type.STRING } }, required: ['question', 'exemplar_answer'] } },
-            common_errors_and_fixes: { type: Type.ARRAY, items: { type: Type.OBJECT, properties: { error: { type: Type.STRING }, fix: { type: Type.STRING } }, required: ['error', 'fix'] } },
-            fill_in_the_blanks: { type: Type.ARRAY, items: { type: Type.OBJECT, properties: { sentence_parts: { type: Type.ARRAY, items: { type: Type.STRING } }, options: { type: Type.ARRAY, items: { type: Type.STRING } }, correct_answer: { type: Type.STRING } }, required: ['sentence_parts', 'options', 'correct_answer'] } },
-            interactive_simulations: { type: Type.ARRAY, items: { type: Type.OBJECT, properties: { description: { type: Type.STRING }, concept_link: { type: Type.STRING } }, required: ['description', 'concept_link'] } },
-            interactive_videos: { type: Type.ARRAY, items: interactiveVideoSchema, },
-            real_world_applications: { type: Type.ARRAY, items: { type: Type.STRING } },
-            matching_quizzes: { type: Type.ARRAY, items: {
-                type: Type.OBJECT, properties: {
-                    instruction: { type: Type.STRING },
-                    pairs: { type: Type.ARRAY, items: { type: Type.OBJECT, properties: {
-                        term: { type: Type.STRING },
-                        definition: { type: Type.STRING }
-                    }, required: ['term', 'definition'] } }
-                }, required: ['instruction', 'pairs']
-            } }
+      const studentExplanationSchema = {
+          type: Type.OBJECT,
+          properties: {
+              core_explanation: { type: Type.ARRAY, items: { type: Type.OBJECT, properties: { 
+                  type: { type: Type.STRING }, 
+                  level: { type: Type.NUMBER }, 
+                  content: { type: Type.STRING }, 
+                  items: { type: Type.ARRAY, items: { type: Type.STRING } }, 
+                  term: { type: Type.STRING }, 
+                  definition: { type: Type.STRING },
+                  imageUrl: { type: Type.STRING },
+                  altText: { type: Type.STRING },
+                  hotspots: { type: Type.ARRAY, items: { type: Type.OBJECT, properties: {
+                      x: { type: Type.NUMBER },
+                      y: { type: Type.NUMBER },
+                      label: { type: Type.STRING },
+                      details: { type: Type.STRING },
+                  }, required: ['x', 'y', 'label', 'details'] } },
+              }, required: ['type'] } },
+              quick_check: { type: Type.OBJECT, properties: { question: { type: Type.STRING }, options: { type: Type.ARRAY, items: { type: Type.STRING } }, correct_answer: { type: Type.STRING }, explanation: { type: Type.STRING } }, required: ['question', 'options', 'correct_answer', 'explanation'] },
+              worked_examples: { type: Type.ARRAY, items: { type: Type.OBJECT, properties: { prompt: { type: Type.STRING }, solution: { type: Type.STRING }, why_it_works: { type: Type.STRING } }, required: ['prompt', 'solution', 'why_it_works'] } },
+              guided_practice: { type: Type.ARRAY, items: { type: Type.OBJECT, properties: { question: { type: Type.STRING }, hint: { type: Type.STRING }, stepwise_solution: { type: Type.STRING } }, required: ['question', 'hint', 'stepwise_solution'] } },
+              independent_practice: { type: Type.ARRAY, items: { type: Type.OBJECT, properties: { question: { type: Type.STRING }, answer_key: { type: Type.STRING } }, required: ['question', 'answer_key'] } },
+              HOTS: { type: Type.ARRAY, items: { type: Type.OBJECT, properties: { question: { type: Type.STRING }, exemplar_answer: { type: Type.STRING } }, required: ['question', 'exemplar_answer'] } },
+              common_errors_and_fixes: { type: Type.ARRAY, items: { type: Type.OBJECT, properties: { error: { type: Type.STRING }, fix: { type: Type.STRING } }, required: ['error', 'fix'] } },
+              fill_in_the_blanks: { type: Type.ARRAY, items: { type: Type.OBJECT, properties: { sentence_parts: { type: Type.ARRAY, items: { type: Type.STRING } }, options: { type: Type.ARRAY, items: { type: Type.STRING } }, correct_answer: { type: Type.STRING } }, required: ['sentence_parts', 'options', 'correct_answer'] } },
+              interactive_simulations: { type: Type.ARRAY, items: { type: Type.OBJECT, properties: { description: { type: Type.STRING }, concept_link: { type: Type.STRING } }, required: ['description', 'concept_link'] } },
+              interactive_videos: { type: Type.ARRAY, items: interactiveVideoSchema, },
+              real_world_applications: { type: Type.ARRAY, items: { type: Type.STRING } },
+              matching_quizzes: { type: Type.ARRAY, items: {
+                  type: Type.OBJECT, properties: {
+                      instruction: { type: Type.STRING },
+                      pairs: { type: Type.ARRAY, items: { type: Type.OBJECT, properties: {
+                          term: { type: Type.STRING },
+                          definition: { type: Type.STRING }
+                      }, required: ['term', 'definition'] } }
+                  }, required: ['instruction', 'pairs']
+              } }
+          },
+          required: ['core_explanation', 'quick_check', 'worked_examples', 'guided_practice', 'independent_practice', 'HOTS', 'common_errors_and_fixes', 'fill_in_the_blanks', 'interactive_simulations', 'interactive_videos', 'real_world_applications', 'matching_quizzes']
+      };
+
+      const response = await ai.models.generateContent({
+          model: 'gemini-2.5-pro',
+          contents: prompt,
+          config: {
+              responseMimeType: 'application/json',
+              thinkingConfig: { thinkingBudget: 32768 },
+              responseSchema: {
+                  type: Type.OBJECT,
+                  properties: {
+                      student_explanation: studentExplanationSchema,
+                      assessment_blueprint: {
+                          type: Type.OBJECT,
+                          properties: {
+                              question_pool: { type: Type.ARRAY, items: questionPoolItemSchema },
+                          },
+                          required: ['question_pool']
+                      },
+                       teacher_notes: {
+                          type: Type.OBJECT,
+                          properties: {
+                              TLM_list: { type: Type.ARRAY, items: { type: Type.STRING } },
+                              differentiation: { type: Type.ARRAY, items: { type: Type.STRING } },
+                              remediation_plan: { type: Type.ARRAY, items: { type: Type.STRING } },
+                              safety_notes: { type: Type.ARRAY, items: { type: Type.STRING } },
+                          },
+                          required: ['TLM_list', 'differentiation', 'remediation_plan']
+                      }
+                  },
+                  required: ['student_explanation', 'assessment_blueprint', 'teacher_notes']
+              }
+          }
+      });
+
+      if (!response.text) {
+          throw new Error(`Gemini API returned no text for topic "${topic}". This might be due to a safety filter.`);
+      }
+      
+      onProgress?.({ progress: 95, message: 'Finalizing lesson...', step: 1, totalSteps: 1 });
+
+      const partialPack = parseJsonFromResponse(getResponseText(response));
+
+      const finalLessonPack: LessonPack = {
+          ...partialPack,
+          topic_id: topicId,
+          topic_name: topic,
+      };
+      
+      // Replace placeholder video URLs
+      if (finalLessonPack?.student_explanation?.interactive_videos) {
+          finalLessonPack.student_explanation.interactive_videos.forEach(video => {
+              if (!video.video_url || !video.video_url.startsWith('http')) {
+                  video.video_url = 'https://storage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4'; 
+              }
+          });
+      }
+      
+      try {
+          await set('cache', cacheKey, JSON.stringify(finalLessonPack));
+          console.log(`Saved lesson pack to cache for topic: ${topic}`);
+      } catch (e) {
+          console.error("Could not write lesson pack to IndexedDB cache", e);
+      }
+      onProgress?.({ progress: 100, message: 'Lesson ready!', step: 1, totalSteps: 1 });
+
+      return finalLessonPack;
         },
-        required: ['core_explanation', 'quick_check', 'worked_examples', 'guided_practice', 'independent_practice', 'HOTS', 'common_errors_and_fixes', 'fill_in_the_blanks', 'interactive_simulations', 'interactive_videos', 'real_world_applications', 'matching_quizzes']
-    };
-
-    const response = await ai.models.generateContent({
-        model: 'gemini-2.5-pro',
-        contents: prompt,
-        config: {
-            responseMimeType: 'application/json',
-            thinkingConfig: { thinkingBudget: 32768 },
-            responseSchema: {
-                type: Type.OBJECT,
-                properties: {
-                    student_explanation: studentExplanationSchema,
-                    assessment_blueprint: {
-                        type: Type.OBJECT,
-                        properties: {
-                            question_pool: { type: Type.ARRAY, items: questionPoolItemSchema },
-                        },
-                        required: ['question_pool']
-                    },
-                     teacher_notes: {
-                        type: Type.OBJECT,
-                        properties: {
-                            TLM_list: { type: Type.ARRAY, items: { type: Type.STRING } },
-                            differentiation: { type: Type.ARRAY, items: { type: Type.STRING } },
-                            remediation_plan: { type: Type.ARRAY, items: { type: Type.STRING } },
-                            safety_notes: { type: Type.ARRAY, items: { type: Type.STRING } },
-                        },
-                        required: ['TLM_list', 'differentiation', 'remediation_plan']
-                    }
-                },
-                required: ['student_explanation', 'assessment_blueprint', 'teacher_notes']
-            }
+        () => {
+            const mockPack = createMockLessonPack(chapter, topic);
+            onProgress?.({ progress: 100, message: 'Loaded mock lesson.', step: 1, totalSteps: 1 });
+            return mockPack;
         }
-    });
-
-    if (!response.text) {
-        throw new Error(`Gemini API returned no text for topic "${topic}". This might be due to a safety filter.`);
-    }
-    
-    onProgress?.({ progress: 95, message: 'Finalizing lesson...', step: 1, totalSteps: 1 });
-
-    const partialPack = parseJsonFromResponse(getResponseText(response));
-
-    const finalLessonPack: LessonPack = {
-        ...partialPack,
-        topic_id: topicId,
-        topic_name: topic,
-    };
-    
-    // Replace placeholder video URLs
-    if (finalLessonPack?.student_explanation?.interactive_videos) {
-        finalLessonPack.student_explanation.interactive_videos.forEach(video => {
-            if (!video.video_url || !video.video_url.startsWith('http')) {
-                video.video_url = 'https://storage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4'; 
-            }
-        });
-    }
-    
-    try {
-        await set('cache', cacheKey, JSON.stringify(finalLessonPack));
-        console.log(`Saved lesson pack to cache for topic: ${topic}`);
-    } catch (e) {
-        console.error("Could not write lesson pack to IndexedDB cache", e);
-    }
-    onProgress?.({ progress: 100, message: 'Lesson ready!', step: 1, totalSteps: 1 });
-
-    return finalLessonPack;
+    );
 };
 
 
@@ -288,132 +713,146 @@ export const generateAdaptiveFollowUp = async (results: AssessmentResult[]): Pro
         return []; // No follow-up needed if everything is correct
     }
 
-    requireGeminiApiKey();
+    return withGemini(
+        'generateAdaptiveFollowUp',
+        async () => {
+            const ai = createGeminiClient();
 
-    const ai = createGeminiClient();
+        const incorrectQuestionsString = incorrectAnswers.map(r => `- ${r.question_text}`).join('\n');
 
-    const incorrectQuestionsString = incorrectAnswers.map(r => `- ${r.question_text}`).join('\n');
+        const prompt = `
+          ROLE
+          You are an expert adaptive learning tutor for a K-12 CBSE student. Your goal is to create a personalized remediation plan based on the student's incorrect answers.
 
-    const prompt = `
-      ROLE
-      You are an expert adaptive learning tutor for a K-12 CBSE student. Your goal is to create a personalized remediation plan based on the student's incorrect answers.
+          TASK
+          Analyze the following list of questions the student answered incorrectly. For each distinct underlying concept that the student is struggling with, generate a "micro-lesson" to help them master it. Group questions by concept if they relate to the same topic.
 
-      TASK
-      Analyze the following list of questions the student answered incorrectly. For each distinct underlying concept that the student is struggling with, generate a "micro-lesson" to help them master it. Group questions by concept if they relate to the same topic.
+          INCORRECTLY ANSWERED QUESTIONS:
+          ${incorrectQuestionsString}
 
-      INCORRECTLY ANSWERED QUESTIONS:
-      ${incorrectQuestionsString}
+          INSTRUCTIONS
+          1.  **Identify Core Concepts**: Determine the fundamental academic concept(s) behind the incorrect answers.
+          2.  **Generate Micro-Lessons**: For each concept, create a follow-up plan with the following four parts:
+              - "concept": (string) The name of the concept.
+              - "explanation": (string) A simple, clear, and concise re-explanation of the concept.
+              - "practice_question": (object) A new, fundamental practice question to test the re-explained concept. This should be an "independent_practice" object with "question" and "answer_key".
+              - "review_suggestion": (string) A suggestion to review a related, more fundamental topic if applicable.
+          3.  **Format**: Return the output as a raw JSON array of these micro-lesson objects.
+        `;
 
-      INSTRUCTIONS
-      1.  **Identify Core Concepts**: Determine the fundamental academic concept(s) behind the incorrect answers.
-      2.  **Generate Micro-Lessons**: For each concept, create a follow-up plan with the following four parts:
-          - "concept": (string) The name of the concept.
-          - "explanation": (string) A simple, clear, and concise re-explanation of the concept.
-          - "practice_question": (object) A new, fundamental practice question to test the re-explained concept. This should be an "independent_practice" object with "question" and "answer_key".
-          - "review_suggestion": (string) A suggestion to review a related, more fundamental topic if applicable.
-      3.  **Format**: Return the output as a raw JSON array of these micro-lesson objects.
-    `;
-
-    const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
-        contents: prompt,
-        config: {
-            responseMimeType: 'application/json',
-            responseSchema: {
-                type: Type.ARRAY,
-                items: {
-                    type: Type.OBJECT,
-                    properties: {
-                        concept: { type: Type.STRING },
-                        explanation: { type: Type.STRING },
-                        practice_question: {
-                            type: Type.OBJECT,
-                            properties: {
-                                question: { type: Type.STRING },
-                                answer_key: { type: Type.STRING }
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: prompt,
+            config: {
+                responseMimeType: 'application/json',
+                responseSchema: {
+                    type: Type.ARRAY,
+                    items: {
+                        type: Type.OBJECT,
+                        properties: {
+                            concept: { type: Type.STRING },
+                            explanation: { type: Type.STRING },
+                            practice_question: {
+                                type: Type.OBJECT,
+                                properties: {
+                                    question: { type: Type.STRING },
+                                    answer_key: { type: Type.STRING }
+                                },
+                                required: ['question', 'answer_key']
                             },
-                            required: ['question', 'answer_key']
+                            review_suggestion: { type: Type.STRING }
                         },
-                        review_suggestion: { type: Type.STRING }
-                    },
-                    required: ['concept', 'explanation', 'practice_question', 'review_suggestion']
+                        required: ['concept', 'explanation', 'practice_question', 'review_suggestion']
+                    }
                 }
             }
-        }
-    });
+        });
 
-    const parsedJson = parseJsonFromResponse(getResponseText(response));
-    return parsedJson as AdaptiveFollowUp[];
+        const parsedJson = parseJsonFromResponse(getResponseText(response));
+        return parsedJson as AdaptiveFollowUp[];
+        },
+        () => createMockAdaptiveFollowUps(incorrectAnswers)
+    );
 };
 
 export const generateStudyNotes = async (studentExplanation: StudentExplanation, topic: string): Promise<string> => {
-    requireGeminiApiKey();
-    const ai = createGeminiClient();
-    // Keep only the core explanation to create a concise context
     const context = {
         core_explanation: studentExplanation.core_explanation,
         key_terms: studentExplanation.core_explanation.filter(b => b.type === 'key_term')
     };
 
-    const prompt = `
-      You are an academic assistant. Your task is to generate concise, well-structured study notes for a K-12 CBSE student based on the provided lesson content for the topic "${topic}".
+    return withGemini(
+        'generateStudyNotes',
+        async () => {
+            const ai = createGeminiClient();
+        const prompt = `
+          You are an academic assistant. Your task is to generate concise, well-structured study notes for a K-12 CBSE student based on the provided lesson content for the topic "${topic}".
 
-      **Instructions**:
-      - Summarize the key points from the "core_explanation".
-      - List all "key_terms" with their definitions.
-      - The output must be clean, easy-to-read plain text. Do not use any markdown formatting. Use line breaks to separate ideas.
-    `;
+          **Instructions**:
+          - Summarize the key points from the "core_explanation".
+          - List all "key_terms" with their definitions.
+          - The output must be clean, easy-to-read plain text. Do not use any markdown formatting. Use line breaks to separate ideas.
+        `;
 
-    const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
-        contents: prompt,
-    });
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: prompt,
+        });
 
-    return getResponseText(response);
+        return getResponseText(response);
+        },
+        () => `Mock study notes for ${topic}. Focus on the headline ideas and revisit the mock lesson pack for details.`
+    );
 };
 
 export const generatePracticeQuiz = async (studentExplanation: StudentExplanation, topic: string): Promise<QuestionPoolItem[]> => {
-    requireGeminiApiKey();
-    const ai = createGeminiClient();
     const context = {
         core_explanation: studentExplanation.core_explanation,
         worked_examples: studentExplanation.worked_examples,
     };
 
-    const prompt = `
-        You are an expert question paper generator for the CBSE curriculum. Based on the following lesson content for "${topic}", create a new, distinct set of 3 practice questions.
+    return withGemini(
+        'generatePracticeQuiz',
+        async () => {
+            const ai = createGeminiClient();
+        const prompt = `
+            You are an expert question paper generator for the CBSE curriculum. Based on the following lesson content for "${topic}", create a new, distinct set of 3 practice questions.
+            
+            **Content Provided**:
+            ${JSON.stringify(context, null, 2)}
+            
+            **Instructions**:
+            - Generate 3 questions that test the core concepts.
+            - The questions should be of type 'MCQ' or 'SA' (Short Answer).
+            - For each question, provide a 'bloom' level, a 'competency' classification, and a 'dok' (Depth of Knowledge) level.
+            - Each question must be a valid \`QuestionPoolItem\` object.
+            - Return the output as a raw JSON array of these objects.
+        `;
         
-        **Content Provided**:
-        ${JSON.stringify(context, null, 2)}
-        
-        **Instructions**:
-        - Generate 3 questions that test the core concepts.
-        - The questions should be of type 'MCQ' or 'SA' (Short Answer).
-        - For each question, provide a 'bloom' level, a 'competency' classification, and a 'dok' (Depth of Knowledge) level.
-        - Each question must be a valid \`QuestionPoolItem\` object.
-        - Return the output as a raw JSON array of these objects.
-    `;
-    
-    const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
-        contents: prompt,
-        config: {
-            responseMimeType: 'application/json',
-            responseSchema: {
-                type: Type.ARRAY,
-                items: questionPoolItemSchema
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: prompt,
+            config: {
+                responseMimeType: 'application/json',
+                responseSchema: {
+                    type: Type.ARRAY,
+                    items: questionPoolItemSchema
+                }
             }
-        }
-    });
+        });
 
-    return parseJsonFromResponse(getResponseText(response)) as QuestionPoolItem[];
+        return parseJsonFromResponse(getResponseText(response)) as QuestionPoolItem[];
+        },
+        () => [
+            createMockQuestion({ question: `Mock quiz question 1 about ${topic}.` }),
+            createMockQuestion({ question: `Mock quiz question 2 about ${topic}.`, difficulty: 'M', dok: 2 }),
+            createMockQuestion({ question: `Mock quiz question 3 about ${topic}.`, difficulty: 'H', dok: 3 }),
+        ]
+    );
 };
 
 
 export const generateFlashcards = async (lessonPack: LessonPack): Promise<Flashcard[]> => {
-    requireGeminiApiKey();
-    const ai = createGeminiClient();
-    
     const context = lessonPack.student_explanation.core_explanation
         .filter(block => block.type === 'paragraph' || block.type === 'key_term')
         .map(block => {
@@ -426,6 +865,10 @@ export const generateFlashcards = async (lessonPack: LessonPack): Promise<Flashc
         })
         .join('\n');
 
+    return withGemini(
+        'generateFlashcards',
+        async () => {
+            const ai = createGeminiClient();
     const prompt = `
         Based on the following lesson content about "${lessonPack.topic_name}", generate an array of 5-7 high-quality flashcards.
         Each flashcard should have a "term" (a key concept or question) and a "definition" (a concise, clear explanation).
@@ -456,11 +899,16 @@ export const generateFlashcards = async (lessonPack: LessonPack): Promise<Flashc
 
 
     return parseJsonFromResponse(getResponseText(response)) as Flashcard[];
+        },
+        () => createMockFlashcards(lessonPack.topic_name)
+    );
 };
 
 export const analyzeQueryComplexity = async (query: string): Promise<'simple' | 'complex'> => {
-    requireGeminiApiKey();
-    const ai = createGeminiClient();
+    return withGemini(
+        'analyzeQueryComplexity',
+        async () => {
+            const ai = createGeminiClient();
     const prompt = `
         Analyze the complexity of the following student query.
         - If it's a straightforward factual question that can be answered with a direct search (e.g., "what is photosynthesis", "who was Ashoka"), classify it as "simple".
@@ -486,11 +934,16 @@ export const analyzeQueryComplexity = async (query: string): Promise<'simple' | 
 
     const result = parseJsonFromResponse(getResponseText(response));
     return result.complexity === 'complex' ? 'complex' : 'simple';
+        },
+        () => 'simple'
+    );
 };
 
 export const generateAdaptiveQuestion = async (grade: string, subject: string, chapter: string, difficulty: 'E' | 'M' | 'H', previousQuestions: string[]): Promise<QuestionPoolItem> => {
-    requireGeminiApiKey();
-    const ai = createGeminiClient();
+    return withGemini(
+        'generateAdaptiveQuestion',
+        async () => {
+            const ai = createGeminiClient();
     const prompt = `
         Generate a new, unique CBSE-aligned question for a Class ${grade} ${subject} student on the chapter "${chapter}".
         - Difficulty: ${difficulty}
@@ -509,10 +962,15 @@ export const generateAdaptiveQuestion = async (grade: string, subject: string, c
     });
 
     return parseJsonFromResponse(getResponseText(response)) as QuestionPoolItem;
+        }
+    );
 };
 
 export const explainConceptInDepth = async (text: string): Promise<string> => {
-    requireGeminiApiKey();
+    if (useGeminiMock) {
+        logGeminiInfo('explainConceptInDepth', 'Mock mode active, returning stub response.');
+        return getDefaultMockResponse<string>('explainConceptInDepth');
+    }
     const ai = createGeminiClient();
     const prompt = `
         You are an expert CBSE tutor. Explain the following text to a K-12 student in simple, clear, and concise terms. 
@@ -520,12 +978,20 @@ export const explainConceptInDepth = async (text: string): Promise<string> => {
 
         Text to explain: "${text}"
     `;
-    const response = await ai.models.generateContent({ model: 'gemini-2.5-flash', contents: prompt });
-    return getResponseText(response);
+    try {
+        const response = await ai.models.generateContent({ model: 'gemini-2.5-flash', contents: prompt });
+        return getResponseText(response);
+    } catch (error) {
+        logGeminiError('explainConceptInDepth', error);
+        throw error;
+    }
 };
 
 export const generateConceptDeepDive = async (text: string): Promise<string> => {
-    requireGeminiApiKey();
+    if (useGeminiMock) {
+        logGeminiInfo('generateConceptDeepDive', 'Mock mode active, returning stub response.');
+        return getDefaultMockResponse<string>('generateConceptDeepDive');
+    }
     const ai = createGeminiClient();
     const prompt = `
         You are a distinguished professor and an expert CBSE tutor. Your task is to provide a "deep dive" explanation of the following text for a curious K-12 student. Go beyond a simple explanation.
@@ -540,18 +1006,26 @@ export const generateConceptDeepDive = async (text: string): Promise<string> => 
 
         **Text to explain**: "${text}"
     `;
-    const response = await ai.models.generateContent({
-        model: 'gemini-2.5-pro',
-        contents: prompt,
-        config: {
-            thinkingConfig: { thinkingBudget: 32768 }
-        }
-    });
-    return getResponseText(response);
+    try {
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-pro',
+            contents: prompt,
+            config: {
+                thinkingConfig: { thinkingBudget: 32768 }
+            }
+        });
+        return getResponseText(response);
+    } catch (error) {
+        logGeminiError('generateConceptDeepDive', error);
+        throw error;
+    }
 };
 
 export const checkFlashcardAnswer = async (studentAnswer: string, correctAnswer: string, term: string): Promise<{ isCorrect: boolean, feedback: string }> => {
-    requireGeminiApiKey();
+    if (useGeminiMock) {
+        logGeminiInfo('checkFlashcardAnswer', 'Mock mode active, returning stub response.');
+        return getDefaultMockResponse<{ isCorrect: boolean; feedback: string }>('checkFlashcardAnswer');
+    }
     const ai = createGeminiClient();
     const prompt = `
       Evaluate the student's answer for a flashcard. The term is "${term}" and the correct definition is "${correctAnswer}".
@@ -560,22 +1034,30 @@ export const checkFlashcardAnswer = async (studentAnswer: string, correctAnswer:
       Provide brief, encouraging feedback.
       Return a raw JSON object: { "isCorrect": boolean, "feedback": "your feedback string" }
     `;
-    const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
-        contents: prompt,
-        config: {
-            responseMimeType: 'application/json',
-            responseSchema: {
-                type: Type.OBJECT, properties: { isCorrect: { type: Type.BOOLEAN }, feedback: { type: Type.STRING } }, required: ['isCorrect', 'feedback']
+    try {
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: prompt,
+            config: {
+                responseMimeType: 'application/json',
+                responseSchema: {
+                    type: Type.OBJECT, properties: { isCorrect: { type: Type.BOOLEAN }, feedback: { type: Type.STRING } }, required: ['isCorrect', 'feedback']
+                }
             }
-        }
-    });
+        });
 
-    return parseJsonFromResponse(getResponseText(response));
+        return parseJsonFromResponse(getResponseText(response));
+    } catch (error) {
+        logGeminiError('checkFlashcardAnswer', error);
+        throw error;
+    }
 };
 
 export const generateParentalReport = async (profile: UserProfile, progressData: UserProgressData): Promise<ParentalReport> => {
-    requireGeminiApiKey();
+    if (useGeminiMock) {
+        logGeminiInfo('generateParentalReport', 'Mock mode active, returning stub response.');
+        return getDefaultMockResponse<ParentalReport>('generateParentalReport');
+    }
     const ai = createGeminiClient();
     const prompt = `
         Generate a parental report for a student named ${profile.name} (Class ${profile.grade}).
@@ -586,29 +1068,37 @@ export const generateParentalReport = async (profile: UserProfile, progressData:
         - Provide 3 actionable, simple tips for parents to help their child.
         Return a raw JSON object matching the ParentalReport schema.
     `;
-    const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
-        contents: prompt,
-        config: {
-            responseMimeType: 'application/json',
-            responseSchema: {
-                type: Type.OBJECT,
-                properties: {
-                    summary: { type: Type.STRING },
-                    strengths: { type: Type.ARRAY, items: { type: Type.STRING } },
-                    focusAreas: { type: Type.ARRAY, items: { type: Type.STRING } },
-                    actionableTips: { type: Type.ARRAY, items: { type: Type.OBJECT, properties: { icon: { type: Type.STRING }, tip: { type: Type.STRING } }, required: ['icon', 'tip'] } }
-                },
-                required: ['summary', 'strengths', 'focusAreas', 'actionableTips']
+    try {
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: prompt,
+            config: {
+                responseMimeType: 'application/json',
+                responseSchema: {
+                    type: Type.OBJECT,
+                    properties: {
+                        summary: { type: Type.STRING },
+                        strengths: { type: Type.ARRAY, items: { type: Type.STRING } },
+                        focusAreas: { type: Type.ARRAY, items: { type: Type.STRING } },
+                        actionableTips: { type: Type.ARRAY, items: { type: Type.OBJECT, properties: { icon: { type: Type.STRING }, tip: { type: Type.STRING } }, required: ['icon', 'tip'] } }
+                    },
+                    required: ['summary', 'strengths', 'focusAreas', 'actionableTips']
+                }
             }
-        }
-    });
+        });
 
-    return parseJsonFromResponse(getResponseText(response)) as ParentalReport;
+        return parseJsonFromResponse(getResponseText(response)) as ParentalReport;
+    } catch (error) {
+        logGeminiError('generateParentalReport', error);
+        throw error;
+    }
 };
 
 export const generateParentalInsight = async (query: string, studentData: { profile: UserProfile, dktData: UserDktData, assignments: Assignment[], submissions: StudentSubmission[] }): Promise<string> => {
-    requireGeminiApiKey();
+    if (useGeminiMock) {
+        logGeminiInfo('generateParentalInsight', 'Mock mode active, returning stub response.');
+        return getDefaultMockResponse<string>('generateParentalInsight');
+    }
     const ai = createGeminiClient();
     const { profile, dktData, assignments, submissions } = studentData;
 
@@ -631,20 +1121,28 @@ export const generateParentalInsight = async (query: string, studentData: { prof
       6.  **Plain Text Output**: Your entire response must be plain text. Do not use markdown.
     `;
 
-    const response = await ai.models.generateContent({
-        model: 'gemini-2.5-pro',
-        contents: prompt,
-        config: {
-            thinkingConfig: { thinkingBudget: 32768 }
-        }
-    });
+    try {
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-pro',
+            contents: prompt,
+            config: {
+                thinkingConfig: { thinkingBudget: 32768 }
+            }
+        });
 
-    return getResponseText(response);
+        return getResponseText(response);
+    } catch (error) {
+        logGeminiError('generateParentalInsight', error);
+        throw error;
+    }
 };
 
 
 export const generateSimulationExplanation = async (concept: string, description: string): Promise<string> => {
-    requireGeminiApiKey();
+    if (useGeminiMock) {
+        logGeminiInfo('generateSimulationExplanation', 'Mock mode active, returning stub response.');
+        return getDefaultMockResponse<string>('generateSimulationExplanation');
+    }
     const ai = createGeminiClient();
     const prompt = `
         Explain the concept of "${concept}" as if you were an interactive simulation.
@@ -652,12 +1150,20 @@ export const generateSimulationExplanation = async (concept: string, description
         Break down the explanation into interactive steps. All output must be plain text. Do not use any markdown.
         For example: "Step 1: Observe the particles... What happens when you increase the temperature? Now, try decreasing it..."
     `;
-    const response = await ai.models.generateContent({ model: 'gemini-2.5-flash', contents: prompt });
-    return getResponseText(response);
+    try {
+        const response = await ai.models.generateContent({ model: 'gemini-2.5-flash', contents: prompt });
+        return getResponseText(response);
+    } catch (error) {
+        logGeminiError('generateSimulationExplanation', error);
+        throw error;
+    }
 };
 
 export const gradeShortAnswer = async (question: string, rubric: string, totalMarks: number, studentAnswer: string): Promise<{ awardedMarks: number, feedback: string }> => {
-    requireGeminiApiKey();
+    if (useGeminiMock) {
+        logGeminiInfo('gradeShortAnswer', 'Mock mode active, returning stub response.');
+        return getDefaultMockResponse<{ awardedMarks: number; feedback: string }>('gradeShortAnswer');
+    }
     const ai = createGeminiClient();
     const prompt = `
       You are an expert CBSE examiner. Your task is to grade a student's written answer with nuance, allowing for partial credit.
@@ -676,22 +1182,31 @@ export const gradeShortAnswer = async (question: string, rubric: string, totalMa
       - **Total Marks Available**: ${totalMarks}
       - **Student's Answer**: "${studentAnswer}"
     `;
-    const response = await ai.models.generateContent({
-        model: 'gemini-2.5-pro',
-        contents: prompt,
-        config: {
-            responseMimeType: 'application/json',
-            responseSchema: {
-                type: Type.OBJECT, properties: { awardedMarks: { type: Type.NUMBER }, feedback: { type: Type.STRING } }, required: ['awardedMarks', 'feedback']
+    try {
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-pro',
+            contents: prompt,
+            config: {
+                responseMimeType: 'application/json',
+                responseSchema: {
+                    type: Type.OBJECT, properties: { awardedMarks: { type: Type.NUMBER }, feedback: { type: Type.STRING } }, required: ['awardedMarks', 'feedback']
+                }
             }
-        }
-    });
+        });
 
-    const parsedJson = parseJsonFromResponse(getResponseText(response));
-    return parsedJson as { awardedMarks: number, feedback: string };
+        const parsedJson = parseJsonFromResponse(getResponseText(response));
+        return parsedJson as { awardedMarks: number, feedback: string };
+    } catch (error) {
+        logGeminiError('gradeShortAnswer', error);
+        throw error;
+    }
 };
 
 export const gradeVerbalExplanation = async (question: QuestionPoolItem, audioBlob: Blob): Promise<{ transcript: string, awardedMarks: number, feedback: string }> => {
+    if (useGeminiMock) {
+        logGeminiInfo('gradeVerbalExplanation', 'Mock mode active, returning stub response.');
+        return getDefaultMockResponse<{ transcript: string; awardedMarks: number; feedback: string }>('gradeVerbalExplanation');
+    }
     requireGeminiApiKey();
     const ai = createGeminiClient();
     const audioBase64 = await blobToBase64(audioBlob);
@@ -712,36 +1227,53 @@ export const gradeVerbalExplanation = async (question: QuestionPoolItem, audioBl
         Return a single, raw JSON object with the following structure: { "transcript": string, "awardedMarks": number, "feedback": string }
     `};
 
-    const response = await ai.models.generateContent({
-        model: 'gemini-2.5-pro',
-        contents: { parts: [textPart, audioPart] },
-        config: {
-            responseMimeType: 'application/json',
-            responseSchema: {
-                type: Type.OBJECT, 
-                properties: { 
-                    transcript: { type: Type.STRING }, 
-                    awardedMarks: { type: Type.NUMBER }, 
-                    feedback: { type: Type.STRING } 
-                }, 
-                required: ['transcript', 'awardedMarks', 'feedback']
+    try {
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-pro',
+            contents: { parts: [textPart, audioPart] },
+            config: {
+                responseMimeType: 'application/json',
+                responseSchema: {
+                    type: Type.OBJECT, 
+                    properties: { 
+                        transcript: { type: Type.STRING }, 
+                        awardedMarks: { type: Type.NUMBER }, 
+                        feedback: { type: Type.STRING } 
+                    }, 
+                    required: ['transcript', 'awardedMarks', 'feedback']
+                }
             }
-        }
-    });
-    return parseJsonFromResponse(getResponseText(response));
+        });
+        return parseJsonFromResponse(getResponseText(response));
+    } catch (error) {
+        logGeminiError('gradeVerbalExplanation', error);
+        throw error;
+    }
 };
 
 
 export const explainTextSnippet = async (snippet: string): Promise<string> => {
+    if (useGeminiMock) {
+        logGeminiInfo('explainTextSnippet', 'Mock mode active, returning stub response.');
+        return getDefaultMockResponse<string>('explainTextSnippet');
+    }
     requireGeminiApiKey();
     const ai = createGeminiClient();
     const prompt = `Explain this snippet in simpler terms for a K-12 student: "${snippet}"`;
-    const response = await ai.models.generateContent({ model: 'gemini-2.5-flash', contents: prompt });
-    return getResponseText(response);
+    try {
+        const response = await ai.models.generateContent({ model: 'gemini-2.5-flash', contents: prompt });
+        return getResponseText(response);
+    } catch (error) {
+        logGeminiError('explainTextSnippet', error);
+        throw error;
+    }
 };
 
 export const generateMicroRemediation = async (topic: string, question: QuestionPoolItem | QuickCheck, studentAnswer: string): Promise<{ explanation: StructuredContent[], quick_check: QuickCheck }> => {
-    requireGeminiApiKey();
+    if (useGeminiMock) {
+        logGeminiInfo('generateMicroRemediation', 'Mock mode active, returning stub response.');
+        return getDefaultMockResponse<{ explanation: StructuredContent[]; quick_check: QuickCheck }>('generateMicroRemediation');
+    }
     const ai = createGeminiClient();
 
     const isMcq = 'options' in question && Array.isArray(question.options);
@@ -763,43 +1295,50 @@ export const generateMicroRemediation = async (topic: string, question: Question
         2. A new, simple "quick_check" question (as a QuickCheck object) to verify their understanding of the re-explanation.
         Return a single raw JSON object: { "explanation": [...], "quick_check": {...} }
     `;
-    const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
-        contents: prompt,
-        config: {
-            responseMimeType: 'application/json',
-            responseSchema: {
-                type: Type.OBJECT,
-                properties: {
-                    explanation: {
-                        type: Type.ARRAY,
-                        items: {
-                            type: Type.OBJECT,
-                            properties: {
-                                type: { type: Type.STRING },
-                                level: { type: Type.NUMBER },
-                                content: { type: Type.STRING },
-                                items: { type: Type.ARRAY, items: { type: Type.STRING } },
-                                term: { type: Type.STRING },
-                                definition: { type: Type.STRING },
-                            },
-                            required: ['type']
-                        }
+    try {
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: prompt,
+            config: {
+                responseMimeType: 'application/json',
+                responseSchema: {
+                    type: Type.OBJECT,
+                    properties: {
+                        explanation: {
+                            type: Type.ARRAY,
+                            items: {
+                                type: Type.OBJECT,
+                                properties: {
+                                    type: { type: Type.STRING },
+                                    level: { type: Type.NUMBER },
+                                    content: { type: Type.STRING },
+                                    items: { type: Type.ARRAY, items: { type: Type.STRING } },
+                                    term: { type: Type.STRING },
+                                    definition: { type: Type.STRING },
+                                },
+                                required: ['type']
+                            }
+                        },
+                        quick_check: { type: Type.OBJECT, properties: { question: { type: Type.STRING }, options: { type: Type.ARRAY, items: { type: Type.STRING } }, correct_answer: { type: Type.STRING }, explanation: { type: Type.STRING } }, required: ['question', 'options', 'correct_answer', 'explanation'] }
                     },
-                    quick_check: { type: Type.OBJECT, properties: { question: { type: Type.STRING }, options: { type: Type.ARRAY, items: { type: Type.STRING } }, correct_answer: { type: Type.STRING }, explanation: { type: Type.STRING } }, required: ['question', 'options', 'correct_answer', 'explanation'] }
-                },
-                required: ['explanation', 'quick_check']
+                    required: ['explanation', 'quick_check']
+                }
             }
-        }
-    });
-    
-
-    const parsedJson = parseJsonFromResponse(getResponseText(response));
-    return parsedJson as { explanation: StructuredContent[], quick_check: QuickCheck };
+        });
+        
+        const parsedJson = parseJsonFromResponse(getResponseText(response));
+        return parsedJson as { explanation: StructuredContent[], quick_check: QuickCheck };
+    } catch (error) {
+        logGeminiError('generateMicroRemediation', error);
+        throw error;
+    }
 };
 
 export const generateCbeQuestion = async (grade: string, subject: string, chapter: string, type: 'MCQ' | 'SA' | 'Case', competency: string, dok: number, topic: string): Promise<QuestionPoolItem> => {
-    requireGeminiApiKey();
+    if (useGeminiMock) {
+        logGeminiInfo('generateCbeQuestion', 'Mock mode active, returning stub response.');
+        return getDefaultMockResponse<QuestionPoolItem>('generateCbeQuestion');
+    }
     const ai = createGeminiClient();
     const prompt = `
         Generate a single, high-quality, CBSE-aligned competency-based question.
@@ -810,16 +1349,23 @@ export const generateCbeQuestion = async (grade: string, subject: string, chapte
         - For Case questions, provide a 'source_passage' and 'sub_questions'.
         - Return a single raw JSON object matching the QuestionPoolItem schema. Ensure q_id is a unique string like 'gen-[timestamp]'.
     `;
-    const response = await ai.models.generateContent({
-        model: 'gemini-2.5-pro', contents: prompt, config: { responseMimeType: 'application/json', responseSchema: questionPoolItemSchema }
-    });
+    try {
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-pro', contents: prompt, config: { responseMimeType: 'application/json', responseSchema: questionPoolItemSchema }
+        });
 
-    return parseJsonFromResponse(getResponseText(response)) as QuestionPoolItem;
+        return parseJsonFromResponse(getResponseText(response)) as QuestionPoolItem;
+    } catch (error) {
+        logGeminiError('generateCbeQuestion', error);
+        throw error;
+    }
 };
 
 export const generateRemediationGroups = async (results: SafalDiagnosticResult[]): Promise<RemediationGroup[]> => {
-    requireGeminiApiKey();
-    const ai = createGeminiClient();
+    return withGemini(
+        'generateRemediationGroups',
+        async () => {
+            const ai = createGeminiClient();
     const prompt = `
         Based on these SAFAL diagnostic results, identify the top 2-3 competencies where students are struggling most (rated 'low').
         For each of these competencies, create a remediation group.
@@ -840,12 +1386,17 @@ export const generateRemediationGroups = async (results: SafalDiagnosticResult[]
         }
     });
 
-    return parseJsonFromResponse(getResponseText(response));
+    return parseJsonFromResponse(getResponseText(response)) as RemediationGroup[];
+        },
+        () => createMockRemediationGroups('Mock competency')
+    );
 };
 
 export const generateQfaRemediation = async (assessment: QuickFormativeAssessment, results: QfaResult[]): Promise<RemediationGroup[]> => {
-    requireGeminiApiKey();
-    const ai = createGeminiClient();
+    return withGemini(
+        'generateQfaRemediation',
+        async () => {
+            const ai = createGeminiClient();
     const prompt = `
         Analyze the results of this quick formative assessment (exit ticket).
         - Assessment: ${JSON.stringify(assessment)}
@@ -865,12 +1416,17 @@ export const generateQfaRemediation = async (assessment: QuickFormativeAssessmen
         }
     });
 
-    return parseJsonFromResponse(getResponseText(response));
+    return parseJsonFromResponse(getResponseText(response)) as RemediationGroup[];
+        },
+        () => createMockRemediationGroups('Mock exit ticket focus')
+    );
 };
 
 export const generateRentalAgreement = async (booking: FacilityBooking): Promise<string> => {
-    requireGeminiApiKey();
-    const ai = createGeminiClient();
+    return withGemini(
+        'generateRentalAgreement',
+        async () => {
+            const ai = createGeminiClient();
     const prompt = `
         Generate a simple, one-page facility rental agreement template based on this booking information:
         - Facility: ${booking.facility}
@@ -881,11 +1437,15 @@ export const generateRentalAgreement = async (booking: FacilityBooking): Promise
     `;
     const response = await ai.models.generateContent({ model: 'gemini-2.5-flash', contents: prompt });
     return getResponseText(response);
+        }
+    );
 };
 
 export const generateStudentReportCardSummary = async (student: UserProfile, context: string): Promise<string> => {
-    requireGeminiApiKey();
-    const ai = createGeminiClient();
+    return withGemini(
+        'generateStudentReportCardSummary',
+        async () => {
+            const ai = createGeminiClient();
     const prompt = `
         Write a concise, encouraging summary and recommendation for a student's report card.
         - Student: ${student.name}, Class ${student.grade}
@@ -894,15 +1454,19 @@ export const generateStudentReportCardSummary = async (student: UserProfile, con
     `;
     const response = await ai.models.generateContent({ model: 'gemini-2.5-flash', contents: prompt });
     return getResponseText(response);
+        }
+    );
 };
 
 export const generatePracticeExam = async (grade: string, subject: string, blueprint: PracticeBlueprint, chapters?: string[]): Promise<QuestionPoolItem[]> => {
-    requireGeminiApiKey();
-    const ai = createGeminiClient();
     const chapterContext = chapters && chapters.length > 0
         ? `- The questions must ONLY cover topics from the following chapters: ${chapters.join(', ')}.`
         : '- The questions must be relevant to the subject and grade level.';
     
+    return withGemini(
+        'generatePracticeExam',
+        async () => {
+            const ai = createGeminiClient();
     const prompt = `
       Generate a practice exam paper for a Class ${grade} ${subject} student.
       Adhere strictly to this blueprint: ${JSON.stringify(blueprint.structure)}.
@@ -923,12 +1487,17 @@ export const generatePracticeExam = async (grade: string, subject: string, bluep
         }
     });
     return parseJsonFromResponse(getResponseText(response)) as QuestionPoolItem[];
+        },
+        () => [createMockQuestion(), createMockQuestion({ difficulty: 'M', dok: 2 })]
+    );
 };
 
 export const generatePracticeReportSummary = async (results: PracticeResult[]): Promise<string> => {
-    requireGeminiApiKey();
-    const ai = createGeminiClient();
     const simplifiedResults = results.map(r => ({ question: r.question.question, isCorrect: r.isCorrect, marksAwarded: r.marksAwarded, totalMarks: r.question.marks }));
+    return withGemini(
+        'generatePracticeReportSummary',
+        async () => {
+            const ai = createGeminiClient();
     const prompt = `
       Based on these practice exam results, provide a brief, encouraging performance summary for the student.
       - Acknowledge their score, especially where partial credit was given.
@@ -939,11 +1508,15 @@ export const generatePracticeReportSummary = async (results: PracticeResult[]): 
     `;
     const response = await ai.models.generateContent({ model: 'gemini-2.5-flash', contents: prompt });
     return getResponseText(response);
+        }
+    );
 };
 
 export const generateCrossCurricularProjectIdea = async (grade: string, subject: string): Promise<Omit<CrossCurricularProject, 'id' | 'evidence'>> => {
-    requireGeminiApiKey();
-    const ai = createGeminiClient();
+    return withGemini(
+        'generateCrossCurricularProjectIdea',
+        async () => {
+            const ai = createGeminiClient();
     const prompt = `
         Generate a single, creative cross-curricular project idea that integrates AI concepts with ${subject} for a Class ${grade} student.
         - The project should be simple and achievable with basic tools.
@@ -966,12 +1539,17 @@ export const generateCrossCurricularProjectIdea = async (grade: string, subject:
             }
         }
     });
-    return parseJsonFromResponse(getResponseText(response));
+    return parseJsonFromResponse(getResponseText(response)) as Omit<CrossCurricularProject, 'id' | 'evidence'>;
+        },
+        () => createMockCrossCurricularProject(grade, subject)
+    );
 };
 
 export const analyzeScratchpadForHint = async (imageBase64: string, questionText: string): Promise<string> => {
-    requireGeminiApiKey();
-    const ai = createGeminiClient();
+    return withGemini(
+        'analyzeScratchpadForHint',
+        async () => {
+            const ai = createGeminiClient();
     
     const imagePart = { inlineData: { mimeType: 'image/png', data: imageBase64 } };
     const textPart = { text: `
@@ -986,11 +1564,15 @@ export const analyzeScratchpadForHint = async (imageBase64: string, questionText
         contents: { parts: [imagePart, textPart] },
     });
     return getResponseText(response);
+        }
+    );
 };
 
 export const analyzeScratchpadForErrorAnalysis = async (imageBase64: string, questionText: string): Promise<string> => {
-    requireGeminiApiKey();
-    const ai = createGeminiClient();
+    return withGemini(
+        'analyzeScratchpadForErrorAnalysis',
+        async () => {
+            const ai = createGeminiClient();
 
     const imagePart = { inlineData: { mimeType: 'image/png', data: imageBase64 } };
     const textPart = { text: `
@@ -1022,9 +1604,15 @@ export const analyzeScratchpadForErrorAnalysis = async (imageBase64: string, que
 
     const result = parseJsonFromResponse(getResponseText(response));
     return result.errorType || 'unknown';
+        }
+    );
 };
 
 export const generateVideoForConcept = async (prompt: string): Promise<string> => {
+    if (useGeminiMock) {
+        logGeminiInfo('generateVideoForConcept', 'Mock mode active, returning stub response.');
+        return getDefaultMockResponse<string>('generateVideoForConcept');
+    }
     // A new AI instance MUST be created before each call to ensure the latest API key is used.
     const apiKey = getGeminiApiKey();
     if (!apiKey) {
@@ -1032,49 +1620,54 @@ export const generateVideoForConcept = async (prompt: string): Promise<string> =
     }
     const ai = new GoogleGenAI({ apiKey });
 
-    let operation = await ai.models.generateVideos({
-        model: 'veo-3.1-fast-generate-preview',
-        prompt: `Create a 30-second, simple animated educational video explaining this concept for a 10th-grade student: "${prompt}". Use clear labels and simple visuals.`,
-        config: {
-            numberOfVideos: 1,
-            resolution: '720p',
-            aspectRatio: '16:9'
+    try {
+        let operation = await ai.models.generateVideos({
+            model: 'veo-3.1-fast-generate-preview',
+            prompt: `Create a 30-second, simple animated educational video explaining this concept for a 10th-grade student: "${prompt}". Use clear labels and simple visuals.`,
+            config: {
+                numberOfVideos: 1,
+                resolution: '720p',
+                aspectRatio: '16:9'
+            }
+        });
+
+        // Poll for completion
+        while (!operation.done) {
+            await new Promise(resolve => setTimeout(resolve, 10000)); // Poll every 10 seconds
+            try {
+                operation = await ai.operations.getVideosOperation({ operation: operation });
+            } catch (e) {
+                logGeminiError('generateVideoForConcept', e);
+                throw new Error("Polling for video generation status failed.");
+            }
         }
-    });
 
-    // Poll for completion
-    while (!operation.done) {
-        await new Promise(resolve => setTimeout(resolve, 10000)); // Poll every 10 seconds
-        try {
-            operation = await ai.operations.getVideosOperation({ operation: operation });
-        } catch (e) {
-            console.error("Error while polling for video operation status:", e);
-            throw new Error("Polling for video generation status failed.");
+        if (operation.error) {
+            throw new Error(`Video generation failed with an error: ${operation.error.message}`);
         }
-    }
 
-    if (operation.error) {
-        throw new Error(`Video generation failed with an error: ${operation.error.message}`);
-    }
+        const downloadLink = operation.response?.generatedVideos?.[0]?.video?.uri;
+        if (!downloadLink) {
+            throw new Error("Video generation succeeded, but no download link was returned.");
+        }
 
-    const downloadLink = operation.response?.generatedVideos?.[0]?.video?.uri;
-    if (!downloadLink) {
-        throw new Error("Video generation succeeded, but no download link was returned.");
-    }
+        // The API key must be appended to the download URL
+        const videoResponse = await fetch(`${downloadLink}&key=${apiKey}`);
+        if (!videoResponse.ok) {
+            const errorBody = await videoResponse.text();
+            logGeminiError('generateVideoForConcept', { status: videoResponse.status, body: errorBody });
+            const userFriendlyError = errorBody.includes("Requested entity was not found") 
+                ? "The provided API key is invalid or not found." 
+                : `Failed to download video file. Server responded with status ${videoResponse.status}.`;
+            throw new Error(userFriendlyError);
+        }
 
-    // The API key must be appended to the download URL
-    const videoResponse = await fetch(`${downloadLink}&key=${apiKey}`);
-    if (!videoResponse.ok) {
-        const errorBody = await videoResponse.text();
-        console.error("Failed to download video file. Status:", videoResponse.status, "Body:", errorBody);
-        const userFriendlyError = errorBody.includes("Requested entity was not found") 
-            ? "The provided API key is invalid or not found." 
-            : `Failed to download video file. Server responded with status ${videoResponse.status}.`;
-        throw new Error(userFriendlyError);
+        const videoBlob = await videoResponse.blob();
+        return URL.createObjectURL(videoBlob);
+    } catch (error) {
+        logGeminiError('generateVideoForConcept', error);
+        throw error;
     }
-
-    const videoBlob = await videoResponse.blob();
-    return URL.createObjectURL(videoBlob);
 };
 
 export const generateTeacherWeeklyReport = async (
@@ -1083,7 +1676,10 @@ export const generateTeacherWeeklyReport = async (
     assignments: Assignment[],
     submissions: StudentSubmission[]
 ): Promise<string> => {
-    requireGeminiApiKey();
+    if (useGeminiMock) {
+        logGeminiInfo('generateTeacherWeeklyReport', 'Mock mode active, returning stub response.');
+        return getDefaultMockResponse<string>('generateTeacherWeeklyReport');
+    }
     const ai = createGeminiClient();
 
     // Simplify data to make the prompt more concise and focused for the LLM
@@ -1120,15 +1716,20 @@ export const generateTeacherWeeklyReport = async (
       5.  **The entire output MUST be plain text**. Do not use any markdown formatting or JSON.
     `;
 
-    const response = await ai.models.generateContent({
-        model: 'gemini-2.5-pro',
-        contents: prompt,
-        config: {
-            thinkingConfig: { thinkingBudget: 32768 }
-        }
-    });
+    try {
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-pro',
+            contents: prompt,
+            config: {
+                thinkingConfig: { thinkingBudget: 32768 }
+            }
+        });
 
-    return getResponseText(response);
+        return getResponseText(response);
+    } catch (error) {
+        logGeminiError('generateTeacherWeeklyReport', error);
+        throw error;
+    }
 };
 
 export const gradeHandwrittenAnswer = async (
@@ -1137,6 +1738,10 @@ export const gradeHandwrittenAnswer = async (
     rubric: string,
     totalMarks: number
 ): Promise<{ transcribedText: string, awardedMarks: number, feedback: string }> => {
+    if (useGeminiMock) {
+        logGeminiInfo('gradeHandwrittenAnswer', 'Mock mode active, returning stub response.');
+        return getDefaultMockResponse<{ transcribedText: string; awardedMarks: number; feedback: string }>('gradeHandwrittenAnswer');
+    }
     requireGeminiApiKey();
     const ai = createGeminiClient();
 
@@ -1163,29 +1768,38 @@ export const gradeHandwrittenAnswer = async (
       - **Student's Handwritten Answer**: (in the provided image)
     `};
 
-    const response = await ai.models.generateContent({
-        model: 'gemini-2.5-pro',
-        contents: { parts: [imagePart, textPart] },
-        config: {
-            responseMimeType: 'application/json',
-            responseSchema: {
-                type: Type.OBJECT,
-                properties: {
-                    transcribedText: { type: Type.STRING },
-                    awardedMarks: { type: Type.NUMBER },
-                    feedback: { type: Type.STRING }
-                },
-                required: ['transcribedText', 'awardedMarks', 'feedback']
+    try {
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-pro',
+            contents: { parts: [imagePart, textPart] },
+            config: {
+                responseMimeType: 'application/json',
+                responseSchema: {
+                    type: Type.OBJECT,
+                    properties: {
+                        transcribedText: { type: Type.STRING },
+                        awardedMarks: { type: Type.NUMBER },
+                        feedback: { type: Type.STRING }
+                    },
+                    required: ['transcribedText', 'awardedMarks', 'feedback']
+                }
             }
-        }
-    });
+        });
 
 
-    const parsedJson = parseJsonFromResponse(getResponseText(response));
-    return parsedJson as { transcribedText: string, awardedMarks: number, feedback: string };
+        const parsedJson = parseJsonFromResponse(getResponseText(response));
+        return parsedJson as { transcribedText: string, awardedMarks: number, feedback: string };
+    } catch (error) {
+        logGeminiError('gradeHandwrittenAnswer', error);
+        throw error;
+    }
 };
 
 export const generateLessonPackFromTopic = async (grade: string, subject: string, topic: string): Promise<LessonPack> => {
+    if (useGeminiMock) {
+        logGeminiInfo('generateLessonPackFromTopic', 'Mock mode active, returning stub lesson pack.');
+        return createMockLessonPack(null, topic);
+    }
     requireGeminiApiKey();
     const ai = createGeminiClient();
 
@@ -1293,6 +1907,10 @@ export const generateCurriculumBlueprint = async (
     examDates: { term1: string; term2: string },
     allDktData: AllDktData
 ): Promise<{ blueprint: SyllabusBlueprintUnit[], calendar: PacingCalendarEvent[] }> => {
+    if (useGeminiMock) {
+        logGeminiInfo('generateCurriculumBlueprint', 'Mock mode active, returning stub blueprint.');
+        return createMockCurriculumBlueprint(grade, subject);
+    }
     requireGeminiApiKey();
     const ai = createGeminiClient();
     
@@ -1391,20 +2009,29 @@ export const generateCurriculumBlueprint = async (
         required: ['blueprint', 'calendar']
     };
 
-    const response = await ai.models.generateContent({
-        model: 'gemini-2.5-pro',
-        contents: prompt,
-        config: {
-            responseMimeType: 'application/json',
-            responseSchema: blueprintSchema,
-            thinkingConfig: { thinkingBudget: 32768 }
-        }
-    });
+    try {
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-pro',
+            contents: prompt,
+            config: {
+                responseMimeType: 'application/json',
+                responseSchema: blueprintSchema,
+                thinkingConfig: { thinkingBudget: 32768 }
+            }
+        });
 
-    return parseJsonFromResponse(getResponseText(response));
+        return parseJsonFromResponse(getResponseText(response));
+    } catch (error) {
+        logGeminiError('generateCurriculumBlueprint', error);
+        throw error;
+    }
 };
 
 export const generateRemediationPack = async (studentName: string, weakConcept: string): Promise<RemediationPack> => {
+    if (useGeminiMock) {
+        logGeminiInfo('generateRemediationPack', 'Mock mode active, returning stub remediation pack.');
+        return createMockRemediationPack(weakConcept);
+    }
     requireGeminiApiKey();
     const ai = createGeminiClient();
 
@@ -1446,10 +2073,20 @@ export const generateRemediationPack = async (studentName: string, weakConcept: 
         }
     });
 
-    return parseJsonFromResponse(getResponseText(response)) as RemediationPack;
+    try {
+        const parsed = parseJsonFromResponse(getResponseText(response)) as RemediationPack;
+        return parsed;
+    } catch (error) {
+        logGeminiError('generateRemediationPack', error);
+        throw error;
+    }
 };
 
 export const deconstructSyllabus = async (syllabusText: string): Promise<{ structuredSyllabus: SyllabusUnit[], prerequisiteGraph: PrerequisiteGraph }> => {
+    if (useGeminiMock) {
+        logGeminiInfo('deconstructSyllabus', 'Mock mode active, returning stub syllabus.');
+        return createMockDeconstructedSyllabus();
+    }
     requireGeminiApiKey();
     const ai = createGeminiClient();
 
@@ -1501,57 +2138,64 @@ export const deconstructSyllabus = async (syllabusText: string): Promise<{ struc
         required: ['unit_no', 'unit_name', 'weightage_marks', 'lesson_hours', 'chapters_or_topics']
     };
 
-    const response = await ai.models.generateContent({
-        model: 'gemini-2.5-pro',
-        contents: prompt,
-        config: {
-            responseMimeType: 'application/json',
-            responseSchema: {
-                type: Type.OBJECT,
-                properties: {
-                    structuredSyllabus: {
-                        type: Type.ARRAY,
-                        items: syllabusUnitSchema,
-                    },
-                    prerequisiteGraph: {
-                        type: Type.ARRAY,
-                        items: {
-                            type: Type.OBJECT,
-                            properties: {
-                                topicId: { type: Type.STRING },
-                                prerequisites: {
-                                    type: Type.ARRAY,
-                                    items: { type: Type.STRING }
-                                }
-                            },
-                            required: ['topicId', 'prerequisites']
+    try {
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-pro',
+            contents: prompt,
+            config: {
+                responseMimeType: 'application/json',
+                responseSchema: {
+                    type: Type.OBJECT,
+                    properties: {
+                        structuredSyllabus: {
+                            type: Type.ARRAY,
+                            items: syllabusUnitSchema,
+                        },
+                        prerequisiteGraph: {
+                            type: Type.ARRAY,
+                            items: {
+                                type: Type.OBJECT,
+                                properties: {
+                                    topicId: { type: Type.STRING },
+                                    prerequisites: {
+                                        type: Type.ARRAY,
+                                        items: { type: Type.STRING }
+                                    }
+                                },
+                                required: ['topicId', 'prerequisites']
+                            }
                         }
-                    }
+                    },
+                    required: ['structuredSyllabus', 'prerequisiteGraph']
                 },
-                required: ['structuredSyllabus', 'prerequisiteGraph']
-            },
-            thinkingConfig: { thinkingBudget: 32768 }
-        }
-    });
+                thinkingConfig: { thinkingBudget: 32768 }
+            }
+        });
 
-    const parsedJson = parseJsonFromResponse(getResponseText(response));
+        const parsedJson = parseJsonFromResponse(getResponseText(response));
 
-    // Transform the array of graph nodes back into the expected PrerequisiteGraph object
-    const rawGraph: { topicId: string, prerequisites: string[] }[] = parsedJson.prerequisiteGraph;
-    const prerequisiteGraph: PrerequisiteGraph = rawGraph.reduce((acc, item) => {
-        acc[item.topicId] = item.prerequisites;
-        return acc;
-    }, {} as PrerequisiteGraph);
+        // Transform the array of graph nodes back into the expected PrerequisiteGraph object
+        const rawGraph: { topicId: string, prerequisites: string[] }[] = parsedJson.prerequisiteGraph;
+        const prerequisiteGraph: PrerequisiteGraph = rawGraph.reduce((acc, item) => {
+            acc[item.topicId] = item.prerequisites;
+            return acc;
+        }, {} as PrerequisiteGraph);
 
-    return {
-        structuredSyllabus: parsedJson.structuredSyllabus,
-        prerequisiteGraph: prerequisiteGraph
-    };
+        return {
+            structuredSyllabus: parsedJson.structuredSyllabus,
+            prerequisiteGraph: prerequisiteGraph
+        };
+    } catch (error) {
+        logGeminiError('deconstructSyllabus', error);
+        throw error;
+    }
 };
 
 export const processOmniSearchQuery = async (query: string) => {
-    requireGeminiApiKey();
-    const ai = createGeminiClient();
+    return withGemini(
+        'processOmniSearchQuery',
+        async () => {
+            const ai = createGeminiClient();
 
     const navigateTool: FunctionDeclaration = {
         name: 'navigate',
@@ -1605,6 +2249,9 @@ User query: "${query}"`;
     });
 
     return response.functionCalls;
+        },
+        () => []
+    );
 };
 
 export const generatePtmBrief = async (
@@ -1613,6 +2260,10 @@ export const generatePtmBrief = async (
     assignments: Assignment[],
     submissions: StudentSubmission[]
 ): Promise<PtmBrief> => {
+    if (useGeminiMock) {
+        logGeminiInfo('generatePtmBrief', 'Mock mode active, returning stub PTM brief.');
+        return createMockPtmBrief(student.name);
+    }
     requireGeminiApiKey();
     const ai = createGeminiClient();
 
@@ -1656,17 +2307,22 @@ export const generatePtmBrief = async (
         required: ['summary', 'strengths', 'focusAreas', 'behavioralObservations', 'suggestedTalkingPoints', 'closingRemark']
     };
 
-    const response = await ai.models.generateContent({
-        model: 'gemini-2.5-pro',
-        contents: prompt,
-        config: {
-            responseMimeType: 'application/json',
-            responseSchema: briefSchema,
-            thinkingConfig: { thinkingBudget: 32768 }
-        }
-    });
+    try {
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-pro',
+            contents: prompt,
+            config: {
+                responseMimeType: 'application/json',
+                responseSchema: briefSchema,
+                thinkingConfig: { thinkingBudget: 32768 }
+            }
+        });
 
-    return parseJsonFromResponse(getResponseText(response)) as PtmBrief;
+        return parseJsonFromResponse(getResponseText(response)) as PtmBrief;
+    } catch (error) {
+        logGeminiError('generatePtmBrief', error);
+        throw error;
+    }
 };
 
 export const generateExamAnalyticsReport = async (
@@ -1675,6 +2331,10 @@ export const generateExamAnalyticsReport = async (
     submissions: ExamSubmission[],
     students: UserProfile[]
 ): Promise<AIProctoringReport> => {
+    if (useGeminiMock) {
+        logGeminiInfo('generateExamAnalyticsReport', 'Mock mode active, returning stub proctoring report.');
+        return createMockAIProctoringReport();
+    }
     requireGeminiApiKey();
     const ai = createGeminiClient();
 
@@ -1742,17 +2402,22 @@ export const generateExamAnalyticsReport = async (
         required: ['summary', 'suspiciousClusters', 'highInfractionStudents']
     };
 
-    const response = await ai.models.generateContent({
-        model: 'gemini-2.5-pro',
-        contents: prompt,
-        config: {
-            responseMimeType: 'application/json',
-            responseSchema: reportSchema,
-            thinkingConfig: { thinkingBudget: 32768 }
-        }
-    });
-    
-    return parseJsonFromResponse(getResponseText(response));
+    try {
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-pro',
+            contents: prompt,
+            config: {
+                responseMimeType: 'application/json',
+                responseSchema: reportSchema,
+                thinkingConfig: { thinkingBudget: 32768 }
+            }
+        });
+        
+        return parseJsonFromResponse(getResponseText(response));
+    } catch (error) {
+        logGeminiError('generateExamAnalyticsReport', error);
+        throw error;
+    }
 };
 
 export const generateWeeklyStudyPlan = async (
@@ -1761,6 +2426,10 @@ export const generateWeeklyStudyPlan = async (
     userFlashcards: UserFlashcards,
     assignments: Assignment[]
 ): Promise<StudyTask[]> => {
+    if (useGeminiMock) {
+        logGeminiInfo('generateWeeklyStudyPlan', 'Mock mode active, returning stub study plan.');
+        return createMockWeeklyStudyPlan();
+    }
     requireGeminiApiKey();
     const ai = createGeminiClient();
     const today = new Date();
@@ -1799,42 +2468,49 @@ export const generateWeeklyStudyPlan = async (
         5.  **Output**: Return a single raw JSON array of these StudyTask objects.
     `;
     
-    const response = await ai.models.generateContent({
-        model: 'gemini-2.5-pro',
-        contents: prompt,
-        config: {
-            responseMimeType: 'application/json',
-            responseSchema: {
-                type: Type.ARRAY,
-                items: {
-                    type: Type.OBJECT,
-                    properties: {
-                        id: { type: Type.STRING },
-                        type: { type: Type.STRING },
-                        title: { type: Type.STRING },
-                        subtitle: { type: Type.STRING },
-                        dueDate: { type: Type.STRING },
-                        data: {
-                            type: Type.OBJECT,
-                            properties: {
-                                chapterId: { type: Type.STRING },
-                                assignmentId: { type: Type.STRING }
+    try {
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-pro',
+            contents: prompt,
+            config: {
+                responseMimeType: 'application/json',
+                responseSchema: {
+                    type: Type.ARRAY,
+                    items: {
+                        type: Type.OBJECT,
+                        properties: {
+                            id: { type: Type.STRING },
+                            type: { type: Type.STRING },
+                            title: { type: Type.STRING },
+                            subtitle: { type: Type.STRING },
+                            dueDate: { type: Type.STRING },
+                            data: {
+                                type: Type.OBJECT,
+                                properties: {
+                                    chapterId: { type: Type.STRING },
+                                    assignmentId: { type: Type.STRING }
+                                }
                             }
-                        }
-                    },
-                    required: ['id', 'type', 'title', 'subtitle', 'dueDate']
-                }
-            },
-            thinkingConfig: { thinkingBudget: 32768 }
-        }
-    });
+                        },
+                        required: ['id', 'type', 'title', 'subtitle', 'dueDate']
+                    }
+                },
+                thinkingConfig: { thinkingBudget: 32768 }
+            }
+        });
 
-    return parseJsonFromResponse(getResponseText(response)) as StudyTask[];
+        return parseJsonFromResponse(getResponseText(response)) as StudyTask[];
+    } catch (error) {
+        logGeminiError('generateWeeklyStudyPlan', error);
+        throw error;
+    }
 };
 
 export const generateTransportOptimizationTips = async (routes: BusRoute[]): Promise<string[]> => {
-    requireGeminiApiKey();
-    const ai = createGeminiClient();
+    return withGemini(
+        'generateTransportOptimizationTips',
+        async () => {
+            const ai = createGeminiClient();
 
     const prompt = `
       ROLE: You are a transport logistics and efficiency expert for a school.
@@ -1866,4 +2542,7 @@ export const generateTransportOptimizationTips = async (routes: BusRoute[]): Pro
     });
 
     return parseJsonFromResponse(getResponseText(response)) as string[];
+        },
+        () => ['Mock tip: Monitor route performance weekly and adjust stops as needed.']
+    );
 };
