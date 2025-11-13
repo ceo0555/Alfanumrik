@@ -8,13 +8,12 @@ export const enforceServiceToken = (req: Request, res: Response, next: NextFunct
     return;
   }
 
-  const header = req.headers.authorization;
-  if (!header || !header.startsWith('Bearer ')) {
+  const token = req.headers['x-service-token'];
+  if (typeof token !== 'string') {
     res.status(401).json({ error: 'Missing service token' });
     return;
   }
 
-  const token = header.substring('Bearer '.length);
   if (token !== SERVICE_TOKEN) {
     res.status(401).json({ error: 'Invalid service token' });
     return;

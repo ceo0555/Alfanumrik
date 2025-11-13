@@ -3,8 +3,15 @@ import { backendFetch } from '../_backendClient';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
+    const authHeader = req.headers.authorization;
     if (req.method === 'GET') {
-      const result = await backendFetch<{ data: unknown }>('/api/profiles', { method: 'GET' });
+      const result = await backendFetch<{ data: unknown }>('/api/profiles', {
+        method: 'GET',
+        headers: authHeader ? { Authorization: authHeader } : undefined,
+      });
+      if (result.status === 204) {
+        return res.status(204).end();
+      }
       return res.status(result.status).json(result.data);
     }
 
@@ -14,8 +21,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const result = await backendFetch<{ data: unknown }>('/api/profiles', {
         method: 'POST',
         body,
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(authHeader ? { Authorization: authHeader } : {}),
+        },
       });
+      if (result.status === 204) {
+        return res.status(204).end();
+      }
       return res.status(result.status).json(result.data);
     }
 

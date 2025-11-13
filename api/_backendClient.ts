@@ -8,7 +8,7 @@ if (!BACKEND_URL) {
 const defaultHeaders = () => {
   const headers: Record<string, string> = {};
   if (SERVICE_TOKEN) {
-    headers.Authorization = `Bearer ${SERVICE_TOKEN}`;
+    headers['x-service-token'] = SERVICE_TOKEN;
   }
   return headers;
 };

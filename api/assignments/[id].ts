@@ -7,9 +7,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (!id) {
       return res.status(400).json({ error: 'Invalid assignment id.' });
     }
+    const authHeader = req.headers.authorization;
 
     if (req.method === 'GET') {
-      const result = await backendFetch<{ data: unknown }>(`/api/assignments/${id}`, { method: 'GET' });
+      const result = await backendFetch<{ data: unknown }>(`/api/assignments/${id}`, {
+        method: 'GET',
+        headers: authHeader ? { Authorization: authHeader } : undefined,
+      });
+      if (result.status === 204) {
+        return res.status(204).end();
+      }
       return res.status(result.status).json(result.data);
     }
 
@@ -19,15 +26,25 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const result = await backendFetch<{ data: unknown }>(`/api/assignments/${id}`, {
         method: 'PUT',
         body,
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(authHeader ? { Authorization: authHeader } : {}),
+        },
       });
+      if (result.status === 204) {
+        return res.status(204).end();
+      }
       return res.status(result.status).json(result.data);
     }
 
     if (req.method === 'DELETE') {
       const result = await backendFetch<unknown>(`/api/assignments/${id}`, {
         method: 'DELETE',
+        headers: authHeader ? { Authorization: authHeader } : undefined,
       });
+      if (result.status === 204) {
+        return res.status(204).end();
+      }
       return res.status(result.status).json(result.data);
     }
 
