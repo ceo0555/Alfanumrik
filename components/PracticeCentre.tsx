@@ -9,14 +9,15 @@ import PracticeReport from './PracticeReport';
 import Loader from './Loader';
 import HonourCodeModal from './HonourCodeModal';
 import OnDemandPracticeSetup from './OnDemandPracticeSetup';
+import YoloModeSetup from './YoloModeSetup';
 
 type ExamState = 'setup' | 'loading' | 'active' | 'grading' | 'report';
-type PracticeMode = 'blueprint' | 'past_paper' | 'unit_test';
+type PracticeMode = 'blueprint' | 'past_paper' | 'unit_test' | 'yolo';
 
 interface PracticeCentreProps {
     examToStart?: { subject: string; blueprint: PracticeBlueprint } | null;
     onExamFinish: () => void;
-    mode: 'on-demand' | null;
+    mode: 'on-demand' | 'yolo' | null;
     onBack?: () => void;
 }
 
@@ -147,6 +148,13 @@ const PracticeCentre: React.FC<PracticeCentreProps> = ({ examToStart, onExamFini
         onExamFinish();
     };
 
+    const handleSetupBack = () => {
+        resetState();
+        if (onBack) {
+            onBack();
+        }
+    };
+
     const handleTryAgain = () => {
         resetState();
     };
@@ -161,7 +169,10 @@ const PracticeCentre: React.FC<PracticeCentreProps> = ({ examToStart, onExamFini
         switch (examState) {
             case 'setup':
                 if (mode === 'on-demand') {
-                    return <OnDemandPracticeSetup onStartExam={(subject, blueprint, chapters) => handleShowHonourCode({ subject, blueprint, mode: 'unit_test', chapters })} onBack={onBack} />;
+                    return <OnDemandPracticeSetup onStartExam={(subject, blueprint, chapters) => handleShowHonourCode({ subject, blueprint, mode: 'unit_test', chapters })} onBack={handleSetupBack} />;
+                }
+                if (mode === 'yolo') {
+                    return <YoloModeSetup onStartExam={(subject, blueprint, chapters) => handleShowHonourCode({ subject, blueprint, mode: 'yolo', chapters })} onBack={handleSetupBack} />;
                 }
                 return <PracticeSetup onStartExam={handleShowHonourCode} error={error} />;
             case 'loading':

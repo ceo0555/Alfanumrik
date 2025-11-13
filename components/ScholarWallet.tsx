@@ -6,11 +6,12 @@ import { View } from '../App';
 
 interface ScholarWalletProps {
     setView: (view: View) => void;
-    setPracticeMode: (mode: 'on-demand' | null) => void;
+    setPracticeMode: (mode: 'on-demand' | 'yolo' | null) => void;
 }
 
 const marketplaceItems: MarketplaceItem[] = [
     { id: 'powerup-1', title: 'On-Demand Practice Paper', description: 'Generate a new, custom practice paper in the Practice Centre by selecting the chapters you want to focus on.', cost: 500, category: 'power-up', action: { type: 'navigate', payload: 'assess' } },
+    { id: 'powerup-yolo', title: 'YOLO Mode Gauntlet', description: 'Unlock the high-stakes YOLO Mode in the Practice Centre for an all-in mixed-format challenge.', cost: 800, category: 'power-up', action: { type: 'navigate', payload: 'assess' } },
     { id: 'powerup-2', title: 'AI Tutor Priority Pass', description: 'Get an extended, uninterrupted session with MIGA, our most advanced AI tutor.', cost: 100, category: 'power-up', action: { type: 'unlock', payload: 'tutor' } },
     { id: 'powerup-3', title: 'Concept Deep Dive', description: 'Request a hyper-detailed explanation of a tough concept with advanced examples.', cost: 250, category: 'power-up', action: { type: 'navigate', payload: 'studio' } },
     { id: 'custom-1', title: 'Exclusive Profile Border', description: 'Show off your skills with a unique animated profile border.', cost: 1000, category: 'customization', action: { type: 'redeem', payload: 'border' } },
@@ -36,6 +37,8 @@ const ScholarWallet: React.FC<ScholarWalletProps> = ({ setView, setPracticeMode 
             case 'navigate':
                 if (item.id === 'powerup-1') {
                     setPracticeMode('on-demand');
+                } else if (item.id === 'powerup-yolo') {
+                    setPracticeMode('yolo');
                 }
                 setView(item.action.payload);
                 break;

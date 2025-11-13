@@ -99,7 +99,7 @@ const StudentApp: React.FC<StudentAppProps> = ({ ltiContext, onOpenUserModal, on
   const [flashcardModalChapter, setFlashcardModalChapter] = useState<{ grade: string, subject: string, chapter: string } | null>(null);
   const [activeQuiz, setActiveQuiz] = useState<Assignment | null>(null);
   const [practiceToStart, setPracticeToStart] = useState<{ subject: string; blueprint: PracticeBlueprint } | null>(null);
-  const [practiceMode, setPracticeMode] = useState<'on-demand' | null>(null);
+    const [practiceMode, setPracticeMode] = useState<'on-demand' | 'yolo' | null>(null);
 
   const [isTutorOpen, setIsTutorOpen] = useState(false);
   const [aiContext, setAiContext] = useState<string | null>(null);

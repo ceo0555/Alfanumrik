@@ -15,7 +15,7 @@ const ConceptExplainer = React.lazy(() => import('./ConceptExplainer'));
 interface StudioViewProps {
     setView: (view: View) => void;
     onStartPractice: (subject: string, blueprint: PracticeBlueprint) => void;
-    setPracticeMode: (mode: 'on-demand' | null) => void;
+    setPracticeMode: (mode: 'on-demand' | 'yolo' | null) => void;
 }
 
 const FlashcardManager: React.FC = () => {

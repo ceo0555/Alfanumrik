@@ -10,7 +10,7 @@ const AdaptivePractice = React.lazy(() => import('./AdaptivePractice'));
 interface AssessViewProps {
     examToStart?: { subject: string; blueprint: PracticeBlueprint } | null;
     onExamFinish: () => void;
-    mode: 'on-demand' | null;
+    mode: 'on-demand' | 'yolo' | null;
     setView: (view: View) => void;
 }
 
@@ -20,7 +20,7 @@ const AssessView: React.FC<AssessViewProps> = ({ examToStart, onExamFinish, mode
     const [activeTab, setActiveTab] = useState<AssessTab>('practice');
 
     useEffect(() => {
-        if (mode === 'on-demand') {
+        if (mode) {
             setActiveTab('practice');
         }
     }, [mode]);
