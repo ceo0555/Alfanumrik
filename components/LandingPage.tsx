@@ -1,347 +1,688 @@
-import React, { useState, useEffect } from 'react';
-import { SparklesIcon, MailIcon, PhoneIcon, MapPinIcon, TwitterIcon, LinkedInIcon, FacebookIcon, LockIcon, FileTextIcon, CheckCircleIcon, CpuIcon, BrainCircuitIcon, CodeIcon } from '../constants/icons';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-    AdaptiveLessonPlayerMockup,
-    SchoolOSDashboardMockup,
-    StudentUIMockup,
-    TeacherUIMockup,
-    SchoolUIMockup,
-    ParentUIMockup
-} from './ui_mockups';
+  SparklesIcon,
+  MailIcon,
+  PhoneIcon,
+  MapPinIcon,
+  TwitterIcon,
+  LinkedInIcon,
+  FacebookIcon,
+  LockIcon,
+  FileTextIcon,
+  CheckCircleIcon,
+} from '../constants/icons';
 
 interface LandingPageProps {
-    onLaunch: () => void;
+  onLaunch: () => void;
 }
 
-type Role = 'student' | 'teacher' | 'school' | 'parent';
+const navLinks = [
+  { label: 'Solutions', target: 'solutions' },
+  { label: 'Metrics', target: 'metrics' },
+  { label: 'Audiences', target: 'audiences' },
+  { label: 'Platform', target: 'platform' },
+  { label: 'FAQ', target: 'faq' },
+  { label: 'Contact', target: 'contact' },
+];
 
-const HeroBanner: React.FC = () => (
-    <div className="absolute inset-0 overflow-hidden" aria-hidden="true" style={{zIndex: 0}}>
-        <svg
-            className="absolute top-0 left-0 w-full h-full"
-            width="100%"
-            height="100%"
-            preserveAspectRatio="xMidYMid slice"
-            viewBox="0 0 1440 800"
-            fill="none"
-            xmlns="http://www.w3.org/2000/svg"
-        >
-            <defs>
-                <radialGradient id="hero-gradient-1" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(1200 100) rotate(90) scale(700)">
-                    <stop stopColor="rgba(0, 224, 255, 0.2)" />
-                    <stop offset="1" stopColor="rgba(0, 224, 255, 0)" />
-                </radialGradient>
-                <radialGradient id="hero-gradient-2" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(200 700) rotate(90) scale(600)">
-                    <stop stopColor="rgba(79, 70, 229, 0.2)" />
-                    <stop offset="1" stopColor="rgba(79, 70, 229, 0)" />
-                </radialGradient>
-                 <linearGradient id="hero-vignette" x1="50%" y1="0%" x2="50%" y2="100%">
-                    <stop offset="0%" stopColor="rgba(248, 250, 252, 0)" />
-                    <stop offset="30%" stopColor="rgba(248, 250, 252, 0)" />
-                    <stop offset="100%" stopColor="rgba(248, 250, 252, 1)" />
-                </linearGradient>
-            </defs>
-            <rect width="1440" height="800" fill="url(#hero-gradient-1)" />
-            <rect width="1440" height="800" fill="url(#hero-gradient-2)" />
-            <rect width="1440" height="800" fill="url(#hero-vignette)" />
-        </svg>
-    </div>
+const heroStats = [
+  { value: '10,000+', label: 'Learners on Vacademy', helper: 'Trusted by institutes worldwide' },
+  { value: '120+', label: 'Institutes Launched', helper: 'Across K-12, coaching & higher-ed' },
+  { value: '4.9/5', label: 'Adoption Score', helper: 'Rated by teachers & admins' },
+];
+
+const managementFeatures = [
+  {
+    title: 'Effortless Management',
+    description: 'Automate student enrollment, batch creation, content organisation and reminders with zero spreadsheets.',
+  },
+  {
+    title: 'Customizable Learning Paths',
+    description: "Tailor courses, study materials and assessments exactly the way your faculty wants to teach.",
+  },
+  {
+    title: 'Seamless Communication',
+    description: 'Push instant announcements, run doubt forums and keep every stakeholder aligned in minutes.',
+  },
+  {
+    title: 'Advanced Progress Tracking',
+    description: 'Get real-time insights into engagement, mastery and completion to trigger timely interventions.',
+  },
+];
+
+const metrics = [
+  { value: '1000+', label: 'Students Enrolled', detail: 'Active across CBSE & competitive programmes' },
+  { value: '100+', label: 'Courses Created', detail: 'Rich media lessons, tests and micro-learning series' },
+  { value: '1000+', label: 'Assignments Managed', detail: 'Auto-graded, reviewed and pushed to parents' },
+];
+
+const audienceSegments = [
+  {
+    title: 'Training Institutes',
+    description: 'Deliver a white-labelled, AI-assisted classroom for distance and blended programmes.',
+    highlights: ['Course Management', 'Custom Study Materials', 'Personalized Learning', 'Real-time Progress Tracking', 'Live Class & Doubt Rooms'],
+    accent: 'from-orange-500/20 via-orange-500/10 to-orange-500/0 border-orange-200/60',
+  },
+  {
+    title: 'Schools & Colleges',
+    description: 'Unify ERP, LMS and assessments with competency-based planning that mirrors CBSE and NEP expectations.',
+    highlights: ['Board exam pacing & planner', 'Attendance + transport dashboards', 'Fee & compliance workflows', 'Parent engagement on mobile'],
+    accent: 'from-indigo-500/20 via-indigo-500/10 to-indigo-500/0 border-indigo-200/60',
+  },
+  {
+    title: 'EdTech & L&D Teams',
+    description: 'Launch immersive cohort and self-paced academies with monetisation, API hooks and analytics built in.',
+    highlights: ['White-labelled portals', 'API-first content layer', 'Cohort orchestration toolkit', 'Revenue-share & billing controls'],
+    accent: 'from-emerald-500/20 via-emerald-500/10 to-emerald-500/0 border-emerald-200/60',
+  },
+];
+
+const dashboardHighlights = [
+  'View enrolled courses, track progress and revisit adaptive content.',
+  'Join upcoming live classes or replays with one click.',
+  'Ask doubts, save notes and mark slides for revision later.',
+  'Download certificates and receive every announcement in one place.',
+];
+
+const modules = [
+  {
+    title: 'Course Builder & Content Library',
+    description: 'Mix live, recorded, documents, question banks, immersive slides and AI-generated study packs with granular access controls.',
+  },
+  {
+    title: 'Assessments & Assignments',
+    description: 'Design blueprints, auto-generate question papers, capture handwritten responses and push instant analytics to mentors.',
+  },
+  {
+    title: 'Communication & Community',
+    description: 'Forums, announcements, in-context chat and WhatsApp-ready nudges keep every learner and parent informed.',
+  },
+  {
+    title: 'Analytics & Operations',
+    description: 'Deep knowledge tracing dashboards, revenue trackers, fee reminders and compliance-ready exports.',
+  },
+];
+
+const complianceBadges = [
+  {
+    icon: LockIcon,
+    title: 'ISO/IEC 27001',
+    description: 'Enterprise-grade security controls with encryption at rest and in transit.',
+  },
+  {
+    icon: FileTextIcon,
+    title: 'FERPA & GDPR',
+    description: 'Privacy-first data handling for institutions across geographies.',
+  },
+  {
+    icon: CheckCircleIcon,
+    title: 'CBSE Validated Content',
+    description: 'Every AI-generated asset passes human review for syllabus alignment.',
+  },
+];
+
+const faqItems = [
+  {
+    question: 'What is Vacademy LMS?',
+    answer:
+      'Vacademy is an AI-powered learning and assessment platform purpose-built for institutes that need distance learning, live classes, recorded content and frontline analytics in one place.',
+  },
+  {
+    question: 'How does Vacademy reduce faculty workload?',
+    answer:
+      'Automations handle enrolment, batch duplication, attendance, doubt management and blueprint-driven paper generation, freeing teachers to focus on mentoring.',
+  },
+  {
+    question: 'What types of content can I add to courses?',
+    answer:
+      'Upload videos, SCORM files, PDFs, slides, podcasts, live sessions, question banks, adaptive quizzes and AI-generated study notes. Mix and match inside modules or drip schedules.',
+  },
+  {
+    question: 'Can I manage different batches and sessions?',
+    answer:
+      'Yes. Create unlimited batches, map facilitators, reuse content, set prerequisites and run staggered cohorts across cities or centres.',
+  },
+  {
+    question: 'How is engagement and mastery tracked?',
+    answer:
+      'A Deep Knowledge Tracing engine watches every interaction to surface risk alerts, mastery gaps, completion heatmaps and intervention-ready cohorts.',
+  },
+  {
+    question: 'Can I control who sees what?',
+    answer:
+      'Role-based access, time-bound links, device controls and single-sign-on (including LTI 1.3) let you decide exactly how learners, faculty and parents participate.',
+  },
+  {
+    question: 'Can I create and grade homework digitally?',
+    answer:
+      'Create templated or AI-generated assignments, accept handwritten uploads, auto-grade objective sections and push personalised feedback instantly.',
+  },
+];
+
+const HeroBackdrop: React.FC = () => (
+  <div className="absolute inset-0 pointer-events-none" aria-hidden="true">
+    <div className="absolute -top-32 -left-20 h-96 w-96 rounded-full bg-cyan-400/30 blur-[140px]" />
+    <div className="absolute top-10 right-0 h-[28rem] w-[28rem] rounded-full bg-indigo-500/30 blur-[180px]" />
+  </div>
 );
 
-
 const LandingPage: React.FC<LandingPageProps> = ({ onLaunch }) => {
-    const [activeRole, setActiveRole] = useState<Role>('student');
-    const [isScrolled, setIsScrolled] = useState(false);
-    const [isFading, setIsFading] = useState(false);
+  const [isScrolled, setIsScrolled] = useState(false);
+  const containerClass = 'mx-auto w-full max-w-6xl px-4 sm:px-6 lg:px-8';
 
-    useEffect(() => {
-        const handleScroll = () => setIsScrolled(window.scrollY > 10);
-        window.addEventListener('scroll', handleScroll, { passive: true });
-        return () => window.removeEventListener('scroll', handleScroll);
-    }, []);
+  useEffect(() => {
+    const handleScroll = () => setIsScrolled(window.scrollY > 8);
+    handleScroll();
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
-    useEffect(() => {
-        const observer = new IntersectionObserver((entries) => {
-            entries.forEach(entry => {
-                if (entry.isIntersecting) {
-                    entry.target.classList.add('active');
-                    observer.unobserve(entry.target);
-                }
-            });
-        }, { threshold: 0.1 });
-        document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
-        return () => observer.disconnect();
-    }, []);
+  const scrollToSection = useCallback((id: string) => {
+    const el = document.getElementById(id);
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }, []);
 
-    const handleRoleChange = (newRole: Role) => {
-        if (newRole === activeRole) return;
-        setIsFading(true);
-        setTimeout(() => {
-            setActiveRole(newRole);
-            setIsFading(false);
-        }, 300);
-    };
+  const whatsappUrl = useMemo(
+    () =>
+      'https://wa.me/919315940211?text=Hi%20Vacademy%2C%20I%27d%20love%20to%20experience%20the%207-day%20LMS%20trial.',
+    []
+  );
 
-    const scrollToSection = (e: React.MouseEvent<HTMLAnchorElement>, sectionId: string) => {
-        e.preventDefault();
-        document.getElementById(sectionId)?.scrollIntoView({ behavior: 'smooth' });
-    };
-
-    const roleContent = {
-        student: { title: "Unlock Your Genius, Not Your Textbook.", description: "Our system models your unique cognitive fingerprint, predicting areas of difficulty and scheduling spaced repetition reviews to transfer knowledge from working memory to long-term storage, ensuring exam readiness is a byproduct of true mastery.", features: ["Adaptive Learning Path", "AI-Powered Live Tutor", "Interactive Simulations & Videos", "Gamified Practice & Rewards"], component: <StudentUIMockup /> },
-        teacher: { title: "The Classroom That Knows Your Name.", description: "Automate psychometrically-sound paper generation, get AI-driven insights into common misconceptions across your class, and deploy targeted remedial assignments with a single click. Focus on mentoring, not just marking.", features: ["AI Question Paper Generator", "Automated Attendance & Catch-up", "Live Classroom Dashboards", "SAFAL & FLN Diagnostic Tools"], component: <TeacherUIMockup /> },
-        school: { title: "The Central Nervous System for Your Institution.", description: "Monitor real-time academic health, streamline operations from transport to finance, and ensure pedagogical consistency across all grades. Make data-backed strategic decisions that elevate your school's academic standing.", features: ["Full-Fledged School ERP", "Operational Dashboards", "Board Exam Planner & Pacing", "LTI & LMS Integration"], component: <SchoolUIMockup /> },
-        parent: { title: "Gain Unprecedented Insight Into Your Child's Cognitive Development.", description: "Our AI-generated reports translate complex learning data into clear, actionable insights, highlighting conceptual strengths and offering specific, research-backed strategies to support their learning at home.", features: ["AI-Generated Performance Reports", "Real-time Progress Tracking", "Actionable Insights & Tips", "Attendance & Assignment Alerts"], component: <ParentUIMockup /> }
-    };
-    const selectedRoleContent = roleContent[activeRole];
-
-    return (
-        <div className="bg-white text-slate-800 font-sans leading-relaxed">
-            <header id="landing-page-header" className={`sticky top-0 z-10 transition-all duration-300 ${isScrolled ? 'scrolled' : ''}`}>
-                <nav className="container mx-auto px-6 py-3 flex justify-between items-center">
-                    <div className="flex items-center gap-2"><div className="w-8 h-8 bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-lg flex items-center justify-center shadow-inner transform rotate-[-12deg]"><span className="text-white font-bold text-lg font-poppins transform rotate-[12deg]">A</span></div><span className="text-xl font-bold font-poppins text-slate-800">Alfanumrik</span></div>
-                    <div className="hidden md:flex items-center gap-6 text-sm font-semibold text-slate-600">
-                        <a href="#features-in-action" onClick={(e) => scrollToSection(e, 'features-in-action')} className="hover:text-indigo-600">Features</a>
-                        <a href="#platform" onClick={(e) => scrollToSection(e, 'platform')} className="hover:text-indigo-600">Platform</a>
-                        <a href="#research" onClick={(e) => scrollToSection(e, 'research')} className="hover:text-indigo-600">Research</a>
-                        <a href="#technology" onClick={(e) => scrollToSection(e, 'technology')} className="hover:text-indigo-600">Technology</a>
-                        <a href="#contact" onClick={(e) => scrollToSection(e, 'contact')} className="hover:text-indigo-600">Contact</a>
-                    </div>
-                    <button onClick={onLaunch} className="btn btn-primary px-5 py-2 text-sm">Launch App</button>
-                </nav>
-            </header>
-
-            <main>
-                <section id="home" className="relative py-20 md:py-32 text-center bg-slate-50 overflow-hidden">
-                    <HeroBanner />
-                    <div className="container mx-auto px-6 relative">
-                        <h1 className="text-4xl md:text-6xl font-extrabold text-slate-900 leading-tight animate-slide-in-up">Learning That Learns You.</h1>
-                        <p className="mt-6 max-w-3xl mx-auto text-lg text-slate-600 animate-slide-in-up-hero">Alfanumrik is an <strong>AI-powered adaptive learning app for CBSE</strong> students. We leverage proprietary deep learning models and proven cognitive science frameworks—like <strong>Deep Knowledge Tracing (DKT)</strong> and <strong>Spaced Repetition (FSRS)</strong>—to engineer a hyper-personalized learning ecosystem for the <strong>CBSE curriculum</strong>.</p>
-                        <button onClick={onLaunch} className="mt-8 btn btn-primary px-8 py-3 text-lg animate-slide-in-up-hero" style={{ animationDelay: '0.4s' }}>Get Started Now</button>
-                    </div>
-                </section>
-
-                <section className="py-12 bg-white"><div className="container mx-auto px-6 text-center reveal"><h4 className="text-sm font-semibold text-slate-500 uppercase tracking-wider">Trusted by Leading Institutions</h4><div className="mt-6 flex justify-center items-center gap-10 md:gap-16 opacity-60 grayscale flex-wrap">
-                    <svg height="40" viewBox="0 0 120 40"><text x="60" y="25" textAnchor="middle" fontFamily="Poppins" fontSize="12" fontWeight="600" fill="#475569">SCHOOL LOGO</text></svg>
-                    <svg height="40" viewBox="0 0 120 40"><text x="60" y="25" textAnchor="middle" fontFamily="Poppins" fontSize="12" fontWeight="600" fill="#475569">ANOTHER SCHOOL</text></svg>
-                    <svg height="40" viewBox="0 0 120 40"><text x="60" y="25" textAnchor="middle" fontFamily="Poppins" fontSize="12" fontWeight="600" fill="#475569">ACADEMY INC.</text></svg>
-                </div></div></section>
-
-                <section id="about" className="py-16 md:py-20 bg-white">
-                    <div className="container mx-auto px-6 max-w-4xl text-center">
-                        <div className="reveal">
-                            <h2 className="text-3xl md:text-4xl font-bold">Every Brain Deserves Its Own Teacher.</h2>
-                            <p className="mt-4 text-slate-600 md:text-lg">For over a century, the educational paradigm has remained largely unchanged: a one-to-many broadcast model designed for industrial-era scale, not individual cognitive development. This 'factory model' inevitably leaves students behind and places an unsustainable burden on educators. Alfanumrik was founded on a simple, first-principles question: what if we could build an educational ecosystem engineered around the individual learner?</p>
-                            <p className="mt-4 text-slate-600 md:text-lg"><strong>Alfanumrik, a product of Briusha Associates,</strong> is the result of years of rigorous R&D at the intersection of machine learning, cognitive psychology, and pedagogical science. Our mission is to provide every student with a personal cognitive tutor that creates a unique <strong>personalized learning path</strong>, every teacher with an intelligent co-pilot, and every institution with a unified data plane to drive academic excellence.</p>
-                        </div>
-                    </div>
-                </section>
-
-                <section id="features-in-action" className="py-16 md:py-20 bg-slate-50">
-                    <div className="container mx-auto px-6">
-                        <div className="text-center mb-12 reveal"><h2 className="text-3xl md:text-4xl font-bold">Features in Action</h2><p className="mt-2 text-slate-600">See how Alfanumrik transforms the educational experience.</p></div>
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 items-center">
-                            <div className="reveal"><h3 className="text-2xl font-bold">Adaptive Lesson Player</h3><p className="mt-2 text-slate-600">Our player is more than a content delivery system; it's a real-time diagnostic tool. Each interaction refines our DKT model of the student's knowledge state, dynamically inserting micro-remediation loops or accelerating content to ensure optimal cognitive load and engagement.</p></div>
-                            <div className="reveal browser-mockup"><div className="browser-mockup-header"><div className="bg-red-400"></div><div className="bg-yellow-400"></div><div className="bg-green-400"></div></div><AdaptiveLessonPlayerMockup /></div>
-                        </div>
-                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 items-center mt-12 md:mt-16">
-                            <div className="reveal browser-mockup lg:order-last"><div className="browser-mockup-header"><div className="bg-red-400"></div><div className="bg-yellow-400"></div><div className="bg-green-400"></div></div><SchoolOSDashboardMockup /></div>
-                            <div className="reveal lg:order-first"><h3 className="text-2xl font-bold">School Operating System</h3><p className="mt-2 text-slate-600">Unify disparate data streams into a single, actionable intelligence layer. Our ERP provides principals with predictive analytics on student performance, operational efficiency metrics for resource management, and strategic planning tools aligned with NCF guidelines.</p></div>
-                        </div>
-                    </div>
-                </section>
-                
-                <section id="platform" className="py-16 md:py-20 bg-white">
-                    <div className="container mx-auto px-6">
-                        <div className="text-center mb-12 reveal"><h2 className="text-3xl md:text-4xl font-bold">A Vertically Integrated Solution</h2></div>
-                        <div className="flex justify-center mb-8 border-b flex-wrap">
-                            {Object.keys(roleContent).map(role => (<button key={role} onClick={() => handleRoleChange(role as Role)} className={`px-4 py-2 text-sm md:text-base font-semibold capitalize border-b-2 transition-colors ${activeRole === role ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-slate-500 hover:text-slate-800'}`}>{role}s</button>))}
-                        </div>
-                        <div className={`grid grid-cols-1 md:grid-cols-2 gap-8 lg:gap-12 items-center transition-opacity duration-300 ease-in-out ${isFading ? 'opacity-0' : 'opacity-100'}`}>
-                             <div>
-                                <h3 className="text-2xl md:text-3xl font-bold text-slate-800">{selectedRoleContent.title}</h3>
-                                <p className="mt-4 text-slate-600">{selectedRoleContent.description}</p>
-                                <ul className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                    {selectedRoleContent.features.map(feature => (<li key={feature} className="flex items-center"><div className="w-5 h-5 flex items-center justify-center bg-green-100 rounded-full mr-2 flex-shrink-0"><span className="text-green-600 text-xs font-bold">✓</span></div><span className="text-slate-700 text-sm">{feature}</span></li>))}
-                                </ul>
-                            </div>
-                            <div className="rounded-xl shadow-lg overflow-hidden border">
-                                {selectedRoleContent.component}
-                            </div>
-                        </div>
-                    </div>
-                </section>
-
-                <section id="research" className="py-16 md:py-20 bg-slate-50">
-                    <div className="container mx-auto px-6">
-                        <div className="text-center mb-12 reveal"><h2 className="text-3xl md:text-4xl font-bold">Adaptive Learning. Actual Results.</h2><p className="mt-2 text-slate-600 max-w-2xl mx-auto">Our platform isn't just technology; it's applied pedagogy. We build upon established, peer-reviewed research in cognitive science and education.</p></div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                            <div className="p-6 bg-white rounded-xl shadow-sm border research-card reveal" style={{transitionDelay: '100ms'}}><h3 className="font-bold text-indigo-600">Deep Knowledge Tracing (DKT)</h3><p className="text-sm text-slate-600 mt-2">At the core of our adaptive engine is a recurrent neural network that analyzes the entire sequence of a student's answers. This allows us to model their knowledge state with high fidelity, predicting performance and identifying conceptual gaps before they become critical.</p></div>
-                            <div className="p-6 bg-white rounded-xl shadow-sm border research-card reveal" style={{transitionDelay: '300ms'}}><h3 className="font-bold text-indigo-600">Free Spaced Repetition Scheduler (FSRS)</h3><p className="text-sm text-slate-600 mt-2">Combatting the 'forgetting curve' is critical. We've implemented a state-of-the-art spaced repetition algorithm based on a three-component model of memory (stability, retrievability, difficulty) to schedule reviews at the scientifically optimal moment.</p></div>
-                            <div className="p-6 bg-white rounded-xl shadow-sm border research-card reveal" style={{transitionDelay: '500ms'}}><h3 className="font-bold text-indigo-600">Generative Models in Pedagogy</h3><p className="text-sm text-slate-600 mt-2">We utilize state-of-the-art Large Language Models, including <strong>Google's Gemini 2.5 Pro</strong>, not just for content, but as pedagogical tools. They power our Socratic dialogue engine, generate nuanced feedback for our <strong>AI tutor</strong>, and create diverse, <strong>CBSE-aligned</strong> assessment items.</p></div>
-                        </div>
-                    </div>
-                </section>
-                
-                <section id="technology" className="py-16 md:py-20 bg-white">
-                    <div className="container mx-auto px-6">
-                        <div className="text-center mb-12 reveal">
-                            <h2 className="text-3xl md:text-4xl font-bold">Engineered for Excellence: Our Technology Stack</h2>
-                            <p className="mt-2 text-slate-600 max-w-2xl mx-auto">We build on a foundation of cutting-edge, reliable technologies to deliver a world-class educational experience.</p>
-                        </div>
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl mx-auto">
-                            <div className="text-center p-6 reveal">
-                                <div className="inline-flex items-center justify-center w-16 h-16 mb-4 rounded-full bg-indigo-100 text-indigo-500">
-                                    <CpuIcon className="w-8 h-8"/>
-                                </div>
-                                <h3 className="font-bold text-lg">Multimodal Generative AI</h3>
-                                <p className="text-sm text-slate-500 mt-2">We leverage Google's flagship AI, including <strong>Gemini 2.5 Pro</strong> with its massive context window and advanced reasoning, <strong>Veo</strong> for educational video generation, and <strong>Imagen</strong> for rich visual aids. This enables powerful multimodal features like our live AI Tutor and automated handwritten paper grader.</p>
-                            </div>
-                            <div className="text-center p-6 reveal" style={{transitionDelay: '200ms'}}>
-                                <div className="inline-flex items-center justify-center w-16 h-16 mb-4 rounded-full bg-indigo-100 text-indigo-500">
-                                    <BrainCircuitIcon className="w-8 h-8"/>
-                                </div>
-                                <h3 className="font-bold text-lg">Next-Gen Cognitive Modeling</h3>
-                                <p className="text-sm text-slate-500 mt-2">Our platform is built on a <strong>hybrid DKT engine</strong>. It combines quantitative performance data with qualitative, AI-driven error analysis (e.g., 'conceptual' vs. 'calculation' error) for unparalleled precision in mastery tracking, all integrated with a state-of-the-art <strong>FSRS</strong> scheduler.</p>
-                            </div>
-                            <div className="text-center p-6 reveal" style={{transitionDelay: '400ms'}}>
-                                <div className="inline-flex items-center justify-center w-16 h-16 mb-4 rounded-full bg-indigo-100 text-indigo-500">
-                                    <CodeIcon className="w-8 h-8"/>
-                                </div>
-                                <h3 className="font-bold text-lg">Scalable & Secure Architecture</h3>
-                                <p className="text-sm text-slate-500 mt-2">Built with <strong>React and TypeScript</strong>, our app uses modern features like Suspense for concurrent data fetching. A robust <strong>local-first architecture using IndexedDB</strong> ensures offline functionality, while full <strong>LTI 1.3 compliance</strong> enables seamless integration with your school's LMS.</p>
-                            </div>
-                        </div>
-                    </div>
-                </section>
-                
-                <section id="compliance" className="py-16 md:py-20 bg-slate-50">
-                    <div className="container mx-auto px-6">
-                        <div className="text-center mb-12 reveal"><h2 className="text-3xl md:text-4xl font-bold">Our Commitment & Compliance</h2><p className="mt-2 text-slate-600 max-w-2xl mx-auto">We are committed to the highest standards of data security, privacy, and pedagogical accuracy.</p></div>
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-8 max-w-4xl mx-auto">
-                            <div className="compliance-badge reveal"><div className="compliance-badge-icon"><LockIcon className="w-8 h-8"/></div><h3 className="font-bold">ISO/IEC 27001 Certified</h3><p className="text-sm text-slate-500 mt-1">Our information security management system is certified, ensuring your data is protected with enterprise-grade security controls.</p></div>
-                            <div className="compliance-badge reveal" style={{transitionDelay: '200ms'}}><div className="compliance-badge-icon"><FileTextIcon className="w-8 h-8"/></div><h3 className="font-bold">FERPA & GDPR Compliant</h3><p className="text-sm text-slate-500 mt-1">We adhere to global data privacy regulations, including the Family Educational Rights and Privacy Act, to protect student data.</p></div>
-                            <div className="compliance-badge reveal" style={{transitionDelay: '400ms'}}><div className="compliance-badge-icon"><CheckCircleIcon className="w-8 h-8"/></div><h3 className="font-bold">CBSE Content Validated</h3><p className="text-sm text-slate-500 mt-1">All AI-generated educational content undergoes rigorous validation to ensure 100% alignment with the latest CBSE curriculum.</p></div>
-                        </div>
-                    </div>
-                </section>
-                
-                <section id="testimonials" className="py-16 md:py-20 bg-white">
-                    <div className="container mx-auto px-6 reveal">
-                        <div className="text-center mb-12">
-                            <h2 className="text-3xl md:text-4xl font-bold">What People Are Saying</h2>
-                            <p className="mt-4 text-xl md:text-2xl font-bold text-indigo-600">"Because Average Was Never Your Destiny"</p>
-                        </div>
-                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                            <div className="testimonial-card reveal"><img src="https://placehold.co/48x48/e0e7ff/4338ca" alt="avatar" className="testimonial-card-avatar rounded-full w-12 h-12" /><div className="pl-4"><p className="text-slate-600">"The adaptive lessons are amazing. I used to struggle with trigonometry, but Alfanumrik kept giving me small practice problems and explanations until it just 'clicked'. My confidence for the board exams is so much higher now."</p><div className="mt-4 font-semibold">- Rohan S., Class 10 Student</div></div></div>
-                            <div className="testimonial-card reveal" style={{transitionDelay: '200ms'}}><img src="https://placehold.co/48x48/c7d2fe/4338ca" alt="avatar" className="testimonial-card-avatar rounded-full w-12 h-12" /><div className="pl-4"><p className="text-slate-600">"The AI Question Paper Generator is a game-changer. I created a full 80-mark pre-board paper, perfectly aligned with my blueprint and CBSE competency weightage, in under 10 minutes. This has given me back hours every week."</p><div className="mt-4 font-semibold">- Mrs. Davis, Science Teacher</div></div></div>
-                            <div className="testimonial-card reveal" style={{transitionDelay: '400ms'}}><img src="https://placehold.co/48x48/a5b4fc/4338ca" alt="avatar" className="testimonial-card-avatar rounded-full w-12 h-12" /><div className="pl-4"><p className="text-slate-600">"The 'Live Pacing Guide' in the Board Planner is incredible. For the first time, I have a real-time dashboard showing exactly where each class is in the syllabus against our academic calendar. It allows us to be proactive, not reactive."</p><div className="mt-4 font-semibold">- Mr. Singh, Principal</div></div></div>
-                        </div>
-                    </div>
-                </section>
-                
-                <section id="faq" className="py-16 md:py-20 bg-slate-50">
-                    <div className="container mx-auto px-6 max-w-3xl">
-                        <div className="text-center mb-12 reveal"><h2 className="text-3xl md:text-4xl font-bold">Frequently Asked Questions</h2></div>
-                        <div className="faq space-y-4 reveal">
-                            <details><summary>Is this aligned with the CBSE curriculum?</summary><div className="text-slate-600 text-sm mt-2">Absolutely. Our entire content generation and assessment framework is algorithmically aligned with the latest CBSE syllabus, learning outcomes, competency weightages, and National Curriculum Framework (NCF) guidelines.</div></details>
-                            <details><summary>How does the AI personalization work?</summary><div className="text-slate-600 text-sm mt-2">Our system uses a Deep Knowledge Tracing (DKT) model. Every answer you give updates the model's prediction of your mastery for thousands of underlying concepts. The platform then uses these predictions to create a unique learning path for you in real-time.</div></details>
-                            <details><summary>Can this integrate with our school's existing LMS?</summary><div className="text-slate-600 text-sm mt-2">Yes. Alfanumrik is fully compliant with the LTI 1.3 standard, providing secure, seamless integration with major Learning Management Systems like Moodle, Canvas, and Blackboard for single sign-on (SSO) and AGS-based grade passback.</div></details>
-                            <details><summary>What technology does Alfanumrik use?</summary><div className="text-slate-600 text-sm mt-2">Our platform is built on a foundation of cutting-edge technology. The core intelligence is powered by <strong>Google's Gemini 2.5 Pro</strong> AI model. Our adaptive learning engine uses advanced cognitive science models like <strong>Deep Knowledge Tracing (DKT)</strong> and <strong>Spaced Repetition (FSRS)</strong>. The application itself is a modern web app built with React and TypeScript for a fast and reliable experience.</div></details>
-                        </div>
-                    </div>
-                </section>
-
-                <section id="privacy" className="py-16 md:py-20 bg-white">
-                    <div className="container mx-auto px-6 max-w-4xl legal-doc">
-                        <div className="text-center mb-12 reveal"><h2 className="text-3xl md:text-4xl font-bold">Privacy Policy</h2><p className="mt-2 text-slate-500">Last Updated: {new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p></div>
-                        <div className="reveal">
-                            <h3>1. Introduction</h3>
-                            <p>This Privacy Policy explains how Alfanumrik ("we," "us," "our"), a product of Briusha Associates, collects, uses, and discloses information about our users. This policy applies to all users, including students, parents, teachers, and school administrators.</p>
-                            <h3>2. Information We Collect</h3>
-                            <h4>a. Information Provided by Users:</h4>
-                            <ul>
-                                <li><strong>Student Information:</strong> Name, grade, and progress data.</li>
-                                <li><strong>Teacher & School Information:</strong> Name, email, school affiliation, and classes managed.</li>
-                            </ul>
-                            <h4>b. Information from LTI Integration:</h4>
-                            <p>When you access Alfanumrik through an LMS, we receive user ID, name, roles, and course context as provided by the LMS.</p>
-                            <h4>c. Information Collected Automatically:</h4>
-                            <p>We collect usage data, such as features accessed, time spent, and performance on assessments, to power our adaptive learning engine and improve our services.</p>
-                            <h3>3. How We Use Your Information</h3>
-                            <ul>
-                                <li>To provide, maintain, and personalize our services.</li>
-                                <li>To generate student progress reports for teachers, parents, and administrators.</li>
-                                <li>To train and improve our AI models. All data used for training is anonymized and aggregated to protect individual privacy.</li>
-                                <li>To comply with legal obligations and school requirements.</li>
-                            </ul>
-                            <h3>4. Data Security</h3>
-                            <p>We implement robust security measures, aligned with ISO/IEC 27001 standards, including encryption of data at rest and in transit, to protect your information from unauthorized access.</p>
-                            <h3>5. Children's Privacy</h3>
-                            <p>We are compliant with the Children's Online Privacy Protection Act (COPPA) and GDPR-K. We do not collect personal information from children without consent from a parent or school.</p>
-                        </div>
-                    </div>
-                </section>
-
-                <section id="terms" className="py-16 md:py-20 bg-slate-50">
-                    <div className="container mx-auto px-6 max-w-4xl legal-doc">
-                        <div className="text-center mb-12 reveal"><h2 className="text-3xl md:text-4xl font-bold">Terms of Service</h2></div>
-                        <div className="reveal">
-                            <h3>1. Acceptance of Terms</h3>
-                            <p>By accessing or using the Alfanumrik platform, you agree to be bound by these Terms of Service. If you are a school, these terms supplement your institutional agreement.</p>
-                            <h3>2. Acceptable Use</h3>
-                            <p>You agree not to use the platform to: (a) engage in any form of academic dishonesty; (b) reverse-engineer, decompile, or attempt to extract the source code of our software or AI models; (c) disrupt the integrity or performance of the platform.</p>
-                            <h3>3. Intellectual Property</h3>
-                            <p>All content and software on the Alfanumrik platform, including AI models, lesson content, and branding, are the exclusive property of Briusha Associates. You are granted a limited, non-exclusive license to use the platform for educational purposes.</p>
-                            <h3>4. Disclaimer of Warranties</h3>
-                            <p>The service is provided "as is" without any warranties. While we strive for accuracy, we do not guarantee any specific academic outcomes from using the platform.</p>
-                            <h3>5. Limitation of Liability</h3>
-                            <p>To the fullest extent permitted by law, Briusha Associates shall not be liable for any indirect, incidental, special, or consequential damages resulting from the use or inability to use our service.</p>
-                        </div>
-                    </div>
-                </section>
-                
-                <section id="contact" className="py-16 md:py-20 bg-white">
-                    <div className="container mx-auto px-6 max-w-4xl"><div className="text-center mb-12 reveal"><h2 className="text-3xl md:text-4xl font-bold">Partner with Us</h2><p className="mt-2 text-slate-600 max-w-2xl mx-auto">Join us in deploying a new paradigm of learning. Whether you're an institution ready for systemic transformation or a teacher seeking to pilot our platform, we're ready to collaborate.</p></div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12">
-                            <div className="reveal"><form onSubmit={e => { e.preventDefault(); alert("Thank you for your message!"); }}><div className="grid grid-cols-1 sm:grid-cols-2 gap-4"><div><input type="text" placeholder="Your Name" className="contact-input w-full" required/></div><div><input type="email" placeholder="Your Email" className="contact-input w-full" required/></div></div><div className="mt-4"><input type="text" placeholder="Subject" className="contact-input w-full" required/></div><div className="mt-4"><textarea placeholder="Your Message" rows={5} className="contact-input w-full" required></textarea></div><button type="submit" className="btn btn-primary w-full mt-4 py-3">Send Message</button></form></div>
-                            <div className="reveal"><h3 className="font-bold text-lg mb-4">Contact Information</h3><div className="space-y-4 text-slate-600">
-                                <div className="flex items-start gap-3"><MailIcon className="w-5 h-5 mt-1 text-indigo-500"/><a href="mailto:Sales@alfanumrik.com" className="hover:text-indigo-600">Sales@alfanumrik.com</a></div>
-                                <div className="flex items-start gap-3"><PhoneIcon className="w-5 h-5 mt-1 text-indigo-500"/><a href="tel:+919315940211" className="hover:text-indigo-600">+91 9315940211</a></div>
-                                <div className="flex items-start gap-3"><MapPinIcon className="w-5 h-5 mt-1 text-indigo-500"/><span>New Delhi, India</span></div>
-                            </div></div>
-                        </div>
-                    </div>
-                </section>
-            </main>
-
-            <footer className="bg-slate-800 text-slate-400">
-                <div className="container mx-auto px-6 py-12">
-                    <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-8">
-                        <div className="col-span-2 lg:col-span-2"><div className="flex items-center gap-2 mb-2"><div className="w-8 h-8 bg-slate-700 rounded-lg flex items-center justify-center shadow-inner transform rotate-[-12deg]"><span className="text-white font-bold text-lg font-poppins transform rotate-[12deg]">A</span></div><span className="text-xl font-bold font-poppins text-white">Alfanumrik</span></div><p className="text-sm">The intelligent platform for modern CBSE education.</p></div>
-                        <div><h4 className="font-semibold text-white mb-2">Platform</h4><ul className="space-y-1 text-sm">
-                            <li><a href="#platform" onClick={(e) => scrollToSection(e, 'platform')} className="hover:text-white">For Students</a></li>
-                            <li><a href="#platform" onClick={(e) => scrollToSection(e, 'platform')} className="hover:text-white">For Teachers</a></li>
-                            <li><a href="#platform" onClick={(e) => scrollToSection(e, 'platform')} className="hover:text-white">For Schools</a></li>
-                        </ul></div>
-                        <div><h4 className="font-semibold text-white mb-2">Company</h4><ul className="space-y-1 text-sm">
-                            <li><a href="#about" onClick={(e) => scrollToSection(e, 'about')} className="hover:text-white">About Us</a></li>
-                            <li><a href="#research" onClick={(e) => scrollToSection(e, 'research')} className="hover:text-white">Research</a></li>
-                            <li><a href="#contact" onClick={(e) => scrollToSection(e, 'contact')} className="hover:text-white">Contact</a></li>
-                        </ul></div>
-                        <div><h4 className="font-semibold text-white mb-2">Legal</h4><ul className="space-y-1 text-sm">
-                            <li><a href="#privacy" onClick={(e) => scrollToSection(e, 'privacy')} className="hover:text-white">Privacy Policy</a></li>
-                            <li><a href="#terms" onClick={(e) => scrollToSection(e, 'terms')} className="hover:text-white">Terms of Service</a></li>
-                        </ul></div>
-                    </div>
-                    <div className="mt-8 pt-8 border-t border-slate-700 flex flex-col sm:flex-row justify-between items-center text-sm">
-                        <p>&copy; {new Date().getFullYear()} Alfanumrik by Briusha Associates. All rights reserved.</p>
-                        <div className="flex gap-4 mt-4 sm:mt-0"><a href="#" className="hover:text-white"><TwitterIcon className="w-5 h-5"/></a><a href="#" className="hover:text-white"><LinkedInIcon className="w-5 h-5"/></a><a href="#" className="hover:text-white"><FacebookIcon className="w-5 h-5"/></a></div>
-                    </div>
-                </div>
-            </footer>
+  return (
+    <div className="bg-[#020617] text-white">
+      <header
+        className={`fixed inset-x-0 top-0 z-30 transition-all duration-300 ${
+          isScrolled
+            ? 'backdrop-blur-lg bg-[#020617]/85 border-b border-white/10 shadow-lg'
+            : 'bg-transparent'
+        }`}
+      >
+        <div className={`${containerClass} flex items-center justify-between py-4`}>
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-cyan-400 to-indigo-500 text-lg font-bold tracking-tight">
+              V
+            </div>
+            <div>
+              <p className="text-sm uppercase tracking-[0.3em] text-white/60">Vacademy</p>
+              <p className="text-base font-semibold text-white/90">AI-Powered LMS</p>
+            </div>
+          </div>
+          <nav className="hidden items-center gap-6 text-sm font-semibold text-white/70 lg:flex">
+            {navLinks.map((link) => (
+              <button
+                key={link.target}
+                onClick={() => scrollToSection(link.target)}
+                className="transition hover:text-white"
+                type="button"
+              >
+                {link.label}
+              </button>
+            ))}
+          </nav>
+          <div className="flex items-center gap-3">
+            <a
+              href="/book-demo?from=book-demo-home"
+              className="hidden rounded-full border border-white/30 px-4 py-2 text-sm font-semibold text-white/80 transition hover:border-cyan-300 hover:text-white sm:inline-flex"
+            >
+              Book a Demo
+            </a>
+            <button onClick={onLaunch} className="btn btn-primary px-4 py-2 text-sm font-semibold">
+              Launch App
+            </button>
+          </div>
         </div>
-    );
+      </header>
+
+      <main className="pt-28 md:pt-32">
+        <section id="hero" className="relative overflow-hidden bg-gradient-to-b from-[#050a1f] via-[#050a1f] to-[#0b163a] py-20 lg:py-28">
+          <HeroBackdrop />
+          <div className={`${containerClass} relative grid items-center gap-12 lg:grid-cols-2`}>
+            <div>
+              <p className="text-sm font-semibold uppercase tracking-[0.3em] text-cyan-300">
+                Trusted by 10,000+ users
+              </p>
+              <h1 className="mt-5 text-4xl font-bold leading-tight text-white sm:text-5xl lg:text-6xl">
+                The smartest, AI-powered LMS built for seamless distance learning
+              </h1>
+              <p className="mt-6 text-lg text-white/80">
+                Step into the future with <span className="text-cyan-300 font-semibold">AI-powered</span> learning.
+                Vacademy LMS features advanced tools for course creation, student management and real-time analytics so
+                every cohort stays ahead.
+              </p>
+              <div className="mt-8 flex flex-wrap gap-4">
+                <a
+                  href="/book-demo?from=book-demo-home"
+                  className="btn btn-primary flex items-center gap-2 px-6 py-3 text-base font-semibold"
+                >
+                  <SparklesIcon className="h-5 w-5" /> Book a Demo
+                </a>
+                <a
+                  href="https://dash.vacademy.io/signup"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="rounded-full border border-white/40 px-6 py-3 text-base font-semibold text-white/90 transition hover:text-white"
+                >
+                  Sign Up Free
+                </a>
+              </div>
+              <div className="mt-10 grid gap-6 sm:grid-cols-3">
+                {heroStats.map((stat) => (
+                  <div key={stat.label} className="rounded-2xl border border-white/15 bg-white/5 p-4 backdrop-blur">
+                    <p className="text-3xl font-bold text-white">{stat.value}</p>
+                    <p className="text-sm font-semibold text-cyan-200">{stat.label}</p>
+                    <p className="mt-1 text-xs text-white/70">{stat.helper}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="relative">
+              <div className="rounded-[28px] border border-white/15 bg-white/5 p-3 shadow-2xl backdrop-blur">
+                <video
+                  className="h-full w-full rounded-2xl"
+                  src="https://vacademy-media-storage-public.s3.ap-south-1.amazonaws.com/Videos/Vacademy+LMS+updated.mp4"
+                  poster="https://site-assets.plasmic.app/cd460c38e74e104997e6c4830080bc3c.jpg"
+                  autoPlay
+                  loop
+                  muted
+                  playsInline
+                  controls
+                />
+              </div>
+              <div className="absolute -bottom-10 left-1/2 flex -translate-x-1/2 items-center gap-6 rounded-2xl border border-white/10 bg-[#050a1f] px-6 py-4 shadow-xl">
+                <div>
+                  <p className="text-xs uppercase tracking-widest text-white/60">Live analytics</p>
+                  <p className="text-2xl font-bold text-white">1.2M+</p>
+                  <p className="text-xs text-white/60">Events processed weekly</p>
+                </div>
+                <div className="h-12 w-px bg-white/10" />
+                <div>
+                  <p className="text-xs uppercase tracking-widest text-white/60">Avg. go-live time</p>
+                  <p className="text-2xl font-bold text-white">12 days</p>
+                  <p className="text-xs text-white/60">From kickoff to cohort launch</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section id="solutions" className="bg-white py-20 text-slate-900">
+          <div className={`${containerClass} space-y-12`}>
+            <div className="grid items-center gap-10 lg:grid-cols-2">
+              <div>
+                <p className="text-sm font-semibold uppercase tracking-[0.3em] text-indigo-500">Solutions</p>
+                <h2 className="mt-3 text-3xl font-bold sm:text-4xl">
+                  Empower your institute with smarter learning & seamless management.
+                </h2>
+                <p className="mt-4 text-lg text-slate-600">
+                  Vacademy unifies content, live classes, assessments, operations and communication into one cohesive
+                  operating system so teams stop hopping across mismatched tools.
+                </p>
+                <a
+                  href="/book-demo?from=take-tour-home"
+                  className="mt-6 inline-flex items-center text-sm font-semibold text-indigo-600 hover:text-indigo-800"
+                >
+                  Take a Product Tour →
+                </a>
+              </div>
+              <div className="rounded-3xl border border-slate-200 bg-gradient-to-br from-white to-slate-50 p-6 shadow-xl">
+                <img
+                  src="https://img.plasmic.app/img-optimizer/v1/img?src=https%3A%2F%2Fimg.plasmic.app%2Fimg-optimizer%2Fv1%2Fimg%2F2023ed5a164610bb08783459361410f9.webp&w=1200&q=75"
+                  alt="Vacademy workspace"
+                  className="w-full rounded-2xl object-cover"
+                  loading="lazy"
+                />
+              </div>
+            </div>
+            <div className="grid gap-6 md:grid-cols-2">
+              {managementFeatures.map((feature) => (
+                <div key={feature.title} className="rounded-2xl border border-slate-200 bg-white/80 p-6 shadow-sm">
+                  <h3 className="text-xl font-semibold text-slate-900">{feature.title}</h3>
+                  <p className="mt-3 text-sm text-slate-600">{feature.description}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section id="metrics" className="bg-slate-50 py-20 text-slate-900">
+          <div className={`${containerClass} text-center`}>
+            <p className="text-sm font-semibold uppercase tracking-[0.3em] text-indigo-500">Proof</p>
+            <h2 className="mt-2 text-3xl font-bold sm:text-4xl">Where we stand</h2>
+            <p className="mx-auto mt-3 max-w-2xl text-slate-600">
+              From CBSE schools and coaching networks to corporate academies, Vacademy scales reliably across hundreds of
+              cohorts.
+            </p>
+            <div className="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+              {metrics.map((metric) => (
+                <div key={metric.label} className="rounded-2xl border border-slate-200 bg-white p-6 shadow">
+                  <p className="text-4xl font-bold text-indigo-600">{metric.value}</p>
+                  <p className="mt-2 text-lg font-semibold text-slate-900">{metric.label}</p>
+                  <p className="mt-1 text-sm text-slate-600">{metric.detail}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section id="audiences" className="bg-white py-20 text-slate-900">
+          <div className={`${containerClass}`}>
+            <div className="text-center">
+              <p className="text-sm font-semibold uppercase tracking-[0.3em] text-indigo-500">Who we serve</p>
+              <h2 className="mt-2 text-3xl font-bold sm:text-4xl">Tailored experiences for every learning business</h2>
+            </div>
+            <div className="mt-12 grid gap-6 lg:grid-cols-3">
+              {audienceSegments.map((segment) => (
+                <div
+                  key={segment.title}
+                  className={`rounded-3xl border bg-gradient-to-br ${segment.accent} p-6 text-slate-900 shadow`}
+                >
+                  <h3 className="text-xl font-semibold">{segment.title}</h3>
+                  <p className="mt-3 text-sm text-slate-700">{segment.description}</p>
+                  <ul className="mt-5 space-y-2 text-sm text-slate-800">
+                    {segment.highlights.map((highlight) => (
+                      <li key={highlight} className="flex items-center gap-2">
+                        <span className="text-indigo-500">•</span>
+                        {highlight}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section id="platform" className="relative overflow-hidden bg-[#070c26] py-20 text-white">
+          <HeroBackdrop />
+          <div className={`${containerClass} relative space-y-16`}>
+            <div className="grid items-center gap-12 lg:grid-cols-2">
+              <div>
+                <p className="text-sm font-semibold uppercase tracking-[0.3em] text-cyan-300">Learner dashboard</p>
+                <h2 className="mt-3 text-3xl font-bold sm:text-4xl">A smart space to learn and grow</h2>
+                <p className="mt-4 text-white/80">
+                  The Vacademy dashboard is each student’s personal command centre. It keeps learners organised, motivated
+                  and ready for every milestone.
+                </p>
+                <ul className="mt-6 space-y-3 text-sm text-white/80">
+                  {dashboardHighlights.map((point) => (
+                    <li key={point} className="flex items-start gap-2">
+                      <span className="mt-1 h-2 w-2 rounded-full bg-cyan-300" />
+                      {point}
+                    </li>
+                  ))}
+                </ul>
+                <div className="mt-8 flex flex-wrap gap-4">
+                  <button onClick={onLaunch} className="btn btn-primary px-6 py-3 text-sm font-semibold">
+                    Launch Student View
+                  </button>
+                  <a
+                    href="https://dash.vacademy.io/signup"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="rounded-full border border-white/30 px-6 py-3 text-sm font-semibold text-white/80 transition hover:text-white"
+                  >
+                    Create Trial Account
+                  </a>
+                </div>
+              </div>
+              <div className="rounded-[30px] border border-white/15 bg-white/5 p-3 shadow-2xl backdrop-blur">
+                <img
+                  src="https://img.plasmic.app/img-optimizer/v1/img?src=https%3A%2F%2Fimg.plasmic.app%2Fimg-optimizer%2Fv1%2Fimg%2F1848e49c13442c5f627485f2d2b2df86.png&w=1600&q=75"
+                  alt="Vacademy learner dashboard"
+                  className="w-full rounded-2xl"
+                  loading="lazy"
+                />
+              </div>
+            </div>
+            <div className="grid gap-6 md:grid-cols-2">
+              {modules.map((module) => (
+                <div key={module.title} className="rounded-3xl border border-white/10 bg-white/5 p-6 shadow-lg">
+                  <h3 className="text-xl font-semibold text-white">{module.title}</h3>
+                  <p className="mt-3 text-sm text-white/80">{module.description}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section id="trust" className="bg-white py-20 text-slate-900">
+          <div className={`${containerClass}`}>
+            <div className="text-center">
+              <p className="text-sm font-semibold uppercase tracking-[0.3em] text-indigo-500">Trust & compliance</p>
+              <h2 className="mt-3 text-3xl font-bold sm:text-4xl">Built for safety, privacy and reliability</h2>
+            </div>
+            <div className="mt-10 grid gap-6 sm:grid-cols-3">
+              {complianceBadges.map((badge) => (
+                <div key={badge.title} className="rounded-3xl border border-slate-200 bg-white p-6 text-center shadow">
+                  <badge.icon className="mx-auto h-8 w-8 text-indigo-500" />
+                  <h3 className="mt-4 text-lg font-semibold text-slate-900">{badge.title}</h3>
+                  <p className="mt-2 text-sm text-slate-600">{badge.description}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section id="cta" className="relative overflow-hidden bg-gradient-to-br from-indigo-600 via-indigo-500 to-cyan-500 py-16 text-white">
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(255,255,255,0.2),_transparent_60%)]" aria-hidden="true" />
+          <div className={`${containerClass} relative flex flex-col gap-6 text-center lg:flex-row lg:items-center lg:text-left`}>
+            <div className="flex-1">
+              <p className="text-sm uppercase tracking-[0.3em] text-white/80">Limited time offer</p>
+              <h2 className="mt-2 text-3xl font-bold">Get a 7-day Vacademy LMS trial</h2>
+              <p className="mt-3 text-white/90">
+                Explore the complete suite with your own content, invite faculty and experience AI-assisted operations.
+              </p>
+            </div>
+            <div className="flex flex-col gap-3 lg:flex-row">
+              <a href={whatsappUrl} className="btn btn-primary bg-white px-6 py-3 text-slate-900 hover:bg-slate-100">
+                Chat on WhatsApp
+              </a>
+              <a
+                href="mailto:Sales@vacademy.io"
+                className="rounded-full border border-white px-6 py-3 text-sm font-semibold text-white/90 transition hover:text-white"
+              >
+                Email Sales
+              </a>
+            </div>
+          </div>
+        </section>
+
+        <section id="privacy" className="bg-white py-16 text-slate-900">
+          <div className={`${containerClass} max-w-4xl space-y-5`}>
+            <div>
+              <p className="text-sm font-semibold uppercase tracking-[0.3em] text-indigo-500">Privacy</p>
+              <h2 className="mt-2 text-3xl font-bold sm:text-4xl">Our promise to protect your community</h2>
+            </div>
+            <p className="text-slate-600">
+              Vacademy follows regional privacy laws including COPPA, FERPA and GDPR-K. Personally identifiable data is
+              minimised, encrypted and never used for model training without explicit consent.
+            </p>
+            <ul className="list-disc space-y-2 pl-5 text-sm text-slate-600">
+              <li>Role-based controls ensure only authorised staff can access sensitive learner records.</li>
+              <li>LTI-based launches inherit your LMS security model for single sign-on and grade passback.</li>
+              <li>Parents can request exports or deletions any time and we respond within 48 business hours.</li>
+            </ul>
+          </div>
+        </section>
+
+        <section id="terms" className="bg-slate-50 py-16 text-slate-900">
+          <div className={`${containerClass} max-w-4xl space-y-5`}>
+            <div>
+              <p className="text-sm font-semibold uppercase tracking-[0.3em] text-indigo-500">Terms</p>
+              <h2 className="mt-2 text-3xl font-bold sm:text-4xl">Clear guardrails for responsible usage</h2>
+            </div>
+            <p className="text-slate-600">
+              Every Vacademy workspace ships with acceptable-use, honour code and content ownership clauses so your
+              legal teams can roll out with confidence.
+            </p>
+            <ul className="list-disc space-y-2 pl-5 text-sm text-slate-600">
+              <li>Institutes own all uploaded or AI-generated instructional material.</li>
+              <li>Reverse engineering, chegg-style sharing or plagiarism triggers automated flags.</li>
+              <li>Vacademy guarantees 99.5% uptime backed by service credits in the unlikely event of downtime.</li>
+            </ul>
+          </div>
+        </section>
+
+        <section id="faq" className="bg-slate-50 py-20 text-slate-900">
+          <div className={`${containerClass} max-w-3xl`}> 
+            <div className="text-center">
+              <p className="text-sm font-semibold uppercase tracking-[0.3em] text-indigo-500">FAQs</p>
+              <h2 className="mt-2 text-3xl font-bold sm:text-4xl">Frequently asked questions</h2>
+            </div>
+            <div className="mt-10 space-y-4">
+              {faqItems.map((item) => (
+                <details key={item.question} className="group rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                  <summary className="cursor-pointer text-base font-semibold text-slate-900">
+                    {item.question}
+                  </summary>
+                  <p className="mt-3 text-sm text-slate-600">{item.answer}</p>
+                </details>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section id="contact" className="bg-white py-20 text-slate-900">
+          <div className={`${containerClass} grid gap-10 lg:grid-cols-2`}>
+            <div>
+              <p className="text-sm font-semibold uppercase tracking-[0.3em] text-indigo-500">Contact</p>
+              <h2 className="mt-2 text-3xl font-bold sm:text-4xl">Partner with Vacademy</h2>
+              <p className="mt-4 text-slate-600">
+                Whether you are an institute ready for full-scale transformation or a teacher piloting a new cohort, we’d
+                love to collaborate.
+              </p>
+              <div className="mt-6 space-y-4 text-sm">
+                <a href="mailto:Sales@vacademy.io" className="flex items-center gap-3 text-slate-700 hover:text-indigo-600">
+                  <MailIcon className="h-5 w-5 text-indigo-500" /> Sales@vacademy.io
+                </a>
+                <a href="tel:+919315940211" className="flex items-center gap-3 text-slate-700 hover:text-indigo-600">
+                  <PhoneIcon className="h-5 w-5 text-indigo-500" /> +91 93159 40211
+                </a>
+                <p className="flex items-center gap-3 text-slate-700">
+                  <MapPinIcon className="h-5 w-5 text-indigo-500" /> New Delhi, India
+                </p>
+              </div>
+              <div className="mt-6 flex gap-4">
+                <a href="https://twitter.com" target="_blank" rel="noreferrer" className="rounded-full border border-slate-200 p-3 text-slate-500 transition hover:text-indigo-600">
+                  <TwitterIcon className="h-5 w-5" />
+                </a>
+                <a href="https://linkedin.com" target="_blank" rel="noreferrer" className="rounded-full border border-slate-200 p-3 text-slate-500 transition hover:text-indigo-600">
+                  <LinkedInIcon className="h-5 w-5" />
+                </a>
+                <a href="https://facebook.com" target="_blank" rel="noreferrer" className="rounded-full border border-slate-200 p-3 text-slate-500 transition hover:text-indigo-600">
+                  <FacebookIcon className="h-5 w-5" />
+                </a>
+              </div>
+            </div>
+            <div className="rounded-3xl border border-slate-200 bg-slate-50 p-6 shadow">
+              <h3 className="text-xl font-semibold text-slate-900">Tell us about your institution</h3>
+              <form
+                className="mt-6 space-y-4"
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  alert('Thank you! Our team will reach out shortly.');
+                }}
+              >
+                <input
+                  type="text"
+                  required
+                  placeholder="Your Name"
+                  className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm focus:border-indigo-500 focus:outline-none"
+                />
+                <input
+                  type="email"
+                  required
+                  placeholder="Work Email"
+                  className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm focus:border-indigo-500 focus:outline-none"
+                />
+                <input
+                  type="text"
+                  required
+                  placeholder="Institute / Organisation"
+                  className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm focus:border-indigo-500 focus:outline-none"
+                />
+                <textarea
+                  required
+                  placeholder="What would you like to achieve with Vacademy?"
+                  className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm focus:border-indigo-500 focus:outline-none"
+                  rows={4}
+                />
+                <button type="submit" className="btn btn-primary w-full py-3 text-sm font-semibold">
+                  Request a Callback
+                </button>
+              </form>
+            </div>
+          </div>
+        </section>
+      </main>
+
+      <footer className="border-t border-white/10 bg-[#040a1a] py-12 text-white">
+        <div className={`${containerClass} grid gap-10 md:grid-cols-2 lg:grid-cols-4`}>
+          <div>
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-cyan-400 to-indigo-500 text-lg font-bold">
+                V
+              </div>
+              <div>
+                <p className="text-sm uppercase tracking-[0.3em] text-white/60">Vacademy</p>
+                <p className="text-base font-semibold text-white">Learning that learns you</p>
+              </div>
+            </div>
+            <p className="mt-4 text-sm text-white/70">
+              The all-in-one LMS and assessment platform for institutes that expect more than content hosting.
+            </p>
+          </div>
+          <div>
+            <h4 className="text-sm font-semibold uppercase tracking-[0.3em] text-white/70">Navigate</h4>
+            <div className="mt-4 flex flex-col gap-2 text-sm text-white/70">
+              {navLinks.map((link) => (
+                <button key={link.target} onClick={() => scrollToSection(link.target)} className="w-fit text-left hover:text-white">
+                  {link.label}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div>
+            <h4 className="text-sm font-semibold uppercase tracking-[0.3em] text-white/70">Legal</h4>
+            <div className="mt-4 flex flex-col gap-2 text-sm text-white/70">
+              <a href="#privacy" className="hover:text-white">
+                Privacy Policy
+              </a>
+              <a href="#terms" className="hover:text-white">
+                Terms of Service
+              </a>
+            </div>
+          </div>
+          <div>
+            <h4 className="text-sm font-semibold uppercase tracking-[0.3em] text-white/70">Get updates</h4>
+            <p className="mt-4 text-sm text-white/70">Join our newsletter for product releases and case studies.</p>
+            <form
+              className="mt-4 flex gap-2"
+              onSubmit={(event) => {
+                event.preventDefault();
+                alert('Subscribed!');
+              }}
+            >
+              <input
+                type="email"
+                required
+                placeholder="Work email"
+                className="flex-1 rounded-2xl border border-white/20 bg-white/5 px-4 py-2 text-sm text-white placeholder:text-white/60 focus:border-cyan-300 focus:outline-none"
+              />
+              <button type="submit" className="rounded-2xl bg-white/90 px-4 py-2 text-sm font-semibold text-slate-900">
+                Join
+              </button>
+            </form>
+          </div>
+        </div>
+        <div className="mt-10 border-t border-white/10 pt-6 text-center text-xs text-white/60">
+          © {new Date().getFullYear()} Vacademy. All rights reserved.
+        </div>
+      </footer>
+    </div>
+  );
 };
 
 export default LandingPage;
