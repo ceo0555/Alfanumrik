@@ -6,6 +6,7 @@ import Gradebook from './Gradebook';
 
 const AddContentModal = React.lazy(() => import('./AddContentModal'));
 const EnrollStudentModal = React.lazy(() => import('./EnrollStudentModal'));
+const LmsAnalytics = React.lazy(() => import('./LmsAnalytics'));
 
 interface CourseEditorProps {
     course: Course;
@@ -14,7 +15,7 @@ interface CourseEditorProps {
 
 const CourseEditor: React.FC<CourseEditorProps> = ({ course, onBack }) => {
     const { allCourses, handleUpdateCourses } = useAuth();
-    const [activeTab, setActiveTab] = useState<'content' | 'students' | 'gradebook'>('content');
+    const [activeTab, setActiveTab] = useState<'content' | 'students' | 'gradebook' | 'analytics'>('content');
     const [isAddContentOpen, setIsAddContentOpen] = useState(false);
     const [isEnrollStudentOpen, setIsEnrollStudentOpen] = useState(false);
     
@@ -63,10 +64,11 @@ const CourseEditor: React.FC<CourseEditorProps> = ({ course, onBack }) => {
             <p className="text-slate-500 mt-1">{course.description}</p>
             
             <div className="border-b mt-6 mb-4">
-                <div className="flex gap-4">
-                    <button onClick={() => setActiveTab('content')} className={`py-2 font-semibold border-b-2 ${activeTab === 'content' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-slate-500'}`}>Content</button>
-                    <button onClick={() => setActiveTab('students')} className={`py-2 font-semibold border-b-2 ${activeTab === 'students' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-slate-500'}`}>Students</button>
-                    <button onClick={() => setActiveTab('gradebook')} className={`py-2 font-semibold border-b-2 ${activeTab === 'gradebook' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-slate-500'}`}>Gradebook</button>
+                <div className="flex gap-4 overflow-x-auto">
+                    <button onClick={() => setActiveTab('content')} className={`py-2 px-1 font-semibold border-b-2 whitespace-nowrap ${activeTab === 'content' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-slate-500'}`}>Content</button>
+                    <button onClick={() => setActiveTab('students')} className={`py-2 px-1 font-semibold border-b-2 whitespace-nowrap ${activeTab === 'students' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-slate-500'}`}>Students</button>
+                    <button onClick={() => setActiveTab('analytics')} className={`py-2 px-1 font-semibold border-b-2 whitespace-nowrap ${activeTab === 'analytics' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-slate-500'}`}>Analytics</button>
+                    <button onClick={() => setActiveTab('gradebook')} className={`py-2 px-1 font-semibold border-b-2 whitespace-nowrap ${activeTab === 'gradebook' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-slate-500'}`}>Gradebook</button>
                 </div>
             </div>
 
@@ -95,6 +97,12 @@ const CourseEditor: React.FC<CourseEditorProps> = ({ course, onBack }) => {
                     <button onClick={() => setIsEnrollStudentOpen(true)} className="btn btn-primary mb-4">Manage Enrollment</button>
                     <p>{course.enrolledStudentIds.length} students enrolled.</p>
                 </div>
+            )}
+            
+            {activeTab === 'analytics' && (
+                <Suspense fallback={<div>Loading analytics...</div>}>
+                    <LmsAnalytics course={course} />
+                </Suspense>
             )}
             
             {activeTab === 'gradebook' && (
