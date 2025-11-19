@@ -1,7 +1,7 @@
 import React, { useState, useMemo, Suspense } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { Course } from '../../types';
-import { PlusIcon, BookIcon } from '../../constants/icons';
+import { PlusIcon, BookIcon, UsersIcon, FileTextIcon, TrendingUpIcon } from '../../constants/icons';
 
 const CreateCourseModal = React.lazy(() => import('./CreateCourseModal'));
 const CourseEditor = React.lazy(() => import('./CourseEditor'));
@@ -23,7 +23,7 @@ const TeacherLmsView: React.FC = () => {
             title,
             description,
             teacherId: activeProfile.id,
-            grade: activeProfile.grade || '10', // Default grade
+            grade: activeProfile.grade || '10',
             content: [],
             enrolledStudentIds: [],
         };
@@ -33,7 +33,11 @@ const TeacherLmsView: React.FC = () => {
 
     if (selectedCourse) {
         return (
-            <Suspense fallback={<div>Loading editor...</div>}>
+            <Suspense fallback={
+                <div className="flex items-center justify-center h-64">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+                </div>
+            }>
                 <CourseEditor course={selectedCourse} onBack={() => setSelectedCourse(null)} />
             </Suspense>
         );
@@ -41,31 +45,93 @@ const TeacherLmsView: React.FC = () => {
 
     return (
         <div>
-            <div className="flex justify-between items-center mb-6">
-                <h1 className="text-3xl font-extrabold text-slate-800">My Courses</h1>
-                <button onClick={() => setIsCreateModalOpen(true)} className="btn btn-primary flex items-center justify-center gap-2">
+            <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4 mb-6">
+                <div>
+                    <h2 className="text-2xl font-bold text-slate-800">Course Management</h2>
+                    <p className="text-slate-500 text-sm mt-1">Create and manage your courses</p>
+                </div>
+                <button 
+                    onClick={() => setIsCreateModalOpen(true)} 
+                    className="btn btn-primary flex items-center justify-center gap-2 shadow-lg hover:shadow-xl transition-shadow"
+                >
                     <PlusIcon className="w-5 h-5" /> Create New Course
                 </button>
             </div>
 
             {teacherCourses.length > 0 ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {teacherCourses.map(course => (
-                        <div key={course.id} className="bg-white p-5 rounded-xl shadow-sm border flex flex-col">
-                            <h3 className="font-bold text-lg text-slate-800">{course.title}</h3>
-                            <p className="text-sm text-slate-500 mt-1 flex-grow">{course.description}</p>
-                            <p className="text-xs text-slate-500 mt-2">Class {course.grade} | {course.content.length} items | {course.enrolledStudentIds.length} students</p>
-                            <button onClick={() => setSelectedCourse(course)} className="btn bg-slate-100 text-slate-700 hover:bg-slate-200 w-full mt-4">
-                                Manage Course
-                            </button>
-                        </div>
-                    ))}
+                    {teacherCourses.map(course => {
+                        const totalStudents = course.enrolledStudentIds.length;
+                        const totalContent = course.content.length;
+                        const totalAssignments = course.content.filter(i => i.type === 'quiz').length;
+
+                        return (
+                            <div 
+                                key={course.id} 
+                                className="group bg-white rounded-xl shadow-sm border border-slate-200 hover:shadow-lg hover:border-indigo-300 transition-all duration-300 overflow-hidden"
+                            >
+                                {/* Course Header with Gradient */}
+                                <div className="bg-gradient-to-br from-indigo-500 to-purple-600 p-4 text-white">
+                                    <div className="flex items-start justify-between">
+                                        <div className="flex-1">
+                                            <h3 className="font-bold text-lg leading-tight">{course.title}</h3>
+                                            <p className="text-xs text-indigo-100 mt-1">Class {course.grade}</p>
+                                        </div>
+                                        <div className="bg-white/20 backdrop-blur-sm rounded-lg px-2 py-1">
+                                            <span className="text-xs font-semibold">Active</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Course Body */}
+                                <div className="p-5">
+                                    <p className="text-sm text-slate-600 line-clamp-2 mb-4">{course.description}</p>
+                                    
+                                    {/* Stats Grid */}
+                                    <div className="grid grid-cols-3 gap-2 mb-4">
+                                        <div className="text-center p-2 bg-slate-50 rounded-lg">
+                                            <UsersIcon className="w-4 h-4 mx-auto text-indigo-600 mb-1" />
+                                            <p className="text-xs font-semibold text-slate-800">{totalStudents}</p>
+                                            <p className="text-xs text-slate-500">Students</p>
+                                        </div>
+                                        <div className="text-center p-2 bg-slate-50 rounded-lg">
+                                            <FileTextIcon className="w-4 h-4 mx-auto text-emerald-600 mb-1" />
+                                            <p className="text-xs font-semibold text-slate-800">{totalContent}</p>
+                                            <p className="text-xs text-slate-500">Content</p>
+                                        </div>
+                                        <div className="text-center p-2 bg-slate-50 rounded-lg">
+                                            <TrendingUpIcon className="w-4 h-4 mx-auto text-amber-600 mb-1" />
+                                            <p className="text-xs font-semibold text-slate-800">{totalAssignments}</p>
+                                            <p className="text-xs text-slate-500">Quizzes</p>
+                                        </div>
+                                    </div>
+
+                                    {/* Action Button */}
+                                    <button 
+                                        onClick={() => setSelectedCourse(course)} 
+                                        className="w-full btn bg-indigo-600 text-white hover:bg-indigo-700 group-hover:shadow-md transition-all"
+                                    >
+                                        Manage Course
+                                    </button>
+                                </div>
+                            </div>
+                        );
+                    })}
                 </div>
             ) : (
-                 <div className="text-center py-20 text-slate-500 bg-slate-50 rounded-lg">
-                    <BookIcon className="w-16 h-16 mx-auto mb-4 text-slate-300" />
-                    <p className="font-semibold text-slate-600">You haven't created any courses yet.</p>
-                    <button onClick={() => setIsCreateModalOpen(true)} className="btn btn-primary mt-4">
+                <div className="text-center py-20 bg-gradient-to-br from-slate-50 to-indigo-50 rounded-2xl border-2 border-dashed border-slate-300">
+                    <div className="inline-flex items-center justify-center w-20 h-20 bg-indigo-100 rounded-full mb-4">
+                        <BookIcon className="w-10 h-10 text-indigo-600" />
+                    </div>
+                    <h3 className="text-xl font-bold text-slate-800 mb-2">No Courses Yet</h3>
+                    <p className="text-slate-600 mb-6 max-w-md mx-auto">
+                        Start building your first course to engage students with interactive content and assessments.
+                    </p>
+                    <button 
+                        onClick={() => setIsCreateModalOpen(true)} 
+                        className="btn btn-primary px-6 py-3 shadow-lg hover:shadow-xl transition-shadow"
+                    >
+                        <PlusIcon className="w-5 h-5 inline mr-2" />
                         Create Your First Course
                     </button>
                 </div>

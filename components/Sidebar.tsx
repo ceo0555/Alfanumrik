@@ -1,6 +1,6 @@
 import React from 'react';
 import { View } from '../App';
-import { HomeIcon, CompassIcon, MessageSquareIcon, LayersIcon, TargetIcon, XIcon } from '../constants/icons';
+import { HomeIcon, CompassIcon, MessageSquareIcon, LayersIcon, TargetIcon, XIcon, BookOpenIcon } from '../constants/icons';
 import { useAuth } from '../contexts/AuthContext';
 
 interface SidebarProps {
@@ -43,6 +43,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeView, setView, isOpen, onClose 
   const navItems = [
     { view: 'home' as View, label: 'Home', icon: HomeIcon },
     { view: 'academics' as View, label: 'Academics', icon: CompassIcon },
+    { view: 'lms' as View, label: 'LMS', icon: BookOpenIcon },
     { view: 'assess' as View, label: 'Assess', icon: TargetIcon },
     { view: 'studio' as View, label: 'Studio', icon: LayersIcon },
     { view: 'ask' as View, label: 'AI Tutor', icon: MessageSquareIcon },

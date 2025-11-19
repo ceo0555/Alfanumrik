@@ -13,7 +13,7 @@ import { SparklesIcon } from './constants/icons';
 import LessonPlayerSkeleton from './components/LessonPlayerSkeleton';
 
 // Define and export the View type used for navigation across the app.
-export type View = 'home' | 'academics' | 'assess' | 'studio' | 'lesson' | 'quiz' | 'ask';
+export type View = 'home' | 'academics' | 'assess' | 'studio' | 'lesson' | 'quiz' | 'ask' | 'lms';
 
 // --- Production-Ready Enhancements ---
 
@@ -67,6 +67,7 @@ const StudioView = React.lazy(() => import('./components/AITools'));
 const ScholarWallet = React.lazy(() => import('./components/ScholarWallet'));
 const DeepDiveModal = React.lazy(() => import('./components/DeepDiveModal'));
 const ExitLessonConfirmationModal = React.lazy(() => import('./components/ExitLessonConfirmationModal'));
+const LmsDashboard = React.lazy(() => import('./components/lms/LmsDashboard'));
 
 
 // --- App Component ---
@@ -213,6 +214,8 @@ const StudentApp: React.FC<StudentAppProps> = ({ ltiContext, onOpenUserModal, on
             setView={handleNavigation}
             onStartQuiz={handleStartQuiz}
         />;
+      case 'lms':
+        return <LmsDashboard setView={handleNavigation} setActiveQuiz={setActiveQuiz} />;
        case 'assess':
         return <AssessView 
             examToStart={practiceToStart}
@@ -258,7 +261,8 @@ const StudentApp: React.FC<StudentAppProps> = ({ ltiContext, onOpenUserModal, on
     if (view === 'quiz' && activeQuiz) return `Quiz: ${activeQuiz.title}`;
     const viewTitles = { 
         home: `Welcome, ${activeProfile?.name}`, 
-        academics: 'Academics', 
+        academics: 'Academics',
+        lms: 'Learning Management',
         assess: 'Assess', 
         studio: 'Studio',
     };
