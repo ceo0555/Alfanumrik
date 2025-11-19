@@ -1,3 +1,61 @@
+// --- MULTI-TENANCY & SCHOOL TYPES ---
+
+export interface School {
+  id: string;
+  name: string;
+  code: string; // Unique school code
+  logo?: string;
+  primaryColor: string;
+  secondaryColor: string;
+  address: string;
+  contactEmail: string;
+  contactPhone: string;
+  principalName: string;
+  totalStudents: number;
+  totalTeachers: number;
+  established: string;
+  subscriptionTier: 'basic' | 'premium' | 'enterprise';
+  subscriptionExpiry: string;
+  isActive: boolean;
+  settings: SchoolSettings;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SchoolSettings {
+  allowParentAccess: boolean;
+  enableAIFeatures: boolean;
+  enableLMS: boolean;
+  enableAssessments: boolean;
+  maxStudentsPerClass: number;
+  academicYearStart: string;
+  academicYearEnd: string;
+  gradeSystem: 'percentage' | 'gpa' | 'letter';
+  attendanceRequired: boolean;
+  customDomain?: string;
+}
+
+export interface BulkImportResult {
+  totalRows: number;
+  successCount: number;
+  failedCount: number;
+  errors: Array<{
+    row: number;
+    error: string;
+    data?: any;
+  }>;
+  importedIds: number[];
+}
+
+export interface PerformanceMetrics {
+  activeUsers: number;
+  totalLogins: number;
+  avgSessionDuration: number;
+  apiResponseTime: number;
+  errorRate: number;
+  timestamp: string;
+}
+
 // --- NEW CURRICULUM & LESSON PACK TYPES ---
 
 export interface SyllabusMarkingScheme {
@@ -947,6 +1005,7 @@ export interface UserProfile {
   id: number;
   name: string;
   grade: string;
+  schoolId?: string; // Multi-tenancy support
   lastSubject: string;
   lastChapter: string;
   currentStreak: number;
