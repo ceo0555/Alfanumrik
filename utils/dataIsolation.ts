@@ -46,8 +46,8 @@ export class DataIsolationService {
             .map(u => u.id);
         
         return assignments.filter(assignment =>
-            schoolUserIds.includes(assignment.createdBy) ||
-            assignment.assignedTo.some(id => schoolUserIds.includes(id))
+            assignment.assignedStudentIds && 
+            assignment.assignedStudentIds.some((id: number) => schoolUserIds.includes(id))
         );
     }
 

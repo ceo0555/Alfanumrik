@@ -63,15 +63,11 @@ const PilotMonitoring: React.FC = () => {
         });
 
         // Check 5: Submission Processing
-        const recentSubmissions = allSubmissions.filter(s => {
-            const submissionDate = new Date(s.submittedAt);
-            const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
-            return submissionDate > oneDayAgo;
-        }).length;
+        const recentSubmissions = allSubmissions.length; // All submissions in the system
         checks.push({
             name: 'Submission Processing',
             status: 'healthy',
-            message: `${recentSubmissions} submissions in last 24h`,
+            message: `${recentSubmissions} total submissions processed`,
             lastCheck: now,
         });
 

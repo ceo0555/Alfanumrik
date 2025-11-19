@@ -27,7 +27,7 @@ const PilotReporting: React.FC = () => {
             const schoolStudentIds = students.map(s => s.id);
             const schoolSubmissions = allSubmissions.filter(s => schoolStudentIds.includes(s.studentId));
             const schoolAssignments = allAssignments.filter(a => 
-                schoolStudentIds.some(id => a.assignedTo.includes(id))
+                a.assignedStudentIds && schoolStudentIds.some(id => a.assignedStudentIds!.includes(id))
             );
 
             return {
