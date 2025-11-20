@@ -54,33 +54,88 @@ const StudentLmsView: React.FC<StudentLmsViewProps> = ({ setView, setActiveQuiz 
     }
 
     return (
-        <div>
+        <div className="space-y-6">
             {enrolledCourses.length > 0 ? (
                 <>
-                    <h1 className="text-3xl font-extrabold text-slate-800 mb-6">My Courses</h1>
+                    {/* Hero Section */}
+                    <div className="bg-gradient-to-r from-indigo-500 to-purple-600 rounded-2xl p-8 text-white shadow-xl">
+                        <h1 className="text-4xl font-extrabold mb-2">My Learning Journey</h1>
+                        <p className="text-indigo-100">Continue where you left off and achieve your goals!</p>
+                        
+                        {/* Quick Stats */}
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mt-6">
+                            <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4">
+                                <p className="text-3xl font-bold">{enrolledCourses.length}</p>
+                                <p className="text-indigo-100 text-sm">Active Courses</p>
+                            </div>
+                            <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4">
+                                <p className="text-3xl font-bold">
+                                    {Math.round(enrolledCourses.reduce((sum, c) => sum + getCourseProgress(c), 0) / enrolledCourses.length)}%
+                                </p>
+                                <p className="text-indigo-100 text-sm">Avg Progress</p>
+                            </div>
+                            <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4 col-span-2 sm:col-span-1">
+                                <p className="text-3xl font-bold">
+                                    {enrolledCourses.filter(c => getCourseProgress(c) === 100).length}
+                                </p>
+                                <p className="text-indigo-100 text-sm">Completed</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <h2 className="text-2xl font-bold text-slate-800">Your Courses</h2>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                         {enrolledCourses.map(course => {
                             const teacher = userProfiles.find(p => p.id === course.teacherId);
                             const progress = getCourseProgress(course);
+                            const isCompleted = progress === 100;
+                            
                             return (
                                 <button 
                                     key={course.id} 
                                     onClick={() => setSelectedCourse(course)}
-                                    className="bg-white p-5 rounded-xl shadow-sm border hover:border-indigo-400 hover:shadow-md transition-all text-left flex flex-col"
+                                    className="bg-white rounded-xl shadow-md hover:shadow-xl transition-all border border-slate-200 text-left overflow-hidden group"
                                 >
-                                    <h3 className="font-bold text-lg text-slate-800">{course.title}</h3>
-                                    <p className="text-sm text-slate-500 mt-1 flex-grow">Taught by {teacher?.name || 'Unknown'}</p>
-                                    <div className="mt-4">
-                                        <div className="flex justify-between text-xs mb-1">
-                                            <span className="font-semibold text-slate-600">Progress</span>
-                                            <span>{progress}%</span>
+                                    {/* Course Header */}
+                                    <div className={`p-4 ${isCompleted ? 'bg-gradient-to-br from-green-500 to-emerald-600' : 'bg-gradient-to-br from-indigo-500 to-purple-600'}`}>
+                                        <h3 className="font-bold text-xl text-white mb-1">{course.title}</h3>
+                                        <p className="text-white/80 text-sm">by {teacher?.name || 'Unknown'}</p>
+                                    </div>
+
+                                    {/* Course Body */}
+                                    <div className="p-5">
+                                        <p className="text-sm text-slate-600 mb-4 line-clamp-2">{course.description}</p>
+                                        
+                                        {/* Progress Bar */}
+                                        <div className="mb-4">
+                                            <div className="flex justify-between text-xs mb-2">
+                                                <span className="font-semibold text-slate-700">
+                                                    {isCompleted ? 'Completed!' : 'Your Progress'}
+                                                </span>
+                                                <span className="text-slate-600 font-medium">{progress}%</span>
+                                            </div>
+                                            <div className="w-full bg-slate-200 rounded-full h-2">
+                                                <div 
+                                                    className={`h-2 rounded-full transition-all ${isCompleted ? 'bg-green-500' : 'bg-indigo-500'}`}
+                                                    style={{width: `${progress}%`}}
+                                                ></div>
+                                            </div>
                                         </div>
-                                        <div className="w-full bg-slate-200 rounded-full h-1.5">
-                                            <div className="bg-indigo-500 h-1.5 rounded-full" style={{width: `${progress}%`}}></div>
+
+                                        {/* Stats */}
+                                        <div className="flex items-center justify-between text-sm text-slate-600">
+                                            <span>{course.content.length} items</span>
+                                            <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                                                isCompleted ? 'bg-green-100 text-green-700' :
+                                                progress > 0 ? 'bg-blue-100 text-blue-700' :
+                                                'bg-slate-100 text-slate-700'
+                                            }`}>
+                                                {isCompleted ? 'Completed' : progress > 0 ? 'In Progress' : 'Start Learning'}
+                                            </span>
                                         </div>
                                     </div>
                                 </button>
-                            )
+                            );
                         })}
                     </div>
                 </>
